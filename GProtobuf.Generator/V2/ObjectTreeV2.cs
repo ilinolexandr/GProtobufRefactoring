@@ -263,97 +263,33 @@ namespace GProtobuf.Generator.V2
                     throw new System.Exception($"Error in GenerateSerializers for namespace '{ns}'", ex);
                 }
 
-                // Generate SpanReaders class (uses global registries for deduplication)
                 if (_options.GenerateSpanReader)
-                {
-                    try
-                    {
-                        var spanReaderGenerator = new SpanReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _options);
-                        spanReaderGenerator.GenerateAll(types, ns);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        throw new System.Exception($"Error in SpanReaderGenerator for namespace '{ns}'. Inner: {ex.Message}. Stack: {ex.StackTrace}", ex);
-                    }
-                }
+                    GenerateIfNotEmpty(sb, () =>
+                        new SpanReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _options).GenerateAll(types, ns));
 
-                // Generate StreamReaders class (virtual types are in shared file, skip them here)
                 if (_options.GenerateStreamReader)
-                {
-                    try
-                    {
-                        new StreamReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns, skipVirtualTypes: true);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        throw new System.Exception($"Error in StreamReaderGenerator for namespace '{ns}'. Inner: {ex.Message}. Stack: {ex.StackTrace}", ex);
-                    }
-                }
+                    GenerateIfNotEmpty(sb, () =>
+                        new StreamReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns, skipVirtualTypes: true));
 
-                // Generate StreamWriters class (uses global registries for deduplication)
                 if (_options.GenerateStreamWriter)
-                {
-                    try
-                    {
-                        new StreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        throw new System.Exception($"Error in StreamWriterGenerator for namespace '{ns}'", ex);
-                    }
-                }
+                    GenerateIfNotEmpty(sb, () =>
+                        new StreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns));
 
-                // Generate BufferWriters class (uses global registries for deduplication)
                 if (_options.GenerateBufferWriter)
-                {
-                    try
-                    {
-                        new BufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        throw new System.Exception($"Error in BufferWriterGenerator for namespace '{ns}'", ex);
-                    }
-                }
+                    GenerateIfNotEmpty(sb, () =>
+                        new BufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns));
 
-                // Generate OnePassStreamWriters class (uses global registries for deduplication)
                 if (_options.GenerateOnePassStreamWriter)
-                {
-                    try
-                    {
-                        new OnePassStreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        throw new System.Exception($"Error in OnePassStreamWriterGenerator for namespace '{ns}'", ex);
-                    }
-                }
+                    GenerateIfNotEmpty(sb, () =>
+                        new OnePassStreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns));
 
-                // Generate StackBufferWriters class (zero-allocation IoT-optimized serialization)
                 if (_options.GenerateStackBufferWriter)
-                {
-                    try
-                    {
-                        new StackBufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        throw new System.Exception($"Error in StackBufferWriterGenerator for namespace '{ns}'", ex);
-                    }
-                }
+                    GenerateIfNotEmpty(sb, () =>
+                        new StackBufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns));
 
-                // Generate SizeCalculators class - needed when any writer is enabled (except OnePass which doesn't need size calculation)
                 if (_options.GenerateStreamWriter || _options.GenerateBufferWriter || _options.GenerateStackBufferWriter)
-                {
-                    try
-                    {
-                        new SizeCalculatorGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        throw new System.Exception($"Error in SizeCalculatorGenerator for namespace '{ns}'", ex);
-                    }
-                }
+                    GenerateIfNotEmpty(sb, () =>
+                        new SizeCalculatorGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry).GenerateAll(types, ns));
 
                 WriteFooter(sb);
 
@@ -674,6 +610,25 @@ namespace GProtobuf.Generator.V2
             sb.AppendNewLine();
             sb.AppendIndentedLine($"namespace {namespaceName}.Serialization");
             sb.StartNewBlock();
+        }
+
+        /// <summary>
+        /// Runs a generator action and removes its output if it produced only an empty class shell.
+        /// </summary>
+        private static void GenerateIfNotEmpty(StringBuilderWithIndent sb, System.Action generate)
+        {
+            var savedLength = sb.Length;
+            generate();
+            var generated = sb.ToString(savedLength, sb.Length - savedLength);
+            int braceIndex = generated.IndexOf('{');
+            if (braceIndex >= 0)
+            {
+                var body = generated.Substring(braceIndex + 1);
+                if (!body.Contains("public static") && !body.Contains("private static") && !body.Contains("internal static"))
+                {
+                    sb.Length = savedLength;
+                }
+            }
         }
 
         private void WriteFooter(StringBuilderWithIndent sb)

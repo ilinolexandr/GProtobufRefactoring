@@ -18,7 +18,11 @@ namespace GProtobuf.Generator.Utilities
 
         public int IndentLevel { get; set; }
 
-        public int Length => sb.Length;
+        public int Length
+        {
+            get => sb.Length;
+            set => sb.Length = value;
+        }
 
         public StringBuilderWithIndent IncreaseIndent()
         {
@@ -111,6 +115,11 @@ namespace GProtobuf.Generator.Utilities
         public void Insert(int index, string value)
         {
             this.sb.Insert(index, value);
+        }
+
+        public string ToString(int startIndex, int length)
+        {
+            return this.sb.ToString(startIndex, length);
         }
 
         public override string ToString()
