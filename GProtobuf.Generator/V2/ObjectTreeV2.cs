@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.CodeGeneration;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
@@ -51,6 +52,7 @@ namespace GProtobuf.Generator.V2
         private readonly Microsoft.CodeAnalysis.Compilation _compilation;
         private readonly Dictionary<string, List<StandaloneTypeInfo>> _standaloneTypesByNamespace = new();
         private readonly GeneratorOptions _options;
+        private readonly ProxyRegistry _proxyRegistry;
 
         /// <summary>
         /// The namespace where virtual types (map entries, tuples) are generated.
@@ -76,10 +78,11 @@ namespace GProtobuf.Generator.V2
         /// <param name="options">
         /// Generator options from [assembly: GProtobufOptions(...)]. Controls which generators are enabled.
         /// </param>
-        public ObjectTreeV2(HashSet<string> enumTypes, Microsoft.CodeAnalysis.Compilation compilation = null, ImmutableArray<ITypeSymbol> standaloneTypes = default, GeneratorOptions options = null)
+        public ObjectTreeV2(HashSet<string> enumTypes, Microsoft.CodeAnalysis.Compilation compilation = null, ImmutableArray<ITypeSymbol> standaloneTypes = default, GeneratorOptions options = null, ProxyRegistry proxyRegistry = null)
         {
             _compilation = compilation;
             _options = options ?? GeneratorOptions.Default;
+            _proxyRegistry = proxyRegistry;
 
             // Register all enum types in the TypeRegistry
             if (enumTypes != null)
@@ -326,44 +329,44 @@ namespace GProtobuf.Generator.V2
             // Generate SpanReaders class with ALL virtual map and tuple readers
             if (_options.GenerateSpanReader)
             {
-                var spanReaderGenerator = new SpanReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _options, ns);
+                var spanReaderGenerator = new SpanReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _options, ns, _proxyRegistry);
                 spanReaderGenerator.GenerateVirtualTypesOnly(ns);
             }
 
             // Generate StreamReaders class with ALL virtual map and tuple readers
             if (_options.GenerateStreamReader)
             {
-                new StreamReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns).GenerateVirtualTypesOnly(ns);
+                new StreamReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns, _proxyRegistry).GenerateVirtualTypesOnly(ns);
             }
 
             // Generate StreamWriters class with ALL virtual map and tuple writers
             if (_options.GenerateStreamWriter)
             {
-                new StreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns).GenerateVirtualTypesOnly(ns);
+                new StreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns, _proxyRegistry).GenerateVirtualTypesOnly(ns);
             }
 
             // Generate BufferWriters class with ALL virtual map and tuple writers
             if (_options.GenerateBufferWriter)
             {
-                new BufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns).GenerateVirtualTypesOnly(ns);
+                new BufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns, _proxyRegistry).GenerateVirtualTypesOnly(ns);
             }
 
             // Generate OnePassStreamWriters class with ALL virtual map and tuple writers
             if (_options.GenerateOnePassStreamWriter)
             {
-                new OnePassStreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns).GenerateVirtualTypesOnly(ns);
+                new OnePassStreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns, _proxyRegistry).GenerateVirtualTypesOnly(ns);
             }
 
             // Generate StackBufferWriters class with ALL virtual map and tuple writers
             if (_options.GenerateStackBufferWriter)
             {
-                new StackBufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns).GenerateVirtualTypesOnly(ns);
+                new StackBufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns, _proxyRegistry).GenerateVirtualTypesOnly(ns);
             }
 
             // Generate SizeCalculators class with ALL virtual map and tuple size calculators
             if (_options.GenerateStreamWriter || _options.GenerateBufferWriter || _options.GenerateStackBufferWriter)
             {
-                new SizeCalculatorGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns).GenerateVirtualTypesOnly(ns);
+                new SizeCalculatorGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, ns, _proxyRegistry).GenerateVirtualTypesOnly(ns);
             }
 
             WriteFooter(sb);
@@ -499,7 +502,7 @@ namespace GProtobuf.Generator.V2
                 {
                     try
                     {
-                        var spanReaderGenerator = new SpanReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _options, _virtualTypesNamespace);
+                        var spanReaderGenerator = new SpanReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _options, _virtualTypesNamespace, _proxyRegistry);
                         spanReaderGenerator.GenerateAll(types, ns);
                     }
                     catch (System.Exception ex)
@@ -513,7 +516,7 @@ namespace GProtobuf.Generator.V2
                 {
                     try
                     {
-                        new StreamReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace).GenerateAll(types, ns);
+                        new StreamReaderGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace, _proxyRegistry).GenerateAll(types, ns);
                     }
                     catch (System.Exception ex)
                     {
@@ -526,7 +529,7 @@ namespace GProtobuf.Generator.V2
                 {
                     try
                     {
-                        new StreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace).GenerateAll(types, ns);
+                        new StreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace, _proxyRegistry).GenerateAll(types, ns);
                     }
                     catch (System.Exception ex)
                     {
@@ -539,7 +542,7 @@ namespace GProtobuf.Generator.V2
                 {
                     try
                     {
-                        new BufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace).GenerateAll(types, ns);
+                        new BufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace, _proxyRegistry).GenerateAll(types, ns);
                     }
                     catch (System.Exception ex)
                     {
@@ -552,7 +555,7 @@ namespace GProtobuf.Generator.V2
                 {
                     try
                     {
-                        new OnePassStreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace).GenerateAll(types, ns);
+                        new OnePassStreamWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace, _proxyRegistry).GenerateAll(types, ns);
                     }
                     catch (System.Exception ex)
                     {
@@ -565,7 +568,7 @@ namespace GProtobuf.Generator.V2
                 {
                     try
                     {
-                        new StackBufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace).GenerateAll(types, ns);
+                        new StackBufferWriterGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace, _proxyRegistry).GenerateAll(types, ns);
                     }
                     catch (System.Exception ex)
                     {
@@ -578,7 +581,7 @@ namespace GProtobuf.Generator.V2
                 {
                     try
                     {
-                        new SizeCalculatorGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace).GenerateAll(types, ns);
+                        new SizeCalculatorGenerator(sb, _registry, globalMapRegistry, globalTupleRegistry, _virtualTypesNamespace, _proxyRegistry).GenerateAll(types, ns);
                     }
                     catch (System.Exception ex)
                     {

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.CodeGeneration;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
@@ -34,6 +35,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         public SpanReaderGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, GeneratorOptions options, string virtualTypesNamespace)
             : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options, virtualTypesNamespace)
+        {
+        }
+
+        public SpanReaderGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, GeneratorOptions options, string virtualTypesNamespace, ProxyRegistry proxyRegistry)
+            : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options, virtualTypesNamespace, proxyRegistry)
         {
         }
 
@@ -301,7 +307,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             VirtualMapEntryGenerator generator;
             try
             {
-                generator = new VirtualMapEntryGenerator(_sb, _virtualMapRegistry, _registry, "Span", _virtualTypesNamespace);
+                generator = new VirtualMapEntryGenerator(_sb, _virtualMapRegistry, _registry, "Span", _virtualTypesNamespace, _proxyRegistry);
             }
             catch (System.Exception ex)
             {
@@ -933,6 +939,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateComplexTypeReadBodyWithReader(ProtoMemberAttribute member, string readerVar)
         {
+            // Check if type has a serialization proxy
+            var proxy = GetProxyForType(member.Type);
+            if (proxy != null)
+            {
+                GenerateProxyTypeReadWithReader(member, readerVar, proxy);
+                return;
+            }
+
             var typeName = TypeNameHelper.GetClassName(member.Type);
             _sb.AppendIndentedLine($"var length = {readerVar}.ReadVarInt32();");
             _sb.AppendIndentedLine($"var nestedReader = new SpanReader({readerVar}.GetSlice(length));");
@@ -948,6 +962,20 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             var nsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNamespace, _currentNamespace);
             _sb.AppendIndentedLine($"result.{member.Name} = {nsPrefix}SpanReaders.Read{typeName}{methodSuffix}(ref nestedReader);");
+        }
+
+        /// <summary>
+        /// Generates read code for a proxy type field using SpanReader.
+        /// </summary>
+        private void GenerateProxyTypeReadWithReader(ProtoMemberAttribute member, string readerVar, ProxyDefinition proxy)
+        {
+            var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxy.ProxyNamespace, _currentNamespace);
+            _sb.AppendIndentedLine($"var length = {readerVar}.ReadVarInt32();");
+            _sb.AppendIndentedLine($"var nestedReader = new SpanReader({readerVar}.GetSlice(length));");
+            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = {proxyNsPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref nestedReader);");
+            _sb.AppendIndentedLine($"result.{member.Name} = proxyValue_{member.FieldId}.{proxy.ConvertMethodName}();");
+            if (proxy.ReturnMethodName != null)
+                _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{proxy.ReturnMethodName}();");
         }
 
         #endregion
@@ -2316,57 +2344,63 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else
             {
-                // Complex type - nested message
-                var typeName = TypeNameHelper.GetClassName(member.Type);
-                _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
-                _sb.AppendIndentedLine("var nestedReader = new SpanReader(reader.GetSlice(length));");
-
-                // Check if type is from different namespace and qualify the call
-                var typeNamespace = _registry.GetNamespaceForType(member.Type);
-                var nsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNamespace, _currentNamespace);
-
-                // Check if type is part of any inheritance hierarchy
-                bool isPartOfHierarchy = _registry?.IsPartOfHierarchy(member.Type) ?? false;
-
-                if (isPartOfHierarchy)
+                // Check if type has a serialization proxy (Populate path)
+                var populateProxy = GetProxyForType(member.Type);
+                if (populateProxy != null)
                 {
-                    // For types with inheritance, we need to read the discriminator to determine actual type
-                    _sb.AppendIndentedLine($"instance.{member.Name} = {nsPrefix}SpanReaders.Read{typeName}(ref nestedReader);");
+                    var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(populateProxy.ProxyNamespace, _currentNamespace);
+                    _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
+                    _sb.AppendIndentedLine("var nestedReader = new SpanReader(reader.GetSlice(length));");
+                    _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = {proxyNsPrefix}SpanReaders.Read{populateProxy.ProxyClassName}Content(ref nestedReader);");
+                    _sb.AppendIndentedLine($"instance.{member.Name} = proxyValue_{member.FieldId}.{populateProxy.ConvertMethodName}();");
+                    if (populateProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{populateProxy.ReturnMethodName}();");
                 }
                 else
                 {
-                    // Per protobuf spec: When the same embedded message field appears multiple times,
-                    // the contents should be
-                    var instanceType = member.Type.TrimEnd('?');
+                    // Complex type - nested message
+                    var typeName = TypeNameHelper.GetClassName(member.Type);
+                    _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
+                    _sb.AppendIndentedLine("var nestedReader = new SpanReader(reader.GetSlice(length));");
 
-                    // Check if the type is a struct (value type) - structs cannot be compared to null
-                    var memberTypeInfo = _registry?.GetByFullName(instanceType);
-                    bool isStruct = memberTypeInfo?.IsStruct ?? false;
+                    // Check if type is from different namespace and qualify the call
+                    var typeNamespace = _registry.GetNamespaceForType(member.Type);
+                    var nsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNamespace, _currentNamespace);
 
-                    if (!isStruct)
+                    // Check if type is part of any inheritance hierarchy
+                    bool isPartOfHierarchy = _registry?.IsPartOfHierarchy(member.Type) ?? false;
+
+                    if (isPartOfHierarchy)
                     {
-                        // Only generate null check for reference types (classes)
-                        _sb.AppendIndentedLine($"if (instance.{member.Name} == null)");
-                        _sb.StartNewBlock();
-                        _sb.AppendIndentedLine($"instance.{member.Name} = new global::{instanceType}();");
-                        _sb.EndBlock();
-                        _sb.AppendIndentedLine($"{nsPrefix}SpanReaders.Populate{typeName}(ref nestedReader, instance.{member.Name});");
+                        _sb.AppendIndentedLine($"instance.{member.Name} = {nsPrefix}SpanReaders.Read{typeName}(ref nestedReader);");
                     }
                     else
                     {
-                        // Check if this is a readonly struct - use ReadContent instead of Populate
-                        bool isReadonlyStruct = _registry?.IsReadonlyStruct(instanceType) ?? false;
-                        if (isReadonlyStruct)
+                        var instanceType = member.Type.TrimEnd('?');
+                        var memberTypeInfo = _registry?.GetByFullName(instanceType);
+                        bool isStruct = memberTypeInfo?.IsStruct ?? false;
+
+                        if (!isStruct)
                         {
-                            // Readonly struct - use ReadContent which uses constructor
-                            _sb.AppendIndentedLine($"instance.{member.Name} = {nsPrefix}SpanReaders.Read{typeName}Content(ref nestedReader);");
+                            _sb.AppendIndentedLine($"if (instance.{member.Name} == null)");
+                            _sb.StartNewBlock();
+                            _sb.AppendIndentedLine($"instance.{member.Name} = new global::{instanceType}();");
+                            _sb.EndBlock();
+                            _sb.AppendIndentedLine($"{nsPrefix}SpanReaders.Populate{typeName}(ref nestedReader, instance.{member.Name});");
                         }
                         else
                         {
-                            // Mutable struct - use Populate pattern
-                            _sb.AppendIndentedLine($"var _temp_{member.Name} = new global::{instanceType}();");
-                            _sb.AppendIndentedLine($"{nsPrefix}SpanReaders.Populate{typeName}(ref nestedReader, ref _temp_{member.Name});");
-                            _sb.AppendIndentedLine($"instance.{member.Name} = _temp_{member.Name};");
+                            bool isReadonlyStruct = _registry?.IsReadonlyStruct(instanceType) ?? false;
+                            if (isReadonlyStruct)
+                            {
+                                _sb.AppendIndentedLine($"instance.{member.Name} = {nsPrefix}SpanReaders.Read{typeName}Content(ref nestedReader);");
+                            }
+                            else
+                            {
+                                _sb.AppendIndentedLine($"var _temp_{member.Name} = new global::{instanceType}();");
+                                _sb.AppendIndentedLine($"{nsPrefix}SpanReaders.Populate{typeName}(ref nestedReader, ref _temp_{member.Name});");
+                                _sb.AppendIndentedLine($"instance.{member.Name} = _temp_{member.Name};");
+                            }
                         }
                     }
                 }
@@ -2792,6 +2826,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateComplexTypeReadBody(ProtoMemberAttribute member)
         {
+            // Check if type has a serialization proxy
+            var proxy = GetProxyForType(member.Type);
+            if (proxy != null)
+            {
+                GenerateProxyTypeReadBody(member, proxy);
+                return;
+            }
+
             var typeName = TypeNameHelper.GetClassName(member.Type);
 
             // Check if field is a concrete nested derived type (requires ProtoInclude wrapper detection)
@@ -2806,6 +2848,20 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 // Standard complex type read (no wrapper)
                 GenerateStandardComplexTypeReadBody(member, typeName);
             }
+        }
+
+        /// <summary>
+        /// Generates read code for a proxy type field using SpanReader (read-loop path).
+        /// </summary>
+        private void GenerateProxyTypeReadBody(ProtoMemberAttribute member, ProxyDefinition proxy)
+        {
+            var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxy.ProxyNamespace, _currentNamespace);
+            _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
+            _sb.AppendIndentedLine("var nestedReader = new SpanReader(reader.GetSlice(length));");
+            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = {proxyNsPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref nestedReader);");
+            _sb.AppendIndentedLine($"result.{member.Name} = proxyValue_{member.FieldId}.{proxy.ConvertMethodName}();");
+            if (proxy.ReturnMethodName != null)
+                _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{proxy.ReturnMethodName}();");
         }
 
         /// <summary>

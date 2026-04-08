@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers;
@@ -33,6 +34,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         public SizeCalculatorGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string virtualTypesNamespace)
             : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options: null, virtualTypesNamespace: virtualTypesNamespace)
+        {
+        }
+
+        public SizeCalculatorGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string virtualTypesNamespace, ProxyRegistry proxyRegistry)
+            : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options: null, virtualTypesNamespace: virtualTypesNamespace, proxyRegistry: proxyRegistry)
         {
         }
 
@@ -144,7 +150,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendNewLine();
             _sb.AppendIndentedLine("// Virtual Map Entry Size Calculators");
 
-            var generator = new VirtualMapEntryGenerator(_sb, _virtualMapRegistry, _registry, _virtualTypesNamespace);
+            var generator = new VirtualMapEntryGenerator(_sb, _virtualMapRegistry, _registry, "Stream", _virtualTypesNamespace, _proxyRegistry);
             foreach (var virtualType in virtualTypes)
             {
                 generator.GenerateSizeCalculator(virtualType);
@@ -885,6 +891,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateComplexTypeSize(ProtoMemberAttribute member, string sourceVar)
         {
+            // Check if type has a serialization proxy
+            var proxy = GetProxyForType(member.Type);
+            if (proxy != null)
+            {
+                GenerateProxyTypeSize(member, sourceVar, proxy);
+                return;
+            }
+
             var typeName = TypeNameHelper.GetClassName(member.Type);
 
             // Check if type is a non-nullable value type (struct)
@@ -917,6 +931,44 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
 
             if (!isNonNullableStruct)
+            {
+                _sb.EndBlock();
+            }
+        }
+
+        /// <summary>
+        /// Generates size calculation for a field whose type has a serialization proxy.
+        /// Converts original → proxy via [ProxyCreate], calculates proxy size.
+        /// </summary>
+        private void GenerateProxyTypeSize(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
+        {
+            bool needsNullCheck = !proxy.IsStruct || member.IsNullable;
+
+            if (needsNullCheck)
+            {
+                _sb.AppendIndentedLine($"if ({sourceVar} != null)");
+                _sb.StartNewBlock();
+            }
+
+            string localVar = member.IsNullable ? $"{sourceVar}.Value" : sourceVar;
+
+            // Create proxy from original
+            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({localVar}{proxy.CreateExtraArgs});");
+
+            // Tag size
+            TagCodeHelper.AddTagSize(_sb, member.FieldId, WireType.Len);
+
+            // Content size
+            var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxy.ProxyNamespace, _currentNamespace);
+            _sb.AppendIndentedLine($"var lengthBefore_{member.FieldId} = calculator.Length;");
+            _sb.AppendIndentedLine($"{proxyNsPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref calculator, proxyValue_{member.FieldId});");
+            _sb.AppendIndentedLine($"var contentLength_{member.FieldId} = calculator.Length - lengthBefore_{member.FieldId};");
+            _sb.AppendIndentedLine($"calculator.WriteVarUInt32((uint)contentLength_{member.FieldId});");
+
+            if (proxy.ReturnMethodName != null)
+                _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{proxy.ReturnMethodName}();");
+
+            if (needsNullCheck)
             {
                 _sb.EndBlock();
             }

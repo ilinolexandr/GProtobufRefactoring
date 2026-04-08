@@ -23,6 +23,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         protected readonly VirtualMapTypeRegistry _virtualMapRegistry;
         protected readonly VirtualTupleTypeRegistry _virtualTupleRegistry;
         protected readonly GeneratorOptions _options;
+        protected readonly ProxyRegistry _proxyRegistry;
         protected string _currentNamespace;
         protected int _nestedCalcCounter;
 
@@ -54,12 +55,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         protected bool UseStringPooling => _options?.UseStringPooling ?? false;
 
         protected GeneratorBase(StringBuilderWithIndent sb, TypeRegistry registry, GeneratorOptions options = null)
-            : this(sb, registry, null, null, false, options, null)
+            : this(sb, registry, null, null, false, options, null, null)
         {
         }
 
         protected GeneratorBase(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, GeneratorOptions options = null)
-            : this(sb, registry, virtualMapRegistry, null, false, options, null)
+            : this(sb, registry, virtualMapRegistry, null, false, options, null, null)
         {
         }
 
@@ -70,17 +71,34 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
             VirtualTupleTypeRegistry virtualTupleRegistry,
             bool passRegistryToPrimitiveHandler = false,
             GeneratorOptions options = null,
-            string virtualTypesNamespace = null)
+            string virtualTypesNamespace = null,
+            ProxyRegistry proxyRegistry = null)
         {
             _sb = sb;
             _registry = registry;
             _options = options ?? GeneratorOptions.Default;
+            _proxyRegistry = proxyRegistry;
             _virtualTypesNamespace = virtualTypesNamespace ?? "GProtobuf.Generated";
             _primitiveHandler = passRegistryToPrimitiveHandler ? new PrimitiveHandler(registry) : new PrimitiveHandler();
             _virtualTupleRegistry = virtualTupleRegistry ?? new VirtualTupleTypeRegistry();
             _virtualMapRegistry = virtualMapRegistry ?? new VirtualMapTypeRegistry(_virtualTupleRegistry, _registry);
-            _collectionHandler = new CollectionHandler(sb, registry);
+            _collectionHandler = new CollectionHandler(sb, registry, proxyRegistry);
             _tupleHandler = new TupleHandler(sb, _virtualTupleRegistry, _virtualTypesNamespace);
+        }
+
+        /// <summary>
+        /// Gets the proxy definition for a type, if one is registered.
+        /// </summary>
+        protected ProxyDefinition GetProxyForType(string typeName)
+        {
+            if (_proxyRegistry == null) return null;
+            var result = _proxyRegistry.GetProxy(typeName);
+            if (result != null) return result;
+            if (typeName.EndsWith("?"))
+            {
+                result = _proxyRegistry.GetProxy(typeName.TrimEnd('?'));
+            }
+            return result;
         }
 
         /// <summary>

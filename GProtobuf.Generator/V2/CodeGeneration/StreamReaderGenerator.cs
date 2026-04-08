@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers;
 using GProtobuf.Generator.V2.Handlers.Core;
@@ -42,6 +43,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         public StreamReaderGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string virtualTypesNamespace)
             : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options: null, virtualTypesNamespace: virtualTypesNamespace)
+        {
+        }
+
+        public StreamReaderGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string virtualTypesNamespace, ProxyRegistry proxyRegistry)
+            : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options: null, virtualTypesNamespace: virtualTypesNamespace, proxyRegistry: proxyRegistry)
         {
         }
 
@@ -232,7 +238,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine("// Virtual Map Entry StreamReaders");
             _sb.AppendNewLine();
 
-            var generator = new GProtobuf.Generator.V2.Handlers.VirtualTypes.VirtualMapEntryGenerator(_sb, _virtualMapRegistry, _registry, _virtualTypesNamespace);
+            var generator = new GProtobuf.Generator.V2.Handlers.VirtualTypes.VirtualMapEntryGenerator(_sb, _virtualMapRegistry, _registry, "Stream", _virtualTypesNamespace, _proxyRegistry);
 
             foreach (var virtualType in virtualTypes)
             {
@@ -1261,6 +1267,21 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// </summary>
         private void GenerateComplexTypeReadBodyForDerived(ProtoMemberAttribute member, string readerVar)
         {
+            // Check if type has a serialization proxy
+            var proxy = GetProxyForType(member.Type);
+            if (proxy != null)
+            {
+                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxy.ProxyNamespace, _currentNamespace);
+                _sb.AppendIndentedLine($"var length = {readerVar}.ReadVarInt32();");
+                _sb.AppendIndentedLine($"var oldLimit = {readerVar}.PushLimit(length);");
+                _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = {proxyNsPrefix}StreamReaders.Read{proxy.ProxyClassName}Content(ref {readerVar});");
+                _sb.AppendIndentedLine($"result.{member.Name} = proxyValue_{member.FieldId}.{proxy.ConvertMethodName}();");
+                if (proxy.ReturnMethodName != null)
+                    _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{proxy.ReturnMethodName}();");
+                _sb.AppendIndentedLine($"{readerVar}.PopLimit(oldLimit);");
+                return;
+            }
+
             var typeName = TypeNameHelper.GetClassName(member.Type);
             var typeNamespace = _registry.GetNamespaceForType(member.Type);
             var nsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNamespace, _currentNamespace);
@@ -2461,6 +2482,22 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 return;
             }
 
+            // Check if element type has a serialization proxy
+            var collProxy = GetProxyForType(member.CollectionElementType);
+            if (collProxy != null)
+            {
+                // Proxy collection read via StreamReader: read proxy, convert → original
+                _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
+                _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
+                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(collProxy.ProxyNamespace, _currentNamespace);
+                _sb.AppendIndentedLine($"var proxyItem = {proxyNsPrefix}StreamReaders.Read{collProxy.ProxyClassName}Content(ref reader);");
+                _sb.AppendIndentedLine($"{targetCollection}.Add(proxyItem.{collProxy.ConvertMethodName}());");
+                if (collProxy.ReturnMethodName != null)
+                    _sb.AppendIndentedLine($"proxyItem.{collProxy.ReturnMethodName}();");
+                _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                return;
+            }
+
             // Read nested message using PushLimit for zero-allocation nested message reading
             _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
             _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
@@ -2498,6 +2535,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateComplexTypeReadBody(ProtoMemberAttribute member, string nsPrefix)
         {
+            // Check if type has a serialization proxy
+            var proxy = GetProxyForType(member.Type);
+            if (proxy != null)
+            {
+                GenerateProxyTypeRead(member, proxy);
+                return;
+            }
+
             // Use PushLimit for zero-allocation nested message reading
             var typeName = TypeNameHelper.GetClassName(member.Type);
             _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
@@ -2512,6 +2557,25 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             // Use StreamReaders for nested content
             _sb.AppendIndentedLine($"result.{member.Name} = {typeNsPrefix}StreamReaders.Read{typeName}{readMethodSuffix}(ref reader);");
+            _sb.AppendIndentedLine("reader.PopLimit(oldLimit);");
+        }
+
+        /// <summary>
+        /// Generates read code for a field whose type has a serialization proxy.
+        /// Reads proxy from stream, converts proxy → original via [ProxyConvert].
+        /// </summary>
+        private void GenerateProxyTypeRead(ProtoMemberAttribute member, ProxyDefinition proxy)
+        {
+            var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxy.ProxyNamespace, _currentNamespace);
+
+            _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
+            _sb.AppendIndentedLine("var oldLimit = reader.PushLimit(length);");
+            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = {proxyNsPrefix}StreamReaders.Read{proxy.ProxyClassName}Content(ref reader);");
+            _sb.AppendIndentedLine($"result.{member.Name} = proxyValue_{member.FieldId}.{proxy.ConvertMethodName}();");
+
+            if (proxy.ReturnMethodName != null)
+                _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{proxy.ReturnMethodName}();");
+
             _sb.AppendIndentedLine("reader.PopLimit(oldLimit);");
         }
 
@@ -2763,7 +2827,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private bool IsArrayType(string typeName)
         {
-            return typeName != null && typeName.EndsWith("[]") && !typeName.Equals("System.Byte[]");
+            if (typeName == null) return false;
+            var trimmed = typeName.TrimEnd('?');
+            return trimmed.EndsWith("[]") && !trimmed.Equals("System.Byte[]");
         }
 
         private bool IsIEnumerableType(string typeName)
@@ -3006,6 +3072,21 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GeneratePopulateComplexTypeReadBody(ProtoMemberAttribute member, string nsPrefix)
         {
+            // Check if type has a serialization proxy (Populate path)
+            var populateProxy = GetProxyForType(member.Type);
+            if (populateProxy != null)
+            {
+                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(populateProxy.ProxyNamespace, _currentNamespace);
+                _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
+                _sb.AppendIndentedLine("var oldLimit = reader.PushLimit(length);");
+                _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = {proxyNsPrefix}StreamReaders.Read{populateProxy.ProxyClassName}Content(ref reader);");
+                _sb.AppendIndentedLine($"instance.{member.Name} = proxyValue_{member.FieldId}.{populateProxy.ConvertMethodName}();");
+                if (populateProxy.ReturnMethodName != null)
+                    _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{populateProxy.ReturnMethodName}();");
+                _sb.AppendIndentedLine("reader.PopLimit(oldLimit);");
+                return;
+            }
+
             // Use PushLimit for zero-allocation nested message reading
             var typeName = TypeNameHelper.GetClassName(member.Type);
             _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
@@ -3087,6 +3168,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             var keyType = TypeMapping.GetShortTypeName(member.MapKeyType);
             var valueType = TypeMapping.GetShortTypeName(member.MapValueType);
+            // Ensure global:: prefix for custom types to avoid namespace conflicts
+            if (valueType == member.MapValueType && valueType.Contains(".") && !valueType.StartsWith("global::"))
+                valueType = $"global::{valueType}";
 
             bool isKeyValuePairCollection = TypeHelper.IsKeyValuePairCollection(member.Type);
             var dictCreationType = TypeHelper.GetDictionaryCreationType(member.Type, member.MapKeyType, member.MapValueType);
@@ -3289,17 +3373,33 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
 
             // Complex type - read with PushLimit (not packable)
+            // Check if element type has a serialization proxy
+            var elemProxy = GetProxyForType(elementType);
             _sb.AppendIndentedLine("{");
             _sb.IncreaseIndent();
             _sb.AppendIndentedLine($"var elementLen = {readerVar}.ReadVarInt32();");
             _sb.AppendIndentedLine($"var elementOldLimit = {readerVar}.PushLimit(elementLen);");
-            var className = TypeNameHelper.GetClassName(elementType);
-            var typeNs = _registry?.GetNamespaceForType(elementType);
-            var typeNsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNs, _currentNamespace);
-            bool isDerivedType = _registry?.IsDerivedType(elementType) ?? false;
-            var readMethodSuffix = isDerivedType ? "" : "Content";
-            _sb.AppendIndentedLine($"{varName}.Add({typeNsPrefix}StreamReaders.Read{className}{readMethodSuffix}(ref {readerVar}));");
-            _sb.AppendIndentedLine($"{readerVar}.PopLimit(elementOldLimit);");
+            if (elemProxy != null)
+            {
+                // Proxy collection read: deserialize proxy, convert → original
+                var proxyNs = elemProxy.ProxyNamespace;
+                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxyNs, _currentNamespace);
+                _sb.AppendIndentedLine($"var elemProxy = {proxyNsPrefix}StreamReaders.Read{elemProxy.ProxyClassName}Content(ref {readerVar});");
+                _sb.AppendIndentedLine($"{readerVar}.PopLimit(elementOldLimit);");
+                _sb.AppendIndentedLine($"{varName}.Add(elemProxy.{elemProxy.ConvertMethodName}());");
+                if (elemProxy.ReturnMethodName != null)
+                    _sb.AppendIndentedLine($"elemProxy.{elemProxy.ReturnMethodName}();");
+            }
+            else
+            {
+                var className = TypeNameHelper.GetClassName(elementType);
+                var typeNs = _registry?.GetNamespaceForType(elementType);
+                var typeNsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNs, _currentNamespace);
+                bool isDerivedType = _registry?.IsDerivedType(elementType) ?? false;
+                var readMethodSuffix = isDerivedType ? "" : "Content";
+                _sb.AppendIndentedLine($"{varName}.Add({typeNsPrefix}StreamReaders.Read{className}{readMethodSuffix}(ref {readerVar}));");
+                _sb.AppendIndentedLine($"{readerVar}.PopLimit(elementOldLimit);");
+            }
             _sb.DecreaseIndent();
             _sb.AppendIndentedLine("}");
         }
@@ -3542,26 +3642,41 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else
             {
-                // Non-dictionary complex types - use ReadContent as before
-                var className = TypeNameHelper.GetClassName(typeName);
-
-                // For virtual types (collections, dictionaries), use the element/value type's namespace
-                // because virtual type readers are generated in the element's namespace
-                string typeNs;
-                if (TypeHelper.IsListType(typeName) || TypeHelper.IsHashSetType(typeName))
+                // Non-dictionary complex types - check for proxy first
+                var innerProxy = GetProxyForType(typeName);
+                if (innerProxy != null)
                 {
-                    var elementType = TypeHelper.GetCollectionElementType(typeName);
-                    typeNs = GetNonSystemNamespace(elementType);
+                    // Proxy read: deserialize proxy, convert → original
+                    var proxyNs = innerProxy.ProxyNamespace;
+                    var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxyNs, _currentNamespace);
+                    _sb.AppendIndentedLine($"var innerProxy = {proxyNsPrefix}StreamReaders.Read{innerProxy.ProxyClassName}Content(ref {readerVar});");
+                    _sb.AppendIndentedLine($"{readerVar}.PopLimit({innerOldLimitVar});");
+                    _sb.AppendIndentedLine($"{varName} = innerProxy.{innerProxy.ConvertMethodName}();");
+                    if (innerProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"innerProxy.{innerProxy.ReturnMethodName}();");
                 }
                 else
                 {
-                    typeNs = _registry?.GetNamespaceForType(typeName);
+                    var className = TypeNameHelper.GetClassName(typeName);
+
+                    // For virtual types (collections, dictionaries), use the element/value type's namespace
+                    // because virtual type readers are generated in the element's namespace
+                    string typeNs;
+                    if (TypeHelper.IsListType(typeName) || TypeHelper.IsHashSetType(typeName))
+                    {
+                        var elementType = TypeHelper.GetCollectionElementType(typeName);
+                        typeNs = GetNonSystemNamespace(elementType);
+                    }
+                    else
+                    {
+                        typeNs = _registry?.GetNamespaceForType(typeName);
+                    }
+                    var typeNsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNs, _currentNamespace);
+                    bool isDerivedType = _registry?.IsDerivedType(typeName) ?? false;
+                    var readMethodSuffix = isDerivedType ? "" : "Content";
+                    _sb.AppendIndentedLine($"{varName} = {typeNsPrefix}StreamReaders.Read{className}{readMethodSuffix}(ref {readerVar});");
+                    _sb.AppendIndentedLine($"{readerVar}.PopLimit({innerOldLimitVar});");
                 }
-                var typeNsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNs, _currentNamespace);
-                bool isDerivedType = _registry?.IsDerivedType(typeName) ?? false;
-                var readMethodSuffix = isDerivedType ? "" : "Content";
-                _sb.AppendIndentedLine($"{varName} = {typeNsPrefix}StreamReaders.Read{className}{readMethodSuffix}(ref {readerVar});");
-                _sb.AppendIndentedLine($"{readerVar}.PopLimit({innerOldLimitVar});");
             }
             _sb.DecreaseIndent();
             _sb.AppendIndentedLine("}");
@@ -3673,6 +3788,26 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 return;
             }
 
+            // Check if this type has a serialization proxy
+            var mapProxy = GetProxyForType(typeName);
+            if (mapProxy != null)
+            {
+                var proxyNs = _registry.GetNamespaceForType(mapProxy.ProxyTypeFullName);
+                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxyNs, _currentNamespace);
+                _sb.AppendIndentedLine("{");
+                _sb.IncreaseIndent();
+                _sb.AppendIndentedLine($"var {varName}Len = {readerVar}.ReadVarInt32();");
+                _sb.AppendIndentedLine($"var {varName}OldLimit = {readerVar}.PushLimit({varName}Len);");
+                _sb.AppendIndentedLine($"var {varName}Proxy = {proxyNsPrefix}StreamReaders.Read{mapProxy.ProxyClassName}Content(ref {readerVar});");
+                _sb.AppendIndentedLine($"{varName} = {varName}Proxy.{mapProxy.ConvertMethodName}();");
+                if (mapProxy.ReturnMethodName != null)
+                    _sb.AppendIndentedLine($"{varName}Proxy.{mapProxy.ReturnMethodName}();");
+                _sb.AppendIndentedLine($"{readerVar}.PopLimit({varName}OldLimit);");
+                _sb.DecreaseIndent();
+                _sb.AppendIndentedLine("}");
+                return;
+            }
+
             // Complex type - use PushLimit for zero-allocation nested message reading
             var className = TypeNameHelper.GetClassName(typeName);
             var typeNs = _registry.GetNamespaceForType(typeName);
@@ -3714,7 +3849,34 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else
             {
-                _sb.AppendIndentedLine($"// Unsupported array element type: {elementType}");
+                // Check if element type has a serialization proxy
+                var arrElemProxy = GetProxyForType(elementType);
+                if (arrElemProxy != null)
+                {
+                    // Proxy array read: deserialize proxy, convert → original
+                    var proxyNs = arrElemProxy.ProxyNamespace;
+                    var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxyNs, _currentNamespace);
+                    _sb.AppendIndentedLine($"var arrElemLen = {readerVar}.ReadVarInt32();");
+                    _sb.AppendIndentedLine($"var arrElemOldLimit = {readerVar}.PushLimit(arrElemLen);");
+                    _sb.AppendIndentedLine($"var arrElemProxy = {proxyNsPrefix}StreamReaders.Read{arrElemProxy.ProxyClassName}Content(ref {readerVar});");
+                    _sb.AppendIndentedLine($"{readerVar}.PopLimit(arrElemOldLimit);");
+                    _sb.AppendIndentedLine($"{varName}List.Add(arrElemProxy.{arrElemProxy.ConvertMethodName}());");
+                    if (arrElemProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"arrElemProxy.{arrElemProxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    // Complex type - read with PushLimit
+                    var className = TypeNameHelper.GetClassName(elementType);
+                    var typeNs = _registry?.GetNamespaceForType(elementType);
+                    var typeNsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNs, _currentNamespace);
+                    bool isDerivedType = _registry?.IsDerivedType(elementType) ?? false;
+                    var readMethodSuffix = isDerivedType ? "" : "Content";
+                    _sb.AppendIndentedLine($"var complexElemLen = {readerVar}.ReadVarInt32();");
+                    _sb.AppendIndentedLine($"var complexElemOldLimit = {readerVar}.PushLimit(complexElemLen);");
+                    _sb.AppendIndentedLine($"{varName}List.Add({typeNsPrefix}StreamReaders.Read{className}{readMethodSuffix}(ref {readerVar}));");
+                    _sb.AppendIndentedLine($"{readerVar}.PopLimit(complexElemOldLimit);");
+                }
             }
 
             _sb.EndBlock();
@@ -3766,7 +3928,27 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else
             {
-                _sb.AppendIndentedLine($"// Unsupported array element type: {normalizedElementType}");
+                // Check if element type has a serialization proxy
+                var arrElemProxy = GetProxyForType(normalizedElementType);
+                if (arrElemProxy != null)
+                {
+                    var proxyNs = arrElemProxy.ProxyNamespace;
+                    var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxyNs, _currentNamespace);
+                    _sb.AppendIndentedLine($"var arrProxy = {proxyNsPrefix}StreamReaders.Read{arrElemProxy.ProxyClassName}Content(ref {readerVar});");
+                    _sb.AppendIndentedLine($"{tempListVar}.Add(arrProxy.{arrElemProxy.ConvertMethodName}());");
+                    if (arrElemProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"arrProxy.{arrElemProxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    // Complex type - read with scoped reader
+                    var className = TypeNameHelper.GetClassName(normalizedElementType);
+                    var typeNs = _registry?.GetNamespaceForType(normalizedElementType);
+                    var typeNsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNs, _currentNamespace);
+                    bool isDerivedType = _registry?.IsDerivedType(normalizedElementType) ?? false;
+                    var readMethodSuffix = isDerivedType ? "" : "Content";
+                    _sb.AppendIndentedLine($"{tempListVar}.Add({typeNsPrefix}StreamReaders.Read{className}{readMethodSuffix}(ref {readerVar}));");
+                }
             }
         }
 
@@ -4192,6 +4374,21 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 var readMethod = Helpers.PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
                 var globalTypeName = TypeMapping.GetGlobalGenericTypeName(member.CollectionElementType);
                 _sb.AppendIndentedLine($"{targetCollection}.Add(new {globalTypeName}(reader.{readMethod}()));");
+                return;
+            }
+
+            // Check if element type has a serialization proxy
+            var popCollProxy = GetProxyForType(member.CollectionElementType);
+            if (popCollProxy != null)
+            {
+                _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
+                _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
+                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(popCollProxy.ProxyNamespace, _currentNamespace);
+                _sb.AppendIndentedLine($"var proxyItem = {proxyNsPrefix}StreamReaders.Read{popCollProxy.ProxyClassName}Content(ref reader);");
+                _sb.AppendIndentedLine($"{targetCollection}.Add(proxyItem.{popCollProxy.ConvertMethodName}());");
+                if (popCollProxy.ReturnMethodName != null)
+                    _sb.AppendIndentedLine($"proxyItem.{popCollProxy.ReturnMethodName}();");
+                _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
                 return;
             }
 

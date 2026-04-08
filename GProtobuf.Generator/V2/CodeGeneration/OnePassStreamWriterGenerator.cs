@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers;
 using GProtobuf.Generator.V2.Handlers.Core;
@@ -35,6 +36,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         public OnePassStreamWriterGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string virtualTypesNamespace)
             : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options: null, virtualTypesNamespace: virtualTypesNamespace)
+        {
+        }
+
+        public OnePassStreamWriterGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string virtualTypesNamespace, ProxyRegistry proxyRegistry)
+            : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options: null, virtualTypesNamespace: virtualTypesNamespace, proxyRegistry: proxyRegistry)
         {
         }
 
@@ -1298,6 +1304,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateComplexTypeWrite(ProtoMemberAttribute member, string sourceVar)
         {
+            // Check if type has a serialization proxy
+            var proxy = GetProxyForType(member.Type);
+            if (proxy != null)
+            {
+                GenerateProxyTypeWrite(member, sourceVar, proxy);
+                return;
+            }
+
             // Check if type is a nullable wrapper (System.Nullable<T> or T?)
             // This only applies to VALUE types wrapped in Nullable<>
             var underlyingType = GetNullableUnderlyingType(member.Type);
@@ -1349,6 +1363,51 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine("writer.EndSubMessage();");
 
             if (!isNonNullableStruct)
+            {
+                _sb.EndBlock();
+                _sb.EndBlock();
+            }
+        }
+
+        /// <summary>
+        /// Generates write code for a field whose type has a serialization proxy (OnePass variant).
+        /// Uses BeginSubMessage/EndSubMessage instead of size pre-calculation.
+        /// </summary>
+        private void GenerateProxyTypeWrite(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
+        {
+            bool needsNullCheck = !proxy.IsStruct || member.IsNullable;
+
+            string localVar = sourceVar;
+
+            if (needsNullCheck)
+            {
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine($"var originalValue_{member.FieldId} = {sourceVar};");
+                _sb.AppendIndentedLine($"if (originalValue_{member.FieldId} != null)");
+                _sb.StartNewBlock();
+                localVar = member.IsNullable ? $"originalValue_{member.FieldId}.Value" : $"originalValue_{member.FieldId}";
+            }
+
+            // Create proxy from original
+            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({localVar}{proxy.CreateExtraArgs});");
+
+            // Write tag + sub-message
+            TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
+            _sb.AppendIndentedLine("writer.BeginSubMessage();");
+
+            var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxy.ProxyNamespace, _currentNamespace);
+            var proxyTypeDef = _registry.GetByFullName(proxy.ProxyTypeFullName);
+            var proxyWriteMethod = (proxyTypeDef != null && CanSkipWriteContentMethod(proxyTypeDef))
+                ? $"Write{proxy.ProxyClassName}"
+                : $"Write{proxy.ProxyClassName}Content";
+            _sb.AppendIndentedLine($"{proxyNsPrefix}{ClassName}.{proxyWriteMethod}(ref writer, proxyValue_{member.FieldId});");
+            _sb.AppendIndentedLine("writer.EndSubMessage();");
+
+            // Optional cleanup
+            if (proxy.ReturnMethodName != null)
+                _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{proxy.ReturnMethodName}();");
+
+            if (needsNullCheck)
             {
                 _sb.EndBlock();
                 _sb.EndBlock();

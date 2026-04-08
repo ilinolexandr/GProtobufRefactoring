@@ -1,4 +1,5 @@
 using System.Linq;
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers;
 using GProtobuf.Generator.V2.Handlers.Core;
@@ -24,11 +25,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private readonly TypeRegistry _typeRegistry;
         private readonly GeneratorOptions _options;
+        private readonly ProxyRegistry _proxyRegistry;
 
-        public SharedVirtualTypesGenerator(TypeRegistry typeRegistry, GeneratorOptions options)
+        public SharedVirtualTypesGenerator(TypeRegistry typeRegistry, GeneratorOptions options, ProxyRegistry proxyRegistry = null)
         {
             _typeRegistry = typeRegistry;
             _options = options ?? GeneratorOptions.Default;
+            _proxyRegistry = proxyRegistry;
         }
 
         /// <summary>
@@ -134,7 +137,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // Generate EstimateMapCapacity helper (if we have any map types)
             if (mapTypes.Count > 0)
             {
-                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry, "Span");
+                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry, "Span", null, _proxyRegistry);
 
                 sb.AppendIndentedLine("#region Map Capacity Estimation");
                 sb.AppendNewLine();
@@ -192,7 +195,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 sb.AppendIndentedLine("// Virtual Map Entry StreamReaders");
                 sb.AppendNewLine();
 
-                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry);
+                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry, "Stream", null, _proxyRegistry);
                 foreach (var mapType in mapTypes)
                 {
                     generator.GenerateStreamReader(mapType);
@@ -425,7 +428,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 sb.AppendIndentedLine("// Virtual Map Entry Size Calculators");
                 sb.AppendNewLine();
 
-                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry);
+                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry, "Stream", null, _proxyRegistry);
                 foreach (var mapType in mapTypes)
                 {
                     generator.GenerateSizeCalculator(mapType);
@@ -471,7 +474,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 sb.AppendIndentedLine($"// Virtual Map Entry {className}");
                 sb.AppendNewLine();
 
-                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry, writerKind);
+                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry, writerKind, null, _proxyRegistry);
                 foreach (var mapType in mapTypes)
                 {
                     generator.GenerateWriter(mapType);
@@ -517,7 +520,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 sb.AppendIndentedLine("// Virtual Map Entry OnePassStreamWriters");
                 sb.AppendNewLine();
 
-                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry, "OnePassStream");
+                var generator = new VirtualMapEntryGenerator(sb, mapRegistry, _typeRegistry, "OnePassStream", null, _proxyRegistry);
                 foreach (var mapType in mapTypes)
                 {
                     generator.GenerateWriter(mapType);

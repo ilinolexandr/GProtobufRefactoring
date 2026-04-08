@@ -1,3 +1,4 @@
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.V2.Handlers.VirtualTypes;
 
 namespace GProtobuf.Generator.V2.CodeGeneration
@@ -26,6 +27,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         public BufferWriterGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string virtualTypesNamespace)
             : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, "Buffer", virtualTypesNamespace)
+        {
+        }
+
+        public BufferWriterGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string virtualTypesNamespace, ProxyRegistry proxyRegistry)
+            : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, "Buffer", virtualTypesNamespace, proxyRegistry)
         {
         }
     }

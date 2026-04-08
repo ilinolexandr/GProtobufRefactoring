@@ -1,3 +1,4 @@
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.Handlers.Core;
 using GProtobuf.Generator.V2.Helpers;
@@ -13,11 +14,13 @@ namespace GProtobuf.Generator.V2.Handlers
     {
         private readonly StringBuilderWithIndent _sb;
         private readonly TypeRegistry _registry;
+        private readonly ProxyRegistry _proxyRegistry;
 
-        public CollectionHandler(StringBuilderWithIndent sb, TypeRegistry registry)
+        public CollectionHandler(StringBuilderWithIndent sb, TypeRegistry registry, ProxyRegistry proxyRegistry = null)
         {
             _sb = sb;
             _registry = registry;
+            _proxyRegistry = proxyRegistry;
         }
 
         private bool IsProtoVarintType(string typeName, out ProtoVarintType varintType, out string valueMember)
@@ -100,40 +103,52 @@ namespace GProtobuf.Generator.V2.Handlers
             }
             else
             {
-                // For complex types (custom messages), validate nulls before serialization
-                // Use ReferenceEquals to work with both value types (structs) and reference types (classes)
-                // For structs, ReferenceEquals will always return false (no null check needed)
-                // For classes, ReferenceEquals will return true if null
-                var shortTypeName = TypeMapping.GetShortTypeName(elementTypeName);
-                // Extract just the class name for error message (e.g., "Namespace.SimpleMessage" -> "SimpleMessage")
-                var simpleTypeName = shortTypeName.Contains(".") ? shortTypeName.Substring(shortTypeName.LastIndexOf('.') + 1) : shortTypeName;
-                _sb.AppendIndentedLine("if (object.ReferenceEquals(item, null))");
-                _sb.StartNewBlock();
-                _sb.AppendIndentedLine($"throw new System.InvalidOperationException(\"An element of type {simpleTypeName} was null; this might be as contents in a list/array\");");
-                _sb.EndBlock();
+                var proxy = _proxyRegistry?.GetProxy(elementTypeName);
+                if (proxy != null)
+                {
+                    _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item{proxy.CreateExtraArgs});");
+                    TagCodeHelper.WriteTag(_sb, fieldId, WireType.Len);
+                    var proxyQualifiedPrefix = string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
+                    _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{proxyQualifiedPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref itemCalc, proxyItem);");
+                    _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)itemCalc.Length);");
 
-                // For complex types, write tag, calculate length, write length, write content
-                TagCodeHelper.WriteTag(_sb, fieldId, WireType.Len);
+                    var proxyTypeDef = _registry.GetByFullName(proxy.ProxyTypeFullName);
+                    bool useContent = proxyTypeDef != null && (
+                        _registry.IsDerivedType(proxyTypeDef.FullName) ||
+                        (proxyTypeDef.ProtoIncludes != null && proxyTypeDef.ProtoIncludes.Count > 0) ||
+                        HasSerializationCallbacks(proxyTypeDef));
+                    var proxyWriteMethodName = useContent ? $"Write{proxy.ProxyClassName}Content" : $"Write{proxy.ProxyClassName}";
+                    _sb.AppendIndentedLine($"{proxyQualifiedPrefix}{writerClassName}.{proxyWriteMethodName}(ref writer, proxyItem);");
+                    if (proxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxyItem.{proxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    // For complex types (custom messages), validate nulls before serialization
+                    var shortTypeName = TypeMapping.GetShortTypeName(elementTypeName);
+                    var simpleTypeName = shortTypeName.Contains(".") ? shortTypeName.Substring(shortTypeName.LastIndexOf('.') + 1) : shortTypeName;
+                    _sb.AppendIndentedLine("if (object.ReferenceEquals(item, null))");
+                    _sb.StartNewBlock();
+                    _sb.AppendIndentedLine($"throw new System.InvalidOperationException(\"An element of type {simpleTypeName} was null; this might be as contents in a list/array\");");
+                    _sb.EndBlock();
 
-                // Check if element type is polymorphic (requires dispatcher method with ProtoInclude wrapper)
-                // This includes: GenericDevice[] where DeviceBaseV1 has ProtoInclude
-                bool isPolymorphic = IsElementTypePolymorphic(elementTypeName);
+                    // For complex types, write tag, calculate length, write length, write content
+                    TagCodeHelper.WriteTag(_sb, fieldId, WireType.Len);
 
-                // Calculate and write length
-                _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    bool isPolymorphic = IsElementTypePolymorphic(elementTypeName);
 
-                // ContentSize handles dispatcher logic for polymorphic types
-                var qualifiedSizeCall = GetQualifiedCalculateContentSizeCall(elementTypeName, elementClassName);
+                    _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    var qualifiedSizeCall = GetQualifiedCalculateContentSizeCall(elementTypeName, elementClassName);
+                    _sb.AppendIndentedLine($"{qualifiedSizeCall}(ref itemCalc, item);");
+                    _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)itemCalc.Length);");
 
-                _sb.AppendIndentedLine($"{qualifiedSizeCall}(ref itemCalc, item);");
-                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)itemCalc.Length);");
+                    var qualifiedWriteCall = isPolymorphic
+                        ? GetQualifiedWriteCall(elementTypeName, elementClassName, writerClassName)
+                        : GetQualifiedWriteContentCall(elementTypeName, elementClassName, writerClassName);
 
-                // Write content
-                var qualifiedWriteCall = isPolymorphic
-                    ? GetQualifiedWriteCall(elementTypeName, elementClassName, writerClassName)
-                    : GetQualifiedWriteContentCall(elementTypeName, elementClassName, writerClassName);
-
-                _sb.AppendIndentedLine($"{qualifiedWriteCall}(ref writer, item);");
+                    _sb.AppendIndentedLine($"{qualifiedWriteCall}(ref writer, item);");
+                }
             }
 
             _sb.EndBlock(); // foreach
@@ -250,21 +265,30 @@ namespace GProtobuf.Generator.V2.Handlers
             }
             else
             {
-                // For complex types, read length-prefixed nested message
-                _sb.AppendIndentedLine($"var length = {readerVar}.ReadVarInt32();");
-                _sb.AppendIndentedLine($"var nestedReader = new SpanReader({readerVar}.GetSlice(length));");
+                var readProxy = _proxyRegistry?.GetProxy(elementTypeName);
+                if (readProxy != null)
+                {
+                    _sb.AppendIndentedLine($"var length = {readerVar}.ReadVarInt32();");
+                    _sb.AppendIndentedLine($"var nestedReader = new SpanReader({readerVar}.GetSlice(length));");
+                    var proxyReadPrefix = string.IsNullOrEmpty(readProxy.ProxyNamespace) ? "" : $"global::{readProxy.ProxyNamespace}.Serialization.";
+                    _sb.AppendIndentedLine($"var proxyItem = {proxyReadPrefix}SpanReaders.Read{readProxy.ProxyClassName}Content(ref nestedReader);");
+                    _sb.AppendIndentedLine($"var item = proxyItem.{readProxy.ConvertMethodName}();");
+                    if (readProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxyItem.{readProxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    // For complex types, read length-prefixed nested message
+                    _sb.AppendIndentedLine($"var length = {readerVar}.ReadVarInt32();");
+                    _sb.AppendIndentedLine($"var nestedReader = new SpanReader({readerVar}.GetSlice(length));");
 
-                // Check if element type is polymorphic (requires Read() with ProtoInclude wrapper detection)
-                // Polymorphic types: base types with ProtoInclude OR derived types from polymorphic base
-                bool isPolymorphic = IsElementTypePolymorphic(elementTypeName);
+                    bool isPolymorphic = IsElementTypePolymorphic(elementTypeName);
+                    var qualifiedCall = isPolymorphic
+                        ? GetQualifiedReadCall(elementTypeName, elementClassName)
+                        : GetQualifiedReadContentCall(elementTypeName, elementClassName);
 
-                // For polymorphic types, use Read{ClassName} (handles ProtoInclude wrapper)
-                // For concrete types, use Read{ClassName}Content (reads fields directly)
-                var qualifiedCall = isPolymorphic
-                    ? GetQualifiedReadCall(elementTypeName, elementClassName)
-                    : GetQualifiedReadContentCall(elementTypeName, elementClassName);
-
-                _sb.AppendIndentedLine($"var item = {qualifiedCall}(ref nestedReader);");
+                    _sb.AppendIndentedLine($"var item = {qualifiedCall}(ref nestedReader);");
+                }
             }
 
             // Add to collection
@@ -405,34 +429,36 @@ namespace GProtobuf.Generator.V2.Handlers
             }
             else
             {
-                // Use ReferenceEquals to work with both value types (structs) and reference types (classes)
-                // For structs, ReferenceEquals will always return false (no null check needed)
-                // For classes, ReferenceEquals will return true if null
-                var shortTypeName = TypeMapping.GetShortTypeName(elementTypeName);
-                // Extract just the class name for error message (e.g., "Namespace.SimpleMessage" -> "SimpleMessage")
-                var simpleTypeName = shortTypeName.Contains(".") ? shortTypeName.Substring(shortTypeName.LastIndexOf('.') + 1) : shortTypeName;
-                _sb.AppendIndentedLine("if (object.ReferenceEquals(item, null))");
-                _sb.StartNewBlock();
-                _sb.AppendIndentedLine($"throw new System.InvalidOperationException(\"An element of type {simpleTypeName} was null; this might be as contents in a list/array\");");
-                _sb.EndBlock();
+                var sizeProxy = _proxyRegistry?.GetProxy(elementTypeName);
+                if (sizeProxy != null)
+                {
+                    _sb.AppendIndentedLine($"var proxyItem = global::{sizeProxy.ProxyTypeFullName}.{sizeProxy.CreateMethodName}(item{sizeProxy.CreateExtraArgs});");
+                    TagCodeHelper.AddTagSize(_sb, fieldId, WireType.Len, calculatorVar);
+                    var proxySizePrefix = string.IsNullOrEmpty(sizeProxy.ProxyNamespace) ? "" : $"global::{sizeProxy.ProxyNamespace}.Serialization.";
+                    _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{proxySizePrefix}SizeCalculators.Calculate{sizeProxy.ProxyClassName}ContentSize(ref itemCalc, proxyItem);");
+                    _sb.AppendIndentedLine($"{calculatorVar}.WriteVarUInt32((uint)itemCalc.Length);");
+                    _sb.AppendIndentedLine($"{calculatorVar}.AddByteLength(itemCalc.Length);");
+                    if (sizeProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxyItem.{sizeProxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    var shortTypeName = TypeMapping.GetShortTypeName(elementTypeName);
+                    var simpleTypeName = shortTypeName.Contains(".") ? shortTypeName.Substring(shortTypeName.LastIndexOf('.') + 1) : shortTypeName;
+                    _sb.AppendIndentedLine("if (object.ReferenceEquals(item, null))");
+                    _sb.StartNewBlock();
+                    _sb.AppendIndentedLine($"throw new System.InvalidOperationException(\"An element of type {simpleTypeName} was null; this might be as contents in a list/array\");");
+                    _sb.EndBlock();
 
-                // For complex types, add tag size, calculate content size, add length + content
-                TagCodeHelper.AddTagSize(_sb, fieldId, WireType.Len, calculatorVar);
-
-                // Check if element type is polymorphic (requires dispatcher method with ProtoInclude wrapper)
-                bool isPolymorphic = IsElementTypePolymorphic(elementTypeName);
-
-                // Calculate item content size
-                _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
-
-                // ContentSize handles dispatcher logic for polymorphic types
-                var qualifiedSizeCall = GetQualifiedCalculateContentSizeCall(elementTypeName, elementClassName);
-
-                _sb.AppendIndentedLine($"{qualifiedSizeCall}(ref itemCalc, item);");
-
-                // Add length varint size + content size
-                _sb.AppendIndentedLine($"{calculatorVar}.WriteVarUInt32((uint)itemCalc.Length);");
-                _sb.AppendIndentedLine($"{calculatorVar}.AddByteLength(itemCalc.Length);");
+                    TagCodeHelper.AddTagSize(_sb, fieldId, WireType.Len, calculatorVar);
+                    bool isPolymorphic = IsElementTypePolymorphic(elementTypeName);
+                    _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    var qualifiedSizeCall = GetQualifiedCalculateContentSizeCall(elementTypeName, elementClassName);
+                    _sb.AppendIndentedLine($"{qualifiedSizeCall}(ref itemCalc, item);");
+                    _sb.AppendIndentedLine($"{calculatorVar}.WriteVarUInt32((uint)itemCalc.Length);");
+                    _sb.AppendIndentedLine($"{calculatorVar}.AddByteLength(itemCalc.Length);");
+                }
             }
 
             _sb.EndBlock(); // foreach
@@ -578,6 +604,12 @@ namespace GProtobuf.Generator.V2.Handlers
                 return $"Write{elementClassName}";
             }
             return $"global::{ns}.Serialization.{writerClassName}.Write{elementClassName}";
+        }
+
+        private static bool HasSerializationCallbacks(TypeDefinition type)
+        {
+            return (type.BeforeDeserializationCallbacks != null && type.BeforeDeserializationCallbacks.Count > 0)
+                || (type.AfterDeserializationCallbacks != null && type.AfterDeserializationCallbacks.Count > 0);
         }
 
         #endregion

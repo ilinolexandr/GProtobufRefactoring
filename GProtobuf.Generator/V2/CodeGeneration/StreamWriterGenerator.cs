@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers;
@@ -40,8 +41,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         {
         }
 
-        protected StreamWriterGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string writerKind, string virtualTypesNamespace = null)
-            : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options: null, virtualTypesNamespace: virtualTypesNamespace)
+        public StreamWriterGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string virtualTypesNamespace, ProxyRegistry proxyRegistry)
+            : this(sb, registry, virtualMapRegistry, virtualTupleRegistry, "Stream", virtualTypesNamespace, proxyRegistry)
+        {
+        }
+
+        protected StreamWriterGenerator(StringBuilderWithIndent sb, TypeRegistry registry, VirtualMapTypeRegistry virtualMapRegistry, VirtualTupleTypeRegistry virtualTupleRegistry, string writerKind, string virtualTypesNamespace = null, ProxyRegistry proxyRegistry = null)
+            : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options: null, virtualTypesNamespace: virtualTypesNamespace, proxyRegistry: proxyRegistry)
         {
             _writerKind = writerKind;
             _writerType = $"global::GProtobuf.Core.{writerKind}Writer";
@@ -147,7 +153,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendNewLine();
             _sb.AppendIndentedLine("// Virtual Map Entry Writers");
 
-            var generator = new VirtualMapEntryGenerator(_sb, _virtualMapRegistry, _registry, _writerKind, _virtualTypesNamespace);
+            var generator = new VirtualMapEntryGenerator(_sb, _virtualMapRegistry, _registry, _writerKind, _virtualTypesNamespace, _proxyRegistry);
             foreach (var virtualType in virtualTypes)
             {
                 generator.GenerateWriter(virtualType);
@@ -1258,6 +1264,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateComplexTypeWrite(ProtoMemberAttribute member, string sourceVar)
         {
+            // Check if type has a serialization proxy
+            var proxy = GetProxyForType(member.Type);
+            if (proxy != null)
+            {
+                GenerateProxyTypeWrite(member, sourceVar, proxy);
+                return;
+            }
+
             var typeName = TypeNameHelper.GetClassName(member.Type);
 
             // Check if type is a non-nullable value type (struct)
@@ -1295,6 +1309,57 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
 
             if (!isNonNullableStruct)
+            {
+                _sb.EndBlock(); // if
+                _sb.EndBlock(); // scope
+            }
+        }
+
+        /// <summary>
+        /// Generates write code for a field whose type has a serialization proxy.
+        /// Converts original → proxy via [ProxyCreate], serializes proxy, optionally calls [ProxyReturn].
+        /// </summary>
+        private void GenerateProxyTypeWrite(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
+        {
+            var proxyTypeDef = _registry.GetByFullName(proxy.ProxyTypeFullName);
+            bool isOriginalStruct = proxy.IsStruct; // proxy struct implies original is likely struct too
+            bool needsNullCheck = !isOriginalStruct || member.IsNullable;
+
+            string localVar = sourceVar;
+
+            if (needsNullCheck)
+            {
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine($"var originalValue_{member.FieldId} = {sourceVar};");
+                _sb.AppendIndentedLine($"if (originalValue_{member.FieldId} != null)");
+                _sb.StartNewBlock();
+                localVar = member.IsNullable ? $"originalValue_{member.FieldId}.Value" : $"originalValue_{member.FieldId}";
+            }
+
+            // Create proxy from original
+            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({localVar}{proxy.CreateExtraArgs});");
+
+            // Write tag
+            TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
+
+            // Calculate and write length
+            var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxy.ProxyNamespace, _currentNamespace);
+            _sb.AppendIndentedLine($"var proxyCalc_{member.FieldId} = new global::GProtobuf.Core.WriteSizeCalculator();");
+            _sb.AppendIndentedLine($"{proxyNsPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref proxyCalc_{member.FieldId}, proxyValue_{member.FieldId});");
+            _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)proxyCalc_{member.FieldId}.Length);");
+
+            // Write content - use WriteX for simple types without callbacks, WriteXContent otherwise
+            var proxyTypeDef2 = _registry.GetByFullName(proxy.ProxyTypeFullName);
+            var proxyWriteMethod = (proxyTypeDef2 != null && CanSkipWriteContentMethod(proxyTypeDef2))
+                ? $"Write{proxy.ProxyClassName}"
+                : $"Write{proxy.ProxyClassName}Content";
+            _sb.AppendIndentedLine($"{proxyNsPrefix}{_className}.{proxyWriteMethod}(ref writer, proxyValue_{member.FieldId});");
+
+            // Optional cleanup
+            if (proxy.ReturnMethodName != null)
+                _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{proxy.ReturnMethodName}();");
+
+            if (needsNullCheck)
             {
                 _sb.EndBlock(); // if
                 _sb.EndBlock(); // scope

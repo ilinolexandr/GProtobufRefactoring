@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers.Core;
 using GProtobuf.Generator.V2.Helpers;
@@ -23,18 +24,14 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
         private readonly bool _isStreamReader;
         private readonly bool _isOnePassWriter;
         private readonly string _virtualTypesNamespace;
+        private readonly ProxyRegistry _proxyRegistry;
 
         /// <summary>
         /// Gets the fully qualified prefix for virtual types serialization classes.
         /// </summary>
         private string VirtualTypesPrefix => $"global::{_virtualTypesNamespace}.Serialization";
 
-        public VirtualMapEntryGenerator(StringBuilderWithIndent sb, VirtualMapTypeRegistry registry, TypeRegistry typeRegistry = null, string virtualTypesNamespace = null)
-            : this(sb, registry, typeRegistry, "Stream", virtualTypesNamespace)
-        {
-        }
-
-        public VirtualMapEntryGenerator(StringBuilderWithIndent sb, VirtualMapTypeRegistry registry, TypeRegistry typeRegistry, string writerKind, string virtualTypesNamespace = null)
+        public VirtualMapEntryGenerator(StringBuilderWithIndent sb, VirtualMapTypeRegistry registry, TypeRegistry typeRegistry, string writerKind, string virtualTypesNamespace = null, ProxyRegistry proxyRegistry = null)
         {
             _sb = sb;
             _registry = registry;
@@ -46,6 +43,20 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
             _isStreamReader = writerKind == "Stream";
             _isOnePassWriter = writerKind == "OnePassStream";
             _virtualTypesNamespace = virtualTypesNamespace ?? "GProtobuf.Generated";
+            _proxyRegistry = proxyRegistry;
+        }
+
+        /// <summary>
+        /// Gets the proxy definition for a type, stripping nullable suffix if needed.
+        /// </summary>
+        private ProxyDefinition GetProxyForType(string typeName)
+        {
+            if (_proxyRegistry == null) return null;
+            var result = _proxyRegistry.GetProxy(typeName);
+            if (result != null) return result;
+            if (typeName.EndsWith("?"))
+                result = _proxyRegistry.GetProxy(typeName.TrimEnd('?'));
+            return result;
         }
 
         /// <summary>
@@ -394,28 +405,43 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
                 }
                 else if (elemInfo.IsCustomType)
                 {
-                    var spanReadersClass = GetSpanReadersClass(elementType);
-                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = reader.ReadVarUInt32();");
-                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemSpan = reader.GetSlice((int){fieldPrefix}ItemLength);");
-                    _sb.AppendIndentedLine($"var {fieldPrefix}ScopedReader = new SpanReader({fieldPrefix}ItemSpan);");
-
-                    // Check if element type is a derived type (has ProtoInclude parent) - use Read{typeName} to handle wrapper
-                    bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
-                    // Check if element type is a readonly struct - use ReadContent instead of Populate
-                    bool isReadonlyStruct = _typeRegistry?.IsReadonlyStruct(elementType) ?? false;
-                    if (isDerivedType)
+                    var elemProxy = GetProxyForType(elementType);
+                    if (elemProxy != null)
                     {
-                        // Derived type - use Read{typeName} which handles ProtoInclude wrapper format
-                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader);");
-                    }
-                    else if (isReadonlyStruct)
-                    {
-                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {fieldPrefix}ScopedReader);");
+                        _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine($"var {fieldPrefix}ItemSpan = reader.GetSlice((int){fieldPrefix}ItemLength);");
+                        _sb.AppendIndentedLine($"var {fieldPrefix}ScopedReader = new SpanReader({fieldPrefix}ItemSpan);");
+                        var proxyReadPrefix = string.IsNullOrEmpty(elemProxy.ProxyNamespace) ? "" : $"global::{elemProxy.ProxyNamespace}.Serialization.";
+                        _sb.AppendIndentedLine($"var {fieldPrefix}ProxyItem = {proxyReadPrefix}SpanReaders.Read{elemProxy.ProxyClassName}Content(ref {fieldPrefix}ScopedReader);");
+                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = {fieldPrefix}ProxyItem.{elemProxy.ConvertMethodName}();");
+                        if (elemProxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"{fieldPrefix}ProxyItem.{elemProxy.ReturnMethodName}();");
                     }
                     else
                     {
-                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = new global::{elementType}();");
-                        _sb.AppendIndentedLine($"{spanReadersClass}.Populate{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader, {GeneratorHelpers.GetPopulateInstanceArgument(elemInfo.IsStruct, $"{fieldPrefix}Item")});");
+                        var spanReadersClass = GetSpanReadersClass(elementType);
+                        _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine($"var {fieldPrefix}ItemSpan = reader.GetSlice((int){fieldPrefix}ItemLength);");
+                        _sb.AppendIndentedLine($"var {fieldPrefix}ScopedReader = new SpanReader({fieldPrefix}ItemSpan);");
+
+                        // Check if element type is a derived type (has ProtoInclude parent) - use Read{typeName} to handle wrapper
+                        bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
+                        // Check if element type is a readonly struct - use ReadContent instead of Populate
+                        bool isReadonlyStruct = _typeRegistry?.IsReadonlyStruct(elementType) ?? false;
+                        if (isDerivedType)
+                        {
+                            // Derived type - use Read{typeName} which handles ProtoInclude wrapper format
+                            _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader);");
+                        }
+                        else if (isReadonlyStruct)
+                        {
+                            _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {fieldPrefix}ScopedReader);");
+                        }
+                        else
+                        {
+                            _sb.AppendIndentedLine($"var {fieldPrefix}Item = new global::{elementType}();");
+                            _sb.AppendIndentedLine($"{spanReadersClass}.Populate{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader, {GeneratorHelpers.GetPopulateInstanceArgument(elemInfo.IsStruct, $"{fieldPrefix}Item")});");
+                        }
                     }
                     _sb.AppendIndentedLine($"{tempListVar}.Add({fieldPrefix}Item);");
                 }
@@ -454,6 +480,20 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
             if (typeInfo.IsCustomType)
             {
+                var proxy = GetProxyForType(typeName);
+                if (proxy != null)
+                {
+                    var proxySpanReadersClass = NamespaceHelper.GetSpanReadersClass(proxy.ProxyTypeFullName, _typeRegistry);
+                    _sb.AppendIndentedLine($"var {fieldPrefix}MsgLength = reader.ReadVarUInt32();");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}MsgSpan = reader.GetSlice((int){fieldPrefix}MsgLength);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ScopedReader = new SpanReader({fieldPrefix}MsgSpan);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}Proxy = {proxySpanReadersClass}.Read{proxy.ProxyClassName}Content(ref {fieldPrefix}ScopedReader);");
+                    _sb.AppendIndentedLine($"{targetVar} = {fieldPrefix}Proxy.{proxy.ConvertMethodName}();");
+                    if (proxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"{fieldPrefix}Proxy.{proxy.ReturnMethodName}();");
+                    return;
+                }
+
                 // Custom message type - use scoped reader to limit reading to message bounds
                 var sanitizedName = typeInfo.ShortTypeName;
                 var spanReadersClass = GetSpanReadersClass(typeName);
@@ -822,29 +862,44 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
             }
             else if (elemInfo.IsCustomType)
             {
-                // Collection of custom types - use scoped reader to limit reading to item bounds
-                var spanReadersClass = GetSpanReadersClass(elementType);
-                _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = reader.ReadVarUInt32();");
-                _sb.AppendIndentedLine($"var {fieldPrefix}ItemSpan = reader.GetSlice((int){fieldPrefix}ItemLength);");
-                _sb.AppendIndentedLine($"var {fieldPrefix}ScopedReader = new SpanReader({fieldPrefix}ItemSpan);");
-
-                // Check if element type is a derived type (has ProtoInclude parent) - use Read{typeName} to handle wrapper
-                bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
-                // Check if element type is a readonly struct - use ReadContent instead of Populate
-                bool isReadonlyStruct = _typeRegistry?.IsReadonlyStruct(elementType) ?? false;
-                if (isDerivedType)
+                var elemProxy = GetProxyForType(elementType);
+                if (elemProxy != null)
                 {
-                    // Derived type - use Read{typeName} which handles ProtoInclude wrapper format
-                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader);");
-                }
-                else if (isReadonlyStruct)
-                {
-                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {fieldPrefix}ScopedReader);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = reader.ReadVarUInt32();");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemSpan = reader.GetSlice((int){fieldPrefix}ItemLength);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ScopedReader = new SpanReader({fieldPrefix}ItemSpan);");
+                    var proxyReadPrefix = string.IsNullOrEmpty(elemProxy.ProxyNamespace) ? "" : $"global::{elemProxy.ProxyNamespace}.Serialization.";
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ProxyItem = {proxyReadPrefix}SpanReaders.Read{elemProxy.ProxyClassName}Content(ref {fieldPrefix}ScopedReader);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = {fieldPrefix}ProxyItem.{elemProxy.ConvertMethodName}();");
+                    if (elemProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"{fieldPrefix}ProxyItem.{elemProxy.ReturnMethodName}();");
                 }
                 else
                 {
-                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = new global::{elementType}();");
-                    _sb.AppendIndentedLine($"{spanReadersClass}.Populate{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader, {GeneratorHelpers.GetPopulateInstanceArgument(elemInfo.IsStruct, $"{fieldPrefix}Item")});");
+                    // Collection of custom types - use scoped reader to limit reading to item bounds
+                    var spanReadersClass = GetSpanReadersClass(elementType);
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = reader.ReadVarUInt32();");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemSpan = reader.GetSlice((int){fieldPrefix}ItemLength);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ScopedReader = new SpanReader({fieldPrefix}ItemSpan);");
+
+                    // Check if element type is a derived type (has ProtoInclude parent) - use Read{typeName} to handle wrapper
+                    bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
+                    // Check if element type is a readonly struct - use ReadContent instead of Populate
+                    bool isReadonlyStruct = _typeRegistry?.IsReadonlyStruct(elementType) ?? false;
+                    if (isDerivedType)
+                    {
+                        // Derived type - use Read{typeName} which handles ProtoInclude wrapper format
+                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader);");
+                    }
+                    else if (isReadonlyStruct)
+                    {
+                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {fieldPrefix}ScopedReader);");
+                    }
+                    else
+                    {
+                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = new global::{elementType}();");
+                        _sb.AppendIndentedLine($"{spanReadersClass}.Populate{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader, {GeneratorHelpers.GetPopulateInstanceArgument(elemInfo.IsStruct, $"{fieldPrefix}Item")});");
+                    }
                 }
                 _sb.AppendIndentedLine($"{targetVar}.Add({fieldPrefix}Item);");
             }
@@ -1043,6 +1098,20 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
             if (typeInfo.IsCustomType)
             {
+                var streamProxy = GetProxyForType(typeName);
+                if (streamProxy != null)
+                {
+                    var proxyStreamReadersClass = NamespaceHelper.GetStreamReadersClass(streamProxy.ProxyTypeFullName, _typeRegistry);
+                    _sb.AppendIndentedLine($"var {fieldPrefix}MsgLength = {readerVar}.ReadVarInt32();");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}OldLimit = {readerVar}.PushLimit({fieldPrefix}MsgLength);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}Proxy = {proxyStreamReadersClass}.Read{streamProxy.ProxyClassName}Content(ref {readerVar});");
+                    _sb.AppendIndentedLine($"{targetVar} = {fieldPrefix}Proxy.{streamProxy.ConvertMethodName}();");
+                    if (streamProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"{fieldPrefix}Proxy.{streamProxy.ReturnMethodName}();");
+                    _sb.AppendIndentedLine($"{readerVar}.PopLimit({fieldPrefix}OldLimit);");
+                    return;
+                }
+
                 // Complex type - use StreamReaders with PushLimit (zero-allocation)
                 var sanitizedName = typeInfo.ShortTypeName;
                 var streamReadersClass = GetStreamReadersClass(typeName);
@@ -1165,20 +1234,35 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
             }
             else if (elemInfo.IsCustomType)
             {
-                var streamReadersClass = GetStreamReadersClass(elementType);
-                _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = {readerVar}.ReadVarInt32();");
-                _sb.AppendIndentedLine($"var {fieldPrefix}OldLimit = {readerVar}.PushLimit({fieldPrefix}ItemLength);");
-
-                bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
-                if (isDerivedType)
+                var elemProxy = GetProxyForType(elementType);
+                if (elemProxy != null)
                 {
-                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = {streamReadersClass}.Read{elemInfo.ShortTypeName}(ref {readerVar});");
+                    var proxyReadPrefix = string.IsNullOrEmpty(elemProxy.ProxyNamespace) ? "" : $"global::{elemProxy.ProxyNamespace}.Serialization.";
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = {readerVar}.ReadVarInt32();");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}OldLimit = {readerVar}.PushLimit({fieldPrefix}ItemLength);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ProxyItem = {proxyReadPrefix}StreamReaders.Read{elemProxy.ProxyClassName}Content(ref {readerVar});");
+                    _sb.AppendIndentedLine($"{readerVar}.PopLimit({fieldPrefix}OldLimit);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = {fieldPrefix}ProxyItem.{elemProxy.ConvertMethodName}();");
+                    if (elemProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"{fieldPrefix}ProxyItem.{elemProxy.ReturnMethodName}();");
                 }
                 else
                 {
-                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = {streamReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {readerVar});");
+                    var streamReadersClass = GetStreamReadersClass(elementType);
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = {readerVar}.ReadVarInt32();");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}OldLimit = {readerVar}.PushLimit({fieldPrefix}ItemLength);");
+
+                    bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
+                    if (isDerivedType)
+                    {
+                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = {streamReadersClass}.Read{elemInfo.ShortTypeName}(ref {readerVar});");
+                    }
+                    else
+                    {
+                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = {streamReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {readerVar});");
+                    }
+                    _sb.AppendIndentedLine($"{readerVar}.PopLimit({fieldPrefix}OldLimit);");
                 }
-                _sb.AppendIndentedLine($"{readerVar}.PopLimit({fieldPrefix}OldLimit);");
                 _sb.AppendIndentedLine($"{tempListVar}.Add({fieldPrefix}Item);");
             }
         }
@@ -1271,20 +1355,35 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
             }
             else if (elemInfo.IsCustomType)
             {
-                var streamReadersClass = GetStreamReadersClass(elementType);
-                _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = {readerVar}.ReadVarInt32();");
-                _sb.AppendIndentedLine($"var {fieldPrefix}OldLimit = {readerVar}.PushLimit({fieldPrefix}ItemLength);");
-
-                bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
-                if (isDerivedType)
+                var elemProxy = GetProxyForType(elementType);
+                if (elemProxy != null)
                 {
-                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = {streamReadersClass}.Read{elemInfo.ShortTypeName}(ref {readerVar});");
+                    var proxyReadPrefix = string.IsNullOrEmpty(elemProxy.ProxyNamespace) ? "" : $"global::{elemProxy.ProxyNamespace}.Serialization.";
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = {readerVar}.ReadVarInt32();");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}OldLimit = {readerVar}.PushLimit({fieldPrefix}ItemLength);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ProxyItem = {proxyReadPrefix}StreamReaders.Read{elemProxy.ProxyClassName}Content(ref {readerVar});");
+                    _sb.AppendIndentedLine($"{readerVar}.PopLimit({fieldPrefix}OldLimit);");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = {fieldPrefix}ProxyItem.{elemProxy.ConvertMethodName}();");
+                    if (elemProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"{fieldPrefix}ProxyItem.{elemProxy.ReturnMethodName}();");
                 }
                 else
                 {
-                    _sb.AppendIndentedLine($"var {fieldPrefix}Item = {streamReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {readerVar});");
+                    var streamReadersClass = GetStreamReadersClass(elementType);
+                    _sb.AppendIndentedLine($"var {fieldPrefix}ItemLength = {readerVar}.ReadVarInt32();");
+                    _sb.AppendIndentedLine($"var {fieldPrefix}OldLimit = {readerVar}.PushLimit({fieldPrefix}ItemLength);");
+
+                    bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
+                    if (isDerivedType)
+                    {
+                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = {streamReadersClass}.Read{elemInfo.ShortTypeName}(ref {readerVar});");
+                    }
+                    else
+                    {
+                        _sb.AppendIndentedLine($"var {fieldPrefix}Item = {streamReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {readerVar});");
+                    }
+                    _sb.AppendIndentedLine($"{readerVar}.PopLimit({fieldPrefix}OldLimit);");
                 }
-                _sb.AppendIndentedLine($"{readerVar}.PopLimit({fieldPrefix}OldLimit);");
                 _sb.AppendIndentedLine($"{targetVar}.Add({fieldPrefix}Item);");
             }
         }
@@ -1570,6 +1669,23 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
             if (typeInfo.IsCustomType)
             {
+                var sizeProxy = GetProxyForType(typeName);
+                if (sizeProxy != null)
+                {
+                    var proxySizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(sizeProxy.ProxyTypeFullName, _typeRegistry);
+                    var sizeValueAccess = GetNullableValueAccess(sourceVar, typeName);
+                    _sb.AppendIndentedLine($"var proxyForSize_{fieldId} = global::{sizeProxy.ProxyTypeFullName}.{sizeProxy.CreateMethodName}({sizeValueAccess}{sizeProxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var tempCalc{fieldId} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{proxySizeCalcClass}.Calculate{sizeProxy.ProxyClassName}ContentSize(ref tempCalc{fieldId}, proxyForSize_{fieldId});");
+                    if (sizeProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxyForSize_{fieldId}.{sizeProxy.ReturnMethodName}();");
+                    if (lengthCacheVar != null)
+                        _sb.AppendIndentedLine($"{lengthCacheVar} = tempCalc{fieldId}.Length;");
+                    _sb.AppendIndentedLine($"{calcVar}.WriteVarUInt32((uint)tempCalc{fieldId}.Length);");
+                    _sb.AppendIndentedLine($"{calcVar}.AddByteLength(tempCalc{fieldId}.Length);");
+                    return;
+                }
+
                 var sanitizedName = typeInfo.ShortTypeName;
                 var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeName, _typeRegistry);
                 _sb.AppendIndentedLine($"var tempCalc{fieldId} = new global::GProtobuf.Core.WriteSizeCalculator();");
@@ -1720,25 +1836,53 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
             }
             else if (elemInfo.IsCustomType)
             {
-                // Custom types - each element is a repeated field with tag
-                var (_, customTagBytes) = TypeMapping.PrecomputeTagBytes(fieldId, WireType.Len);
-                var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeInfo.CollectionElementType, _typeRegistry);
+                var elemSizeProxy = GetProxyForType(typeInfo.CollectionElementType);
+                if (elemSizeProxy != null)
+                {
+                    var (_, proxyTagBytes) = TypeMapping.PrecomputeTagBytes(fieldId, WireType.Len);
+                    var proxySizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elemSizeProxy.ProxyTypeFullName, _typeRegistry);
+                    _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
+                    _sb.StartNewBlock();
+                    _sb.AppendIndentedLine($"{calcVar}.AddByteLength({proxyTagBytes}); // tag for repeated field {fieldId}");
+                    _sb.AppendIndentedLine($"var proxyItem = global::{elemSizeProxy.ProxyTypeFullName}.{elemSizeProxy.CreateMethodName}(item{elemSizeProxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{proxySizeCalcClass}.Calculate{elemSizeProxy.ProxyClassName}ContentSize(ref itemCalc, proxyItem);");
+                    _sb.AppendIndentedLine($"{calcVar}.WriteVarUInt32((uint)itemCalc.Length);");
+                    _sb.AppendIndentedLine($"{calcVar}.AddByteLength(itemCalc.Length);");
+                    if (elemSizeProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxyItem.{elemSizeProxy.ReturnMethodName}();");
+                    _sb.EndBlock();
+                }
+                else
+                {
+                    // Custom types - each element is a repeated field with tag
+                    var (_, customTagBytes) = TypeMapping.PrecomputeTagBytes(fieldId, WireType.Len);
+                    var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeInfo.CollectionElementType, _typeRegistry);
 
-                // Check if element type is a derived type with ProtoInclude - needs full serialization with wrapper
-                bool isDerivedType = _typeRegistry?.IsDerivedType(typeInfo.CollectionElementType) ?? false;
-                var sizeMethodSuffix = "ContentSize";
+                    // Check if element type is a derived type with ProtoInclude - needs full serialization with wrapper
+                    bool isDerivedType = _typeRegistry?.IsDerivedType(typeInfo.CollectionElementType) ?? false;
+                    var sizeMethodSuffix = "ContentSize";
 
-                _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
-                _sb.StartNewBlock();
-                _sb.AppendIndentedLine("if (item != null)");
-                _sb.StartNewBlock();
-                _sb.AppendIndentedLine($"{calcVar}.AddByteLength({customTagBytes}); // tag for repeated field {fieldId}");
-                _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
-                _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{elemInfo.ShortTypeName}{sizeMethodSuffix}(ref itemCalc, item);");
-                _sb.AppendIndentedLine($"{calcVar}.WriteVarUInt32((uint)itemCalc.Length);");
-                _sb.AppendIndentedLine($"{calcVar}.AddByteLength(itemCalc.Length);");
-                _sb.EndBlock();
-                _sb.EndBlock();
+                    _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
+                    _sb.StartNewBlock();
+                    // Only add null check for reference types (not structs)
+                    bool elemNeedsNullCheck = !elemInfo.IsStruct;
+                    if (elemNeedsNullCheck)
+                    {
+                        _sb.AppendIndentedLine("if (item != null)");
+                        _sb.StartNewBlock();
+                    }
+                    _sb.AppendIndentedLine($"{calcVar}.AddByteLength({customTagBytes}); // tag for repeated field {fieldId}");
+                    _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{elemInfo.ShortTypeName}{sizeMethodSuffix}(ref itemCalc, item);");
+                    _sb.AppendIndentedLine($"{calcVar}.WriteVarUInt32((uint)itemCalc.Length);");
+                    _sb.AppendIndentedLine($"{calcVar}.AddByteLength(itemCalc.Length);");
+                    if (elemNeedsNullCheck)
+                    {
+                        _sb.EndBlock();
+                    }
+                    _sb.EndBlock();
+                }
             }
         }
 
@@ -1859,6 +2003,40 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
             if (typeInfo.IsCustomType)
             {
+                var writeProxy = GetProxyForType(typeName);
+                if (writeProxy != null)
+                {
+                    var proxyWritersClass = NamespaceHelper.GetWritersClass(writeProxy.ProxyTypeFullName, _writerClassName, _typeRegistry);
+                    var proxySizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(writeProxy.ProxyTypeFullName, _typeRegistry);
+                    var writeValueAccess = GetNullableValueAccess(sourceVar, typeName);
+
+                    var proxyTypeDef = _typeRegistry?.GetByFullName(TypeMapping.NormalizeTypeName(writeProxy.ProxyTypeFullName));
+                    bool proxyIsDerived = _typeRegistry?.IsDerivedType(writeProxy.ProxyTypeFullName) ?? false;
+                    bool proxyHasIncludes = proxyTypeDef?.ProtoIncludes != null && proxyTypeDef.ProtoIncludes.Count > 0;
+                    bool proxyHasCallbacks = (proxyTypeDef?.BeforeSerializationCallbacks != null && proxyTypeDef.BeforeSerializationCallbacks.Count > 0)
+                        || (proxyTypeDef?.AfterSerializationCallbacks != null && proxyTypeDef.AfterSerializationCallbacks.Count > 0);
+                    bool proxyCanSkip = !proxyIsDerived && !proxyHasIncludes && !proxyHasCallbacks;
+                    var proxyMethodSuffix = (proxyIsDerived || proxyCanSkip) ? "" : "Content";
+
+                    _sb.AppendIndentedLine($"var proxyForWrite_{fieldId} = global::{writeProxy.ProxyTypeFullName}.{writeProxy.CreateMethodName}({writeValueAccess}{writeProxy.CreateExtraArgs});");
+
+                    if (cachedLengthVar != null)
+                    {
+                        _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint){cachedLengthVar});");
+                    }
+                    else
+                    {
+                        _sb.AppendIndentedLine($"var writeCalc{fieldId} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                        _sb.AppendIndentedLine($"{proxySizeCalcClass}.Calculate{writeProxy.ProxyClassName}ContentSize(ref writeCalc{fieldId}, proxyForWrite_{fieldId});");
+                        _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)writeCalc{fieldId}.Length);");
+                    }
+
+                    _sb.AppendIndentedLine($"{proxyWritersClass}.Write{writeProxy.ProxyClassName}{proxyMethodSuffix}(ref writer, proxyForWrite_{fieldId});");
+                    if (writeProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxyForWrite_{fieldId}.{writeProxy.ReturnMethodName}();");
+                    return;
+                }
+
                 var sanitizedName = typeInfo.ShortTypeName;
                 var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeName, _typeRegistry);
                 var writersClass = NamespaceHelper.GetWritersClass(typeName, _writerClassName, _typeRegistry);
@@ -2018,33 +2196,70 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
             }
             else if (elemInfo.IsCustomType)
             {
-                // Custom types - each element is a repeated field with tag
-                var (customBytesString, _) = TypeMapping.PrecomputeTagBytes(fieldId, WireType.Len);
-                var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeInfo.CollectionElementType, _typeRegistry);
-                var writersClass = NamespaceHelper.GetWritersClass(typeInfo.CollectionElementType, _writerClassName, _typeRegistry);
+                var elemWriteProxy = GetProxyForType(typeInfo.CollectionElementType);
+                if (elemWriteProxy != null)
+                {
+                    var (proxyBytesString, _) = TypeMapping.PrecomputeTagBytes(fieldId, WireType.Len);
+                    var proxyWritersClass = NamespaceHelper.GetWritersClass(elemWriteProxy.ProxyTypeFullName, _writerClassName, _typeRegistry);
+                    var proxySizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elemWriteProxy.ProxyTypeFullName, _typeRegistry);
 
-                // Determine write method: derived types and simple types without callbacks use WriteX (no Content suffix)
-                bool isDerivedType = _typeRegistry?.IsDerivedType(typeInfo.CollectionElementType) ?? false;
-                var elemTypeDef = _typeRegistry?.GetByFullName(TypeMapping.NormalizeTypeName(typeInfo.CollectionElementType));
-                bool elemHasProtoIncludes = elemTypeDef?.ProtoIncludes != null && elemTypeDef.ProtoIncludes.Count > 0;
-                bool elemHasCallbacks = (elemTypeDef?.BeforeSerializationCallbacks != null && elemTypeDef.BeforeSerializationCallbacks.Count > 0)
-                    || (elemTypeDef?.AfterSerializationCallbacks != null && elemTypeDef.AfterSerializationCallbacks.Count > 0);
-                bool elemCanSkipContent = !isDerivedType && !elemHasProtoIncludes && !elemHasCallbacks;
-                var methodSuffix = (isDerivedType || elemCanSkipContent) ? "" : "Content";
-                var sizeMethodSuffix = "ContentSize";
+                    var proxyTypeDef = _typeRegistry?.GetByFullName(TypeMapping.NormalizeTypeName(elemWriteProxy.ProxyTypeFullName));
+                    bool proxyIsDerived = _typeRegistry?.IsDerivedType(elemWriteProxy.ProxyTypeFullName) ?? false;
+                    bool proxyHasIncludes = proxyTypeDef?.ProtoIncludes != null && proxyTypeDef.ProtoIncludes.Count > 0;
+                    bool proxyHasCallbacks = (proxyTypeDef?.BeforeSerializationCallbacks != null && proxyTypeDef.BeforeSerializationCallbacks.Count > 0)
+                        || (proxyTypeDef?.AfterSerializationCallbacks != null && proxyTypeDef.AfterSerializationCallbacks.Count > 0);
+                    bool proxyCanSkip = !proxyIsDerived && !proxyHasIncludes && !proxyHasCallbacks;
+                    var proxyMethodSuffix = (proxyIsDerived || proxyCanSkip) ? "" : "Content";
 
-                _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
-                _sb.StartNewBlock();
-                // CRITICAL: null check for array/collection elements (protobuf semantics allow null in arrays)
-                _sb.AppendIndentedLine("if (item != null)");
-                _sb.StartNewBlock();
-                _sb.AppendIndentedLine($"writer.WriteSingleByte({customBytesString}); // tag for repeated field {fieldId}");
-                _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
-                _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{elemInfo.ShortTypeName}{sizeMethodSuffix}(ref itemCalc, item);");
-                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)itemCalc.Length);");
-                _sb.AppendIndentedLine($"{writersClass}.Write{elemInfo.ShortTypeName}{methodSuffix}(ref writer, item);");
-                _sb.EndBlock();
-                _sb.EndBlock();
+                    _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
+                    _sb.StartNewBlock();
+                    _sb.AppendIndentedLine($"var proxyItem = global::{elemWriteProxy.ProxyTypeFullName}.{elemWriteProxy.CreateMethodName}(item{elemWriteProxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"writer.WriteSingleByte({proxyBytesString}); // tag for repeated field {fieldId}");
+                    _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{proxySizeCalcClass}.Calculate{elemWriteProxy.ProxyClassName}ContentSize(ref itemCalc, proxyItem);");
+                    _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)itemCalc.Length);");
+                    _sb.AppendIndentedLine($"{proxyWritersClass}.Write{elemWriteProxy.ProxyClassName}{proxyMethodSuffix}(ref writer, proxyItem);");
+                    if (elemWriteProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxyItem.{elemWriteProxy.ReturnMethodName}();");
+                    _sb.EndBlock();
+                }
+                else
+                {
+                    // Custom types - each element is a repeated field with tag
+                    var (customBytesString, _) = TypeMapping.PrecomputeTagBytes(fieldId, WireType.Len);
+                    var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeInfo.CollectionElementType, _typeRegistry);
+                    var writersClass = NamespaceHelper.GetWritersClass(typeInfo.CollectionElementType, _writerClassName, _typeRegistry);
+
+                    // Determine write method: derived types and simple types without callbacks use WriteX (no Content suffix)
+                    bool isDerivedType = _typeRegistry?.IsDerivedType(typeInfo.CollectionElementType) ?? false;
+                    var elemTypeDef = _typeRegistry?.GetByFullName(TypeMapping.NormalizeTypeName(typeInfo.CollectionElementType));
+                    bool elemHasProtoIncludes = elemTypeDef?.ProtoIncludes != null && elemTypeDef.ProtoIncludes.Count > 0;
+                    bool elemHasCallbacks = (elemTypeDef?.BeforeSerializationCallbacks != null && elemTypeDef.BeforeSerializationCallbacks.Count > 0)
+                        || (elemTypeDef?.AfterSerializationCallbacks != null && elemTypeDef.AfterSerializationCallbacks.Count > 0);
+                    bool elemCanSkipContent = !isDerivedType && !elemHasProtoIncludes && !elemHasCallbacks;
+                    var methodSuffix = (isDerivedType || elemCanSkipContent) ? "" : "Content";
+                    var sizeMethodSuffix = "ContentSize";
+
+                    _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
+                    _sb.StartNewBlock();
+                    // Only add null check for reference types (not structs)
+                    bool elemNeedsNullCheck = !elemInfo.IsStruct;
+                    if (elemNeedsNullCheck)
+                    {
+                        _sb.AppendIndentedLine("if (item != null)");
+                        _sb.StartNewBlock();
+                    }
+                    _sb.AppendIndentedLine($"writer.WriteSingleByte({customBytesString}); // tag for repeated field {fieldId}");
+                    _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{elemInfo.ShortTypeName}{sizeMethodSuffix}(ref itemCalc, item);");
+                    _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)itemCalc.Length);");
+                    _sb.AppendIndentedLine($"{writersClass}.Write{elemInfo.ShortTypeName}{methodSuffix}(ref writer, item);");
+                    if (elemNeedsNullCheck)
+                    {
+                        _sb.EndBlock();
+                    }
+                    _sb.EndBlock();
+                }
             }
         }
 
@@ -2113,7 +2328,7 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
         /// - Not write the value field (field 2) when value is null
         /// - Match protobuf-net behavior: entry contains key only, no value field
         /// </summary>
-        private static bool ValueNeedsNullCheck(string typeName, TypeAnalysisInfo typeInfo, bool isEnum)
+        private bool ValueNeedsNullCheck(string typeName, TypeAnalysisInfo typeInfo, bool isEnum)
         {
             // Enums are value types, never need null check
             if (isEnum)
@@ -2134,7 +2349,12 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
             // Custom types (classes) need null check, but NOT structs
             if (typeInfo != null && typeInfo.IsCustomType && !typeInfo.IsStruct)
+            {
+                var proxy = GetProxyForType(typeName);
+                if (proxy != null && proxy.IsStruct)
+                    return false;
                 return true;
+            }
 
             // Collections and dictionaries are reference types
             if (typeInfo != null && (typeInfo.IsCollection || typeInfo.IsDictionary || typeInfo.IsArray))
