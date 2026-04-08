@@ -61,9 +61,8 @@ namespace GProtobuf.CrossTests
             // Assert
             deserialized.Id.Should().Be(100);
             deserialized.Name.Should().Be("Empty Custom");
-            // Empty array should deserialize to empty array (not null)
-            deserialized.CustomData.Should().NotBeNull();
-            deserialized.CustomData.Should().BeEmpty();
+            // Empty array has GetSize()=0, so it is not serialized — deserializes as null (protobuf default)
+            deserialized.CustomData.Should().BeNull();
         }
 
         [Fact]
@@ -86,9 +85,8 @@ namespace GProtobuf.CrossTests
             // Assert
             deserialized.Id.Should().Be(200);
             deserialized.Name.Should().Be("Null Custom");
-            // Null data should serialize as zero-length and deserialize to empty array
-            deserialized.CustomData.Should().NotBeNull();
-            deserialized.CustomData.Should().BeEmpty();
+            // Null data has GetSize()=0, so it is not serialized — deserializes as null (protobuf default)
+            deserialized.CustomData.Should().BeNull();
         }
 
         [Fact]
@@ -163,8 +161,8 @@ namespace GProtobuf.CrossTests
             // Assert
             deserialized.Version.Should().Be(2);
             deserialized.HeaderData.Should().BeEquivalentTo(new byte[] { 0xAA, 0xBB, 0xCC });
-            deserialized.PayloadData.Should().NotBeNull();
-            deserialized.PayloadData.Should().BeEmpty();
+            // PayloadData was null → GetSize()=0 → not serialized → null after roundtrip
+            deserialized.PayloadData.Should().BeNull();
             deserialized.FooterData.Should().BeEquivalentTo(new byte[] { 0xFF });
         }
 
@@ -186,11 +184,11 @@ namespace GProtobuf.CrossTests
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeMultipleCustomBufferModel(bytes);
 
-            // Assert
+            // Assert — all empty arrays have GetSize()=0 → not serialized → null after roundtrip
             deserialized.Version.Should().Be(3);
-            deserialized.HeaderData.Should().BeEmpty();
-            deserialized.PayloadData.Should().BeEmpty();
-            deserialized.FooterData.Should().BeEmpty();
+            deserialized.HeaderData.Should().BeNull();
+            deserialized.PayloadData.Should().BeNull();
+            deserialized.FooterData.Should().BeNull();
         }
 
         #endregion
@@ -304,9 +302,9 @@ namespace GProtobuf.CrossTests
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeOnlyCustomBufferModel(bytes);
 
-            // Assert
-            deserialized.Data1.Should().BeEmpty();
-            deserialized.Data2.Should().BeEmpty();
+            // Assert — null data has GetSize()=0 → not serialized → null after roundtrip
+            deserialized.Data1.Should().BeNull();
+            deserialized.Data2.Should().BeNull();
         }
 
         #endregion

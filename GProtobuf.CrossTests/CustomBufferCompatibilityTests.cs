@@ -133,8 +133,8 @@ namespace GProtobuf.CrossTests
             // Assert
             protobufNetModel.Id.Should().Be(100);
             protobufNetModel.Name.Should().Be("Empty");
-            // Empty byte[] serializes as length=0, protobuf-net reads as empty array
-            protobufNetModel.CustomData.Should().BeEmpty();
+            // Empty byte[] has GetSize()=0 → not serialized → protobuf-net reads as null
+            protobufNetModel.CustomData.Should().BeNull();
         }
 
         [Fact]
