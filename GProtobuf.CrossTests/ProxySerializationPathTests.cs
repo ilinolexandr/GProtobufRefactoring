@@ -1,9 +1,8 @@
 using System.Buffers;
 using FluentAssertions;
-using GProtobuf.CrossTests.Refactored;
-using GProtobuf.CrossTests.Refactored.Serialization;
+using GProtobuf.Tests.Serialization;
 
-namespace GProtobuf.CrossTests.Refactored;
+namespace GProtobuf.Tests;
 
 /// <summary>
 /// Тести різних serialization/deserialization paths для proxy типів.

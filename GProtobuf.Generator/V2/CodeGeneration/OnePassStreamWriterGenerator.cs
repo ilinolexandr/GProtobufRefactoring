@@ -454,6 +454,25 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateCustomTypeValueWrite(VirtualMapEntryInfo virtualType, string sourceVar, TypeAnalysisInfo valueTypeInfo)
         {
+            // Check if value type has a serialization proxy
+            var valProxy = GetProxyForType(virtualType.ValueType);
+            if (valProxy != null)
+            {
+                _sb.AppendIndentedLine($"var proxyVal = global::{valProxy.ProxyTypeFullName}.{valProxy.CreateMethodName}({sourceVar}{valProxy.CreateExtraArgs});");
+                TagCodeHelper.WriteTag(_sb, 2, WireType.Len);
+                _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(valProxy.ProxyNamespace, _currentNamespace);
+                var proxyTypeDef = _registry?.GetByFullName(valProxy.ProxyTypeFullName);
+                var proxyWriteMethod = (proxyTypeDef != null && CanSkipWriteContentMethod(proxyTypeDef))
+                    ? $"Write{valProxy.ProxyClassName}"
+                    : $"Write{valProxy.ProxyClassName}Content";
+                _sb.AppendIndentedLine($"{proxyNsPrefix}{ClassName}.{proxyWriteMethod}(ref writer, proxyVal);");
+                _sb.AppendIndentedLine("writer.EndSubMessage();");
+                if (valProxy.ReturnMethodName != null)
+                    _sb.AppendIndentedLine($"proxyVal.{valProxy.ReturnMethodName}();");
+                return;
+            }
+
             var valueClassName = TypeNameHelper.GetClassName(virtualType.ValueType);
             var writersClass = GetWritersClass(virtualType.ValueType);
             var valTypeDef = _registry.GetByFullName(TypeMapping.NormalizeTypeName(virtualType.ValueType));
@@ -550,6 +569,25 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.EndBlock();
                 _sb.EndBlock();
                 _sb.AppendIndentedLine("writer.EndSubMessage();");
+                return;
+            }
+
+            // Check if element type has a serialization proxy
+            var elemProxy = GetProxyForType(elementType);
+            if (elemProxy != null)
+            {
+                _sb.AppendIndentedLine($"var proxyElem = global::{elemProxy.ProxyTypeFullName}.{elemProxy.CreateMethodName}({itemVar}{elemProxy.CreateExtraArgs});");
+                TagCodeHelper.WriteTag(_sb, fieldId, WireType.Len);
+                _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(elemProxy.ProxyNamespace, _currentNamespace);
+                var proxyTypeDef2 = _registry?.GetByFullName(elemProxy.ProxyTypeFullName);
+                var proxyWriteMethod2 = (proxyTypeDef2 != null && CanSkipWriteContentMethod(proxyTypeDef2))
+                    ? $"Write{elemProxy.ProxyClassName}"
+                    : $"Write{elemProxy.ProxyClassName}Content";
+                _sb.AppendIndentedLine($"{proxyNsPrefix}{ClassName}.{proxyWriteMethod2}(ref writer, proxyElem);");
+                _sb.AppendIndentedLine("writer.EndSubMessage();");
+                if (elemProxy.ReturnMethodName != null)
+                    _sb.AppendIndentedLine($"proxyElem.{elemProxy.ReturnMethodName}();");
                 return;
             }
 
@@ -1263,6 +1301,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateComplexCollectionWrite(ProtoMemberAttribute member, string sourceVar)
         {
+            // Check if element type has a serialization proxy
+            var proxy = GetProxyForType(member.CollectionElementType);
+            if (proxy != null)
+            {
+                GenerateProxyCollectionWrite(member, sourceVar, proxy);
+                return;
+            }
+
             var elementClassName = TypeNameHelper.GetClassName(member.CollectionElementType);
 
             // Check if element type is a struct (can't be null)
@@ -1297,6 +1343,34 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 _sb.EndBlock();
             }
+
+            _sb.EndBlock();
+            _sb.EndBlock();
+        }
+
+        private void GenerateProxyCollectionWrite(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
+        {
+            _sb.AppendIndentedLine($"if ({sourceVar} != null)");
+            _sb.StartNewBlock();
+            _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
+            _sb.StartNewBlock();
+
+            // Create proxy from original
+            _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item{proxy.CreateExtraArgs});");
+
+            TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
+            _sb.AppendIndentedLine("writer.BeginSubMessage();");
+
+            var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxy.ProxyNamespace, _currentNamespace);
+            var proxyTypeDef = _registry?.GetByFullName(proxy.ProxyTypeFullName);
+            var proxyWriteMethod = (proxyTypeDef != null && CanSkipWriteContentMethod(proxyTypeDef))
+                ? $"Write{proxy.ProxyClassName}"
+                : $"Write{proxy.ProxyClassName}Content";
+            _sb.AppendIndentedLine($"{proxyNsPrefix}{ClassName}.{proxyWriteMethod}(ref writer, proxyItem);");
+            _sb.AppendIndentedLine("writer.EndSubMessage();");
+
+            if (proxy.ReturnMethodName != null)
+                _sb.AppendIndentedLine($"proxyItem.{proxy.ReturnMethodName}();");
 
             _sb.EndBlock();
             _sb.EndBlock();

@@ -25,12 +25,29 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private readonly StringBuilderWithIndent _sb;
         private readonly TypeRegistry _registry;
         private readonly GeneratorOptions _options;
+        private readonly ProxyRegistry _proxyRegistry;
 
-        public StandaloneTypeGenerator(StringBuilderWithIndent sb, TypeRegistry registry, GeneratorOptions options = null)
+        public StandaloneTypeGenerator(StringBuilderWithIndent sb, TypeRegistry registry, GeneratorOptions options = null, ProxyRegistry proxyRegistry = null)
         {
             _sb = sb;
             _registry = registry;
             _options = options ?? GeneratorOptions.Default;
+            _proxyRegistry = proxyRegistry;
+        }
+
+        private ProxyDefinition GetProxy(string typeName)
+        {
+            if (_proxyRegistry == null) return null;
+            var result = _proxyRegistry.GetProxy(typeName);
+            if (result != null) return result;
+            if (typeName.EndsWith("?"))
+                result = _proxyRegistry.GetProxy(typeName.TrimEnd('?'));
+            return result;
+        }
+
+        private static string GetProxyQualifiedPrefix(ProxyDefinition proxy)
+        {
+            return string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
         }
 
         /// <summary>
@@ -168,6 +185,19 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         {
             // Read length-prefixed message
             _sb.AppendIndentedLine("var length = (int)reader.ReadVarUInt32();");
+
+            var proxy = GetProxy(elementType);
+            if (proxy != null)
+            {
+                var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                _sb.AppendIndentedLine("var subReader = reader.CreateSubReader(length);");
+                _sb.AppendIndentedLine($"var proxyItem = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref subReader);");
+                _sb.AppendIndentedLine($"{addMethod}(proxyItem.{proxy.ConvertMethodName}());");
+                if (proxy.ReturnMethodName != null)
+                    _sb.AppendIndentedLine($"proxyItem.{proxy.ReturnMethodName}();");
+                return;
+            }
+
             var elementClassName = TypeNameHelper.GetClassName(elementType);
             var spanReadersClass = NamespaceHelper.GetSpanReadersClass(elementType, _registry);
             _sb.AppendIndentedLine("var subReader = reader.CreateSubReader(length);");
@@ -342,15 +372,27 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     }
                     else
                     {
-                        var className = TypeNameHelper.GetClassName(elementType);
-                        var spanReadersClass = NamespaceHelper.GetSpanReadersClass(elementType, _registry);
-                        _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
-                        _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
-                        // For derived types with ProtoInclude, use full Read method (handles wrapper)
-                        // For non-derived types, use ReadContent method
-                        bool isDerivedType = _registry.IsDerivedType(elementType);
-                        var methodSuffix = isDerivedType ? "" : "Content";
-                        _sb.AppendIndentedLine($"_tempList_{varName}.Add({spanReadersClass}.Read{className}{methodSuffix}(ref itemReader_{varName}));");
+                        var proxy = GetProxy(elementType);
+                        if (proxy != null)
+                        {
+                            var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                            _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
+                            _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
+                            _sb.AppendIndentedLine($"var proxyItem_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref itemReader_{varName});");
+                            _sb.AppendIndentedLine($"_tempList_{varName}.Add(proxyItem_{varName}.{proxy.ConvertMethodName}());");
+                            if (proxy.ReturnMethodName != null)
+                                _sb.AppendIndentedLine($"proxyItem_{varName}.{proxy.ReturnMethodName}();");
+                        }
+                        else
+                        {
+                            var className = TypeNameHelper.GetClassName(elementType);
+                            var spanReadersClass = NamespaceHelper.GetSpanReadersClass(elementType, _registry);
+                            _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
+                            _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
+                            bool isDerivedType = _registry.IsDerivedType(elementType);
+                            var methodSuffix = isDerivedType ? "" : "Content";
+                            _sb.AppendIndentedLine($"_tempList_{varName}.Add({spanReadersClass}.Read{className}{methodSuffix}(ref itemReader_{varName}));");
+                        }
                     }
                 }
             }
@@ -383,15 +425,27 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     }
                     else
                     {
-                        var className = TypeNameHelper.GetClassName(elementType);
-                        var spanReadersClass = NamespaceHelper.GetSpanReadersClass(elementType, _registry);
-                        _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
-                        _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
-                        // For derived types with ProtoInclude, use full Read method (handles wrapper)
-                        // For non-derived types, use ReadContent method
-                        bool isDerivedType = _registry.IsDerivedType(elementType);
-                        var methodSuffix = isDerivedType ? "" : "Content";
-                        _sb.AppendIndentedLine($"{varName}.Add({spanReadersClass}.Read{className}{methodSuffix}(ref itemReader_{varName}));");
+                        var proxy = GetProxy(elementType);
+                        if (proxy != null)
+                        {
+                            var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                            _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
+                            _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
+                            _sb.AppendIndentedLine($"var proxyItem_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref itemReader_{varName});");
+                            _sb.AppendIndentedLine($"{varName}.Add(proxyItem_{varName}.{proxy.ConvertMethodName}());");
+                            if (proxy.ReturnMethodName != null)
+                                _sb.AppendIndentedLine($"proxyItem_{varName}.{proxy.ReturnMethodName}();");
+                        }
+                        else
+                        {
+                            var className = TypeNameHelper.GetClassName(elementType);
+                            var spanReadersClass = NamespaceHelper.GetSpanReadersClass(elementType, _registry);
+                            _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
+                            _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
+                            bool isDerivedType = _registry.IsDerivedType(elementType);
+                            var methodSuffix = isDerivedType ? "" : "Content";
+                            _sb.AppendIndentedLine($"{varName}.Add({spanReadersClass}.Read{className}{methodSuffix}(ref itemReader_{varName}));");
+                        }
                     }
                 }
             }
@@ -433,16 +487,28 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 }
                 else
                 {
-                    // Custom type - read as length-delimited, create sub-reader
-                    var className = TypeNameHelper.GetClassName(typeName);
-                    var spanReadersClass = NamespaceHelper.GetSpanReadersClass(typeName, _registry);
-                    _sb.AppendIndentedLine($"var len_{varName} = (int)reader.ReadVarUInt32();");
-                    _sb.AppendIndentedLine($"var subReader_{varName} = reader.CreateSubReader(len_{varName});");
-                    // For derived types with ProtoInclude, use full Read method (handles wrapper)
-                    // For non-derived types, use ReadContent method
-                    bool isDerivedType = _registry.IsDerivedType(typeName);
-                    var methodSuffix = isDerivedType ? "" : "Content";
-                    _sb.AppendIndentedLine($"{varName} = {spanReadersClass}.Read{className}{methodSuffix}(ref subReader_{varName});");
+                    var proxy = GetProxy(typeName);
+                    if (proxy != null)
+                    {
+                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        _sb.AppendIndentedLine($"var len_{varName} = (int)reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine($"var subReader_{varName} = reader.CreateSubReader(len_{varName});");
+                        _sb.AppendIndentedLine($"var proxy_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref subReader_{varName});");
+                        _sb.AppendIndentedLine($"{varName} = proxy_{varName}.{proxy.ConvertMethodName}();");
+                        if (proxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"proxy_{varName}.{proxy.ReturnMethodName}();");
+                    }
+                    else
+                    {
+                        // Custom type - read as length-delimited, create sub-reader
+                        var className = TypeNameHelper.GetClassName(typeName);
+                        var spanReadersClass = NamespaceHelper.GetSpanReadersClass(typeName, _registry);
+                        _sb.AppendIndentedLine($"var len_{varName} = (int)reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine($"var subReader_{varName} = reader.CreateSubReader(len_{varName});");
+                        bool isDerivedType = _registry.IsDerivedType(typeName);
+                        var methodSuffix = isDerivedType ? "" : "Content";
+                        _sb.AppendIndentedLine($"{varName} = {spanReadersClass}.Read{className}{methodSuffix}(ref subReader_{varName});");
+                    }
                 }
             }
         }
@@ -489,16 +555,28 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 }
                 else
                 {
-                    // Complex element - read length-delimited
-                    var className = TypeNameHelper.GetClassName(elementType);
-                    var spanReadersClass = NamespaceHelper.GetSpanReadersClass(elementType, _registry);
-                    _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
-                    _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
-                    // For derived types with ProtoInclude, use full Read method (handles wrapper)
-                    // For non-derived types, use ReadContent method
-                    bool isDerivedType = _registry.IsDerivedType(elementType);
-                    var methodSuffix = isDerivedType ? "" : "Content";
-                    _sb.AppendIndentedLine($"{varName}.Add({spanReadersClass}.Read{className}{methodSuffix}(ref itemReader_{varName}));");
+                    var proxy = GetProxy(elementType);
+                    if (proxy != null)
+                    {
+                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
+                        _sb.AppendIndentedLine($"var proxyItem_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref itemReader_{varName});");
+                        _sb.AppendIndentedLine($"{varName}.Add(proxyItem_{varName}.{proxy.ConvertMethodName}());");
+                        if (proxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"proxyItem_{varName}.{proxy.ReturnMethodName}();");
+                    }
+                    else
+                    {
+                        // Complex element - read length-delimited
+                        var className = TypeNameHelper.GetClassName(elementType);
+                        var spanReadersClass = NamespaceHelper.GetSpanReadersClass(elementType, _registry);
+                        _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
+                        bool isDerivedType = _registry.IsDerivedType(elementType);
+                        var methodSuffix = isDerivedType ? "" : "Content";
+                        _sb.AppendIndentedLine($"{varName}.Add({spanReadersClass}.Read{className}{methodSuffix}(ref itemReader_{varName}));");
+                    }
                 }
             }
 
@@ -547,16 +625,28 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 }
                 else
                 {
-                    // Complex element - read length-delimited
-                    var className = TypeNameHelper.GetClassName(elementType);
-                    var spanReadersClass = NamespaceHelper.GetSpanReadersClass(elementType, _registry);
-                    _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
-                    _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
-                    // For derived types with ProtoInclude, use full Read method (handles wrapper)
-                    // For non-derived types, use ReadContent method
-                    bool isDerivedType = _registry.IsDerivedType(elementType);
-                    var methodSuffix = isDerivedType ? "" : "Content";
-                    _sb.AppendIndentedLine($"tempList_{varName}.Add({spanReadersClass}.Read{className}{methodSuffix}(ref itemReader_{varName}));");
+                    var proxy = GetProxy(elementType);
+                    if (proxy != null)
+                    {
+                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
+                        _sb.AppendIndentedLine($"var proxyItem_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref itemReader_{varName});");
+                        _sb.AppendIndentedLine($"tempList_{varName}.Add(proxyItem_{varName}.{proxy.ConvertMethodName}());");
+                        if (proxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"proxyItem_{varName}.{proxy.ReturnMethodName}();");
+                    }
+                    else
+                    {
+                        // Complex element - read length-delimited
+                        var className = TypeNameHelper.GetClassName(elementType);
+                        var spanReadersClass = NamespaceHelper.GetSpanReadersClass(elementType, _registry);
+                        _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
+                        bool isDerivedType = _registry.IsDerivedType(elementType);
+                        var methodSuffix = isDerivedType ? "" : "Content";
+                        _sb.AppendIndentedLine($"tempList_{varName}.Add({spanReadersClass}.Read{className}{methodSuffix}(ref itemReader_{varName}));");
+                    }
                 }
             }
 
@@ -757,15 +847,33 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     // Complex types: [tag=0x0A][length][message] for each item
                     // tag 0x0A = field 1, wire type 2 (length-delimited)
                     _sb.AppendIndentedLine($"{writerName}.WriteSingleByte(0x0A); // field 1, wire type 2");
-                    var className = TypeNameHelper.GetClassName(elementType);
-                    var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
-                    var writerClass = NamespaceHelper.GetWritersClass(elementType, isBufferWriter ? "BufferWriters" : "StreamWriters", _registry);
-                    var methodSuffix = GetWriteMethodSuffix(elementType);
-                    var sizeSuffix = "ContentSize";
-                    _sb.AppendIndentedLine("var sizeCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
-                    _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref sizeCalc, {varName});");
-                    _sb.AppendIndentedLine($"{writerName}.WriteVarUInt32((uint)sizeCalc.Length);");
-                    _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref {writerName}, {varName});");
+
+                    var proxy = GetProxy(elementType);
+                    if (proxy != null)
+                    {
+                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({varName}{proxy.CreateExtraArgs});");
+                        _sb.AppendIndentedLine("var sizeCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                        _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref sizeCalc, proxyItem);");
+                        _sb.AppendIndentedLine($"{writerName}.WriteVarUInt32((uint)sizeCalc.Length);");
+                        var proxyMethodSuffix = GetWriteMethodSuffix(proxy.ProxyTypeFullName);
+                        var proxyWriterClassName = isBufferWriter ? "BufferWriters" : "StreamWriters";
+                        _sb.AppendIndentedLine($"{proxyPrefix}{proxyWriterClassName}.Write{proxy.ProxyClassName}{proxyMethodSuffix}(ref {writerName}, proxyItem);");
+                        if (proxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"proxyItem.{proxy.ReturnMethodName}();");
+                    }
+                    else
+                    {
+                        var className = TypeNameHelper.GetClassName(elementType);
+                        var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
+                        var writerClass = NamespaceHelper.GetWritersClass(elementType, isBufferWriter ? "BufferWriters" : "StreamWriters", _registry);
+                        var methodSuffix = GetWriteMethodSuffix(elementType);
+                        var sizeSuffix = "ContentSize";
+                        _sb.AppendIndentedLine("var sizeCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+                        _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref sizeCalc, {varName});");
+                        _sb.AppendIndentedLine($"{writerName}.WriteVarUInt32((uint)sizeCalc.Length);");
+                        _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref {writerName}, {varName});");
+                    }
                 }
             }
         }
@@ -919,17 +1027,30 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else
             {
-                // For complex elements: each is field_tag + length_prefix + content
-                var className = TypeNameHelper.GetClassName(elementType);
-                var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
-                bool isDerivedType = _registry.IsDerivedType(elementType);
-                var sizeSuffix = "ContentSize";
-
+                var proxy = GetProxy(elementType);
                 _sb.AppendIndentedLine($"foreach (var _elem_{safeVarName}_{fieldNumber} in {varName})");
                 _sb.StartNewBlock();
-                _sb.AppendIndentedLine($"var _elemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
-                _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref _elemCalc_{safeVarName}_{fieldNumber}, _elem_{safeVarName}_{fieldNumber});");
-                _sb.AppendIndentedLine($"{resultVarName} += {tagSize} + global::GProtobuf.Core.Utils.GetVarintSize((uint)_elemCalc_{safeVarName}_{fieldNumber}.Length) + _elemCalc_{safeVarName}_{fieldNumber}.Length;");
+
+                if (proxy != null)
+                {
+                    var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                    _sb.AppendIndentedLine($"var _proxyElem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(_elem_{safeVarName}_{fieldNumber}{proxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var _elemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _elemCalc_{safeVarName}_{fieldNumber}, _proxyElem_{safeVarName}_{fieldNumber});");
+                    _sb.AppendIndentedLine($"{resultVarName} += {tagSize} + global::GProtobuf.Core.Utils.GetVarintSize((uint)_elemCalc_{safeVarName}_{fieldNumber}.Length) + _elemCalc_{safeVarName}_{fieldNumber}.Length;");
+                    if (proxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"_proxyElem_{safeVarName}_{fieldNumber}.{proxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    var className = TypeNameHelper.GetClassName(elementType);
+                    var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
+                    var sizeSuffix = "ContentSize";
+                    _sb.AppendIndentedLine($"var _elemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref _elemCalc_{safeVarName}_{fieldNumber}, _elem_{safeVarName}_{fieldNumber});");
+                    _sb.AppendIndentedLine($"{resultVarName} += {tagSize} + global::GProtobuf.Core.Utils.GetVarintSize((uint)_elemCalc_{safeVarName}_{fieldNumber}.Length) + _elemCalc_{safeVarName}_{fieldNumber}.Length;");
+                }
+
                 _sb.EndBlock();
             }
 
@@ -981,16 +1102,32 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 var tag = (fieldNumber << 3) | 2;
                 TagCodeHelper.WriteTagValue(_sb, tag);
 
-                var className = TypeNameHelper.GetClassName(elementType);
-                var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
-                var writerClass = NamespaceHelper.GetWritersClass(elementType, writerClassName, _registry);
-                var methodSuffix = GetWriteMethodSuffix(elementType);
-                var sizeSuffix = "ContentSize";
+                var proxy = GetProxy(elementType);
+                if (proxy != null)
+                {
+                    var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                    _sb.AppendIndentedLine($"var _proxyElem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(_elem_{safeVarName}_{fieldNumber}{proxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var _elemWriteCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _elemWriteCalc_{safeVarName}_{fieldNumber}, _proxyElem_{safeVarName}_{fieldNumber});");
+                    _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)_elemWriteCalc_{safeVarName}_{fieldNumber}.Length);");
+                    var proxyMethodSuffix = GetWriteMethodSuffix(proxy.ProxyTypeFullName);
+                    _sb.AppendIndentedLine($"{proxyPrefix}{writerClassName}.Write{proxy.ProxyClassName}{proxyMethodSuffix}(ref writer, _proxyElem_{safeVarName}_{fieldNumber});");
+                    if (proxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"_proxyElem_{safeVarName}_{fieldNumber}.{proxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    var className = TypeNameHelper.GetClassName(elementType);
+                    var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
+                    var writerClass = NamespaceHelper.GetWritersClass(elementType, writerClassName, _registry);
+                    var methodSuffix = GetWriteMethodSuffix(elementType);
+                    var sizeSuffix = "ContentSize";
 
-                _sb.AppendIndentedLine($"var _elemWriteCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
-                _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref _elemWriteCalc_{safeVarName}_{fieldNumber}, _elem_{safeVarName}_{fieldNumber});");
-                _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)_elemWriteCalc_{safeVarName}_{fieldNumber}.Length);");
-                _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref writer, _elem_{safeVarName}_{fieldNumber});");
+                    _sb.AppendIndentedLine($"var _elemWriteCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref _elemWriteCalc_{safeVarName}_{fieldNumber}, _elem_{safeVarName}_{fieldNumber});");
+                    _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)_elemWriteCalc_{safeVarName}_{fieldNumber}.Length);");
+                    _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref writer, _elem_{safeVarName}_{fieldNumber});");
+                }
             }
 
             _sb.EndBlock();
@@ -1029,17 +1166,28 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 }
                 else
                 {
-                    // Custom type (class or struct) - no null check, let it fail naturally if null class is passed
-                    var className = TypeNameHelper.GetClassName(typeName);
-                    var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeName, _registry);
                     var safeVarName = varName.Replace(".", "_").Replace("[", "_").Replace("]", "_");
-                    // For derived types with ProtoInclude, use full Calculate method (handles wrapper)
-                    // For non-derived types, use CalculateContentSize method
-                    bool isDerivedType = _registry.IsDerivedType(typeName);
-                    var sizeSuffix = "ContentSize";
-                    _sb.AppendIndentedLine($"var _calc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
-                    _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref _calc_{safeVarName}_{fieldNumber}, {varName});");
-                    _sb.AppendIndentedLine($"var {resultVarName} = {tagSize} + global::GProtobuf.Core.Utils.GetVarintSize((uint)_calc_{safeVarName}_{fieldNumber}.Length) + _calc_{safeVarName}_{fieldNumber}.Length;");
+                    var proxy = GetProxy(typeName);
+                    if (proxy != null)
+                    {
+                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        _sb.AppendIndentedLine($"var _proxyCalc_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({varName}{proxy.CreateExtraArgs});");
+                        _sb.AppendIndentedLine($"var _calc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                        _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _calc_{safeVarName}_{fieldNumber}, _proxyCalc_{safeVarName}_{fieldNumber});");
+                        _sb.AppendIndentedLine($"var {resultVarName} = {tagSize} + global::GProtobuf.Core.Utils.GetVarintSize((uint)_calc_{safeVarName}_{fieldNumber}.Length) + _calc_{safeVarName}_{fieldNumber}.Length;");
+                        if (proxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"_proxyCalc_{safeVarName}_{fieldNumber}.{proxy.ReturnMethodName}();");
+                    }
+                    else
+                    {
+                        // Custom type (class or struct) - no null check, let it fail naturally if null class is passed
+                        var className = TypeNameHelper.GetClassName(typeName);
+                        var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeName, _registry);
+                        var sizeSuffix = "ContentSize";
+                        _sb.AppendIndentedLine($"var _calc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                        _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref _calc_{safeVarName}_{fieldNumber}, {varName});");
+                        _sb.AppendIndentedLine($"var {resultVarName} = {tagSize} + global::GProtobuf.Core.Utils.GetVarintSize((uint)_calc_{safeVarName}_{fieldNumber}.Length) + _calc_{safeVarName}_{fieldNumber}.Length;");
+                    }
                 }
             }
         }
@@ -1081,18 +1229,31 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 }
                 else
                 {
-                    // For complex elements, generate loop with WriteSizeCalculator
-                    var className = TypeNameHelper.GetClassName(elementType);
-                    var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
-                    // For derived types with ProtoInclude, use full Calculate method (handles wrapper)
-                    // For non-derived types, use CalculateContentSize method
-                    bool isDerivedType = _registry.IsDerivedType(elementType);
-                    var sizeSuffix = "ContentSize";
+                    var proxy = GetProxy(elementType);
                     _sb.AppendIndentedLine($"foreach (var _item_{safeVarName}_{fieldNumber} in {varName})");
                     _sb.StartNewBlock();
-                    _sb.AppendIndentedLine($"var _itemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
-                    _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref _itemCalc_{safeVarName}_{fieldNumber}, _item_{safeVarName}_{fieldNumber});");
-                    _sb.AppendIndentedLine($"_listContentSize_{safeVarName}_{fieldNumber} += 1 + global::GProtobuf.Core.Utils.GetVarintSize((uint)_itemCalc_{safeVarName}_{fieldNumber}.Length) + _itemCalc_{safeVarName}_{fieldNumber}.Length;");
+
+                    if (proxy != null)
+                    {
+                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        _sb.AppendIndentedLine($"var _proxyItem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(_item_{safeVarName}_{fieldNumber}{proxy.CreateExtraArgs});");
+                        _sb.AppendIndentedLine($"var _itemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                        _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _itemCalc_{safeVarName}_{fieldNumber}, _proxyItem_{safeVarName}_{fieldNumber});");
+                        _sb.AppendIndentedLine($"_listContentSize_{safeVarName}_{fieldNumber} += 1 + global::GProtobuf.Core.Utils.GetVarintSize((uint)_itemCalc_{safeVarName}_{fieldNumber}.Length) + _itemCalc_{safeVarName}_{fieldNumber}.Length;");
+                        if (proxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"_proxyItem_{safeVarName}_{fieldNumber}.{proxy.ReturnMethodName}();");
+                    }
+                    else
+                    {
+                        // For complex elements, generate loop with WriteSizeCalculator
+                        var className = TypeNameHelper.GetClassName(elementType);
+                        var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
+                        var sizeSuffix = "ContentSize";
+                        _sb.AppendIndentedLine($"var _itemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                        _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref _itemCalc_{safeVarName}_{fieldNumber}, _item_{safeVarName}_{fieldNumber});");
+                        _sb.AppendIndentedLine($"_listContentSize_{safeVarName}_{fieldNumber} += 1 + global::GProtobuf.Core.Utils.GetVarintSize((uint)_itemCalc_{safeVarName}_{fieldNumber}.Length) + _itemCalc_{safeVarName}_{fieldNumber}.Length;");
+                    }
+
                     _sb.EndBlock();
                 }
             }
@@ -1178,16 +1339,32 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else
             {
-                // Complex type - write as length-delimited using WriteSizeCalculator
-                var className = TypeNameHelper.GetClassName(typeName);
-                var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeName, _registry);
-                var writerClass = NamespaceHelper.GetWritersClass(typeName, writerClassName, _registry);
-                var methodSuffix = GetWriteMethodSuffix(typeName);
-                var sizeSuffix = "ContentSize";
-                _sb.AppendIndentedLine($"var sizeCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
-                _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref sizeCalc_{fieldNumber}, {varName});");
-                _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)sizeCalc_{fieldNumber}.Length);");
-                _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref writer, {varName});");
+                var proxy = GetProxy(typeName);
+                if (proxy != null)
+                {
+                    var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                    _sb.AppendIndentedLine($"var proxy_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({varName}{proxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var sizeCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref sizeCalc_{fieldNumber}, proxy_{fieldNumber});");
+                    _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)sizeCalc_{fieldNumber}.Length);");
+                    var proxyMethodSuffix = GetWriteMethodSuffix(proxy.ProxyTypeFullName);
+                    _sb.AppendIndentedLine($"{proxyPrefix}{writerClassName}.Write{proxy.ProxyClassName}{proxyMethodSuffix}(ref writer, proxy_{fieldNumber});");
+                    if (proxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxy_{fieldNumber}.{proxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    // Complex type - write as length-delimited using WriteSizeCalculator
+                    var className = TypeNameHelper.GetClassName(typeName);
+                    var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(typeName, _registry);
+                    var writerClass = NamespaceHelper.GetWritersClass(typeName, writerClassName, _registry);
+                    var methodSuffix = GetWriteMethodSuffix(typeName);
+                    var sizeSuffix = "ContentSize";
+                    _sb.AppendIndentedLine($"var sizeCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                    _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref sizeCalc_{fieldNumber}, {varName});");
+                    _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)sizeCalc_{fieldNumber}.Length);");
+                    _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref writer, {varName});");
+                }
             }
         }
 
@@ -1236,15 +1413,26 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     }
                     else
                     {
-                        var className = TypeNameHelper.GetClassName(elementType);
-                        var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
-                        // For derived types with ProtoInclude, use full Calculate method (handles wrapper)
-                        // For non-derived types, use CalculateContentSize method
-                        bool isDerivedType = _registry.IsDerivedType(elementType);
-                        var sizeSuffix = "ContentSize";
-                        _sb.AppendIndentedLine($"var itemCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
-                        _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref itemCalc_{fieldNumber}, item_{fieldNumber});");
-                        _sb.AppendIndentedLine($"{listSizeVar} += 1 + global::GProtobuf.Core.Utils.GetVarintSize((uint)itemCalc_{fieldNumber}.Length) + itemCalc_{fieldNumber}.Length;");
+                        var proxy = GetProxy(elementType);
+                        if (proxy != null)
+                        {
+                            var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                            _sb.AppendIndentedLine($"var proxyItem_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item_{fieldNumber}{proxy.CreateExtraArgs});");
+                            _sb.AppendIndentedLine($"var itemCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                            _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref itemCalc_{fieldNumber}, proxyItem_{fieldNumber});");
+                            _sb.AppendIndentedLine($"{listSizeVar} += 1 + global::GProtobuf.Core.Utils.GetVarintSize((uint)itemCalc_{fieldNumber}.Length) + itemCalc_{fieldNumber}.Length;");
+                            if (proxy.ReturnMethodName != null)
+                                _sb.AppendIndentedLine($"proxyItem_{fieldNumber}.{proxy.ReturnMethodName}();");
+                        }
+                        else
+                        {
+                            var className = TypeNameHelper.GetClassName(elementType);
+                            var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
+                            var sizeSuffix = "ContentSize";
+                            _sb.AppendIndentedLine($"var itemCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                            _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref itemCalc_{fieldNumber}, item_{fieldNumber});");
+                            _sb.AppendIndentedLine($"{listSizeVar} += 1 + global::GProtobuf.Core.Utils.GetVarintSize((uint)itemCalc_{fieldNumber}.Length) + itemCalc_{fieldNumber}.Length;");
+                        }
                     }
                 }
                 _sb.EndBlock();
@@ -1296,16 +1484,33 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 }
                 else
                 {
-                    var className = TypeNameHelper.GetClassName(elementType);
-                    var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
-                    var writerClass = NamespaceHelper.GetWritersClass(elementType, writerClassName, _registry);
-                    var methodSuffix = GetWriteMethodSuffix(elementType);
-                    var sizeSuffix = "ContentSize";
                     _sb.AppendIndentedLine("writer.WriteSingleByte(0x0A); // field 1, wire type 2");
-                    _sb.AppendIndentedLine($"var itemWriteCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
-                    _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref itemWriteCalc_{fieldNumber}, item_{fieldNumber});");
-                    _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)itemWriteCalc_{fieldNumber}.Length);");
-                    _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref writer, item_{fieldNumber});");
+
+                    var proxy = GetProxy(elementType);
+                    if (proxy != null)
+                    {
+                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        _sb.AppendIndentedLine($"var proxyItem_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item_{fieldNumber}{proxy.CreateExtraArgs});");
+                        _sb.AppendIndentedLine($"var itemWriteCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                        _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref itemWriteCalc_{fieldNumber}, proxyItem_{fieldNumber});");
+                        _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)itemWriteCalc_{fieldNumber}.Length);");
+                        var proxyMethodSuffix = GetWriteMethodSuffix(proxy.ProxyTypeFullName);
+                        _sb.AppendIndentedLine($"{proxyPrefix}{writerClassName}.Write{proxy.ProxyClassName}{proxyMethodSuffix}(ref writer, proxyItem_{fieldNumber});");
+                        if (proxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"proxyItem_{fieldNumber}.{proxy.ReturnMethodName}();");
+                    }
+                    else
+                    {
+                        var className = TypeNameHelper.GetClassName(elementType);
+                        var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
+                        var writerClass = NamespaceHelper.GetWritersClass(elementType, writerClassName, _registry);
+                        var methodSuffix = GetWriteMethodSuffix(elementType);
+                        var sizeSuffix = "ContentSize";
+                        _sb.AppendIndentedLine($"var itemWriteCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
+                        _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{className}{sizeSuffix}(ref itemWriteCalc_{fieldNumber}, item_{fieldNumber});");
+                        _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)itemWriteCalc_{fieldNumber}.Length);");
+                        _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref writer, item_{fieldNumber});");
+                    }
                 }
             }
             _sb.EndBlock();

@@ -767,7 +767,7 @@ namespace GProtobuf.Generator.V2
             // Generate deserializers for standalone types (List<T>, T[], Dictionary<K,V>)
             if (standaloneTypes.Count > 0)
             {
-                var standaloneGenerator = new StandaloneTypeGenerator(sb, _registry, _options);
+                var standaloneGenerator = new StandaloneTypeGenerator(sb, _registry, _options, _proxyRegistry);
                 standaloneGenerator.GenerateDeserializers(standaloneTypes);
             }
 
@@ -949,7 +949,7 @@ namespace GProtobuf.Generator.V2
             // Generate serializers for standalone types (List<T>, T[], Dictionary<K,V>)
             if (standaloneTypes.Count > 0)
             {
-                var standaloneGenerator = new StandaloneTypeGenerator(sb, _registry, _options);
+                var standaloneGenerator = new StandaloneTypeGenerator(sb, _registry, _options, _proxyRegistry);
                 standaloneGenerator.GenerateSerializers(standaloneTypes);
             }
 

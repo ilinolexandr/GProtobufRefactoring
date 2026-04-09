@@ -49,7 +49,7 @@ namespace TestMessages
     }
 }
 
-namespace GProtobuf.CrossTests.Refactored
+namespace GProtobuf.Tests
 {
     /// <summary>Cross-namespace proxy тест: proxy в TestProxies, message в TestMessages</summary>
     public sealed class CrossNamespaceProxyTests : BaseSerializationTest

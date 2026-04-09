@@ -398,13 +398,31 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
 
             // Custom class type
-            var className = TypeNameHelper.GetClassName(elementType);
-            var readersClass = NamespaceHelper.GetStreamReadersClass(elementType, _typeRegistry);
+            var proxy = _proxyRegistry?.GetProxy(elementType);
+            if (proxy == null && elementType.EndsWith("?"))
+                proxy = _proxyRegistry?.GetProxy(elementType.TrimEnd('?'));
+
             sb.AppendIndentedLine("var itemLength = reader.ReadVarUInt32();");
             sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit((int)itemLength);");
-            sb.AppendIndentedLine($"var item = {readersClass}.Read{className}Content(ref reader);");
-            sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
-            sb.AppendIndentedLine($"{targetVar}.Add(item);");
+
+            if (proxy != null)
+            {
+                var proxyPrefix = string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
+                sb.AppendIndentedLine($"var proxyItem = {proxyPrefix}StreamReaders.Read{proxy.ProxyClassName}Content(ref reader);");
+                sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                sb.AppendIndentedLine($"var item = proxyItem.{proxy.ConvertMethodName}();");
+                if (proxy.ReturnMethodName != null)
+                    sb.AppendIndentedLine($"proxyItem.{proxy.ReturnMethodName}();");
+                sb.AppendIndentedLine($"{targetVar}.Add(item);");
+            }
+            else
+            {
+                var className = TypeNameHelper.GetClassName(elementType);
+                var readersClass = NamespaceHelper.GetStreamReadersClass(elementType, _typeRegistry);
+                sb.AppendIndentedLine($"var item = {readersClass}.Read{className}Content(ref reader);");
+                sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                sb.AppendIndentedLine($"{targetVar}.Add(item);");
+            }
         }
 
         #endregion

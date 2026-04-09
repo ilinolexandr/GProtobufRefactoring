@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using GProtobuf.Core;
+using GProtobuf.Tests;
 using GProtobuf.Tests.TestModel;
 using GProtobuf.CrossTests.TestModel;
 using Xunit;
@@ -31,6 +32,10 @@ using System.Drawing;
 [assembly: GenerateSerializer(typeof(List<VerticalAlign>))]
 [assembly: GenerateSerializer(typeof(int[]))]
 [assembly: GenerateSerializer(typeof(string[]))]
+
+// Register standalone serializer for proxy types
+[assembly: GenerateSerializer(typeof(List<ExternalVector3>))]
+[assembly: GenerateSerializer(typeof(ExternalVector3[]))]
 
 // Register standalone serializers for dictionaries
 [assembly: GenerateSerializer(typeof(Dictionary<int, int>))]
@@ -754,6 +759,54 @@ namespace GProtobuf.CrossTests
             Assert.Equal(42, item.Id);
             Assert.Equal("Parent", item.Description);
             Assert.Equal("Child", item.Description15);
+        }
+
+        #endregion
+
+        #region Proxy Type Standalone Serializers
+
+        [Fact]
+        public void Test_GenerateSerializer_ListOfExternalVector3_RoundTrip()
+        {
+            var list = new List<ExternalVector3>
+            {
+                new(1f, 2f, 3f),
+                new(4f, 5f, 6f),
+                new(7f, 8f, 9f)
+            };
+
+            using var ms = new MemoryStream();
+            GProtobuf.Tests.Serialization.Serializers.SerializeListOfExternalVector3(ms, list);
+            var data = ms.ToArray();
+            Assert.True(data.Length > 0);
+
+            var result = GProtobuf.Tests.Serialization.Deserializers.DeserializeListOfExternalVector3(data);
+            Assert.Equal(3, result.Count);
+            Assert.Equal(1f, result[0].X);
+            Assert.Equal(2f, result[0].Y);
+            Assert.Equal(3f, result[0].Z);
+            Assert.Equal(4f, result[1].X);
+            Assert.Equal(9f, result[2].Z);
+        }
+
+        [Fact]
+        public void Test_GenerateSerializer_ArrayOfExternalVector3_RoundTrip()
+        {
+            var array = new ExternalVector3[]
+            {
+                new(10f, 20f, 30f),
+                new(40f, 50f, 60f)
+            };
+
+            using var ms = new MemoryStream();
+            GProtobuf.Tests.Serialization.Serializers.SerializeArrayOfExternalVector3(ms, array);
+            var data = ms.ToArray();
+            Assert.True(data.Length > 0);
+
+            var result = GProtobuf.Tests.Serialization.Deserializers.DeserializeArrayOfExternalVector3(data);
+            Assert.Equal(2, result.Length);
+            Assert.Equal(10f, result[0].X);
+            Assert.Equal(60f, result[1].Z);
         }
 
         #endregion
