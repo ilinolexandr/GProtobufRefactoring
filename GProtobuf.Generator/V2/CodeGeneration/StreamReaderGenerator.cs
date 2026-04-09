@@ -1816,6 +1816,15 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         }
                     }
 
+                    // Custom buffer fields
+                    if (type.CustomBufferMembers != null)
+                    {
+                        foreach (var customMember in type.CustomBufferMembers)
+                        {
+                            GenerateCustomBufferFieldReadCase(customMember, "result");
+                        }
+                    }
+
                     // Default - skip unknown fields
                     _sb.AppendIndentedLine("default:");
                     _sb.IncreaseIndent();
@@ -1855,6 +1864,15 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 foreach (var member in GeneratorHelpers.GetSortedFieldsForDispatch(type.ProtoMembers))
                 {
                     GenerateFieldReadCase(member, nsPrefix);
+                }
+            }
+
+            // Custom buffer fields
+            if (type.CustomBufferMembers != null)
+            {
+                foreach (var customMember in type.CustomBufferMembers)
+                {
+                    GenerateCustomBufferFieldReadCase(customMember, "result");
                 }
             }
 
@@ -2798,14 +2816,29 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendNewLine();
 
             // Use sorted dispatch for optimal branch prediction (PGO heuristic)
-            if (type.ProtoMembers != null && type.ProtoMembers.Count > 0)
+            bool hasProtoMembers = type.ProtoMembers != null && type.ProtoMembers.Count > 0;
+            bool hasCustomBufferMembers = type.CustomBufferMembers != null && type.CustomBufferMembers.Count > 0;
+
+            if (hasProtoMembers || hasCustomBufferMembers)
             {
                 _sb.AppendIndentedLine("switch (fieldId)");
                 _sb.StartNewBlock();
 
-                foreach (var member in GeneratorHelpers.GetSortedFieldsForDispatch(type.ProtoMembers))
+                if (hasProtoMembers)
                 {
-                    GeneratePopulateFieldReadCase(member, nsPrefix);
+                    foreach (var member in GeneratorHelpers.GetSortedFieldsForDispatch(type.ProtoMembers))
+                    {
+                        GeneratePopulateFieldReadCase(member, nsPrefix);
+                    }
+                }
+
+                // Custom buffer fields
+                if (hasCustomBufferMembers)
+                {
+                    foreach (var customMember in type.CustomBufferMembers)
+                    {
+                        GenerateCustomBufferFieldPopulateCase(customMember);
+                    }
                 }
 
                 _sb.AppendIndentedLine("default:");
@@ -2883,6 +2916,63 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (arrayTypeName == null || !arrayTypeName.EndsWith("[]"))
                 return arrayTypeName;
             return arrayTypeName.Substring(0, arrayTypeName.Length - 2);
+        }
+
+        /// <summary>
+        /// Generates switch case for reading a custom buffer field.
+        /// </summary>
+        private void GenerateCustomBufferFieldReadCase(CustomBufferMember member, string objectName)
+        {
+            _sb.AppendIndentedLine($"case {member.FieldId}: {{");
+            _sb.IncreaseIndent();
+
+            _sb.AppendIndentedLine($"// Custom buffer field {member.FieldId}");
+
+            if (!string.IsNullOrEmpty(member.ReadMethodName))
+            {
+                // Read length-delimited data and call user's read method
+                _sb.AppendIndentedLine("var customData = reader.ReadByteArray();");
+                _sb.AppendIndentedLine($"{objectName}.{member.ReadMethodName}(customData);");
+            }
+            else
+            {
+                // No read method - skip the field
+                _sb.AppendIndentedLine("// WARNING: No ReadMethod defined, skipping field");
+                _sb.AppendIndentedLine("reader.SkipField(wireType);");
+            }
+
+            _sb.AppendIndentedLine("break;");
+            _sb.DecreaseIndent();
+            _sb.AppendIndentedLine("}");
+        }
+
+        /// <summary>
+        /// Generates switch case for populating a custom buffer field.
+        /// Uses 'instance' instead of 'result'.
+        /// </summary>
+        private void GenerateCustomBufferFieldPopulateCase(CustomBufferMember member)
+        {
+            _sb.AppendIndentedLine($"case {member.FieldId}: {{");
+            _sb.IncreaseIndent();
+
+            _sb.AppendIndentedLine($"// Custom buffer field {member.FieldId}");
+
+            if (!string.IsNullOrEmpty(member.ReadMethodName))
+            {
+                // Read length-delimited data and call user's read method
+                _sb.AppendIndentedLine("var customData = reader.ReadByteArray();");
+                _sb.AppendIndentedLine($"instance.{member.ReadMethodName}(customData);");
+            }
+            else
+            {
+                // No read method - skip the field
+                _sb.AppendIndentedLine("// WARNING: No ReadMethod defined, skipping field");
+                _sb.AppendIndentedLine("reader.SkipField(wireType);");
+            }
+
+            _sb.AppendIndentedLine("break;");
+            _sb.DecreaseIndent();
+            _sb.AppendIndentedLine("}");
         }
 
         /// <summary>
