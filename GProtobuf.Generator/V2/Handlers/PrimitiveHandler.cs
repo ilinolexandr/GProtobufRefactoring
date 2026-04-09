@@ -207,9 +207,10 @@ namespace GProtobuf.Generator.V2.Handlers
                     }
                     else
                     {
-                        // HashSet case
-                        var assignment = GenerateCollectionAssignment(targetVar, elementTypeName, collectionKind, collectionTypeName, "tempList.ToArray()");
-                        sb.AppendIndentedLine(assignment);
+                        // HashSet - use foreach to avoid intermediate array allocation
+                        var shortElementType = TypeMapping.GetShortTypeName(elementTypeName);
+                        sb.AppendIndentedLine($"{targetVar} = new global::System.Collections.Generic.HashSet<{shortElementType}>(tempList.Count);");
+                        sb.AppendIndentedLine($"foreach (var item in tempList) {targetVar}.Add(item);");
                     }
                 }
                 else if (collectionKind == CollectionKind.InterfaceCollection)
@@ -244,9 +245,9 @@ namespace GProtobuf.Generator.V2.Handlers
 
                     if (!isSystemHashSet && !isSystemList)
                     {
-                        // Custom collection - create empty instance and add elements via loop
+                        // Custom collection - create empty instance and add elements via foreach (no intermediate array)
                         sb.AppendIndentedLine($"{targetVar} = new global::{collectionTypeName}();");
-                        sb.AppendIndentedLine($"foreach (var item in resultCollector.ToArray()) {targetVar}.Add(item);");
+                        sb.AppendIndentedLine($"foreach (var item in resultCollector) {targetVar}.Add(item);");
                     }
                     else if (isSystemList)
                     {
@@ -255,9 +256,10 @@ namespace GProtobuf.Generator.V2.Handlers
                     }
                     else
                     {
-                        // HashSet case
-                        var assignment = GenerateCollectionAssignment(targetVar, elementTypeName, collectionKind, collectionTypeName, "resultCollector.ToArray()");
-                        sb.AppendIndentedLine(assignment);
+                        // HashSet - use foreach to avoid intermediate array allocation
+                        var shortElementType = TypeMapping.GetShortTypeName(elementTypeName);
+                        sb.AppendIndentedLine($"{targetVar} = new global::System.Collections.Generic.HashSet<{shortElementType}>(resultCollector.Count);");
+                        sb.AppendIndentedLine($"foreach (var item in resultCollector) {targetVar}.Add(item);");
                     }
                 }
                 else if (collectionKind == CollectionKind.InterfaceCollection)
