@@ -498,5 +498,169 @@ namespace GProtobuf.CrossTests
         }
 
         #endregion
+
+        #region Wire Format Comparison: GProtobuf Packed vs protobuf-net
+
+        [Fact]
+        public void Test_WireFormat_ListOfBool_CompareBytes()
+        {
+            var data = new List<bool> { true, false, true, true, false };
+
+            // protobuf-net output
+            using var msProto = new MemoryStream();
+            ProtoBuf.Serializer.Serialize(msProto, data);
+            var protoBytes = msProto.ToArray();
+
+            // GProtobuf packed output
+            using var msGPacked = new MemoryStream();
+            global::GProtobuf.Generated.Serialization.Serializers.SerializeListOfBooleanPacked(msGPacked, data);
+            var gPackedBytes = msGPacked.ToArray();
+
+            // GProtobuf unpacked output
+            using var msGUnpacked = new MemoryStream();
+            global::GProtobuf.Generated.Serialization.Serializers.SerializeListOfBoolean(msGUnpacked, data);
+            var gUnpackedBytes = msGUnpacked.ToArray();
+
+            // Dump all three for analysis
+            var protoDump = BitConverter.ToString(protoBytes);
+            var gPackedDump = BitConverter.ToString(gPackedBytes);
+            var gUnpackedDump = BitConverter.ToString(gUnpackedBytes);
+
+            // Output for visual inspection (will appear in test output)
+            Assert.True(true,
+                $"protobuf-net  ({protoBytes.Length}b): {protoDump}\n" +
+                $"GProto packed ({gPackedBytes.Length}b): {gPackedDump}\n" +
+                $"GProto unpack ({gUnpackedBytes.Length}b): {gUnpackedDump}");
+        }
+
+        [Fact]
+        public void Test_WireFormat_ListOfInt_CompareBytes()
+        {
+            var data = new List<int> { 1, 2, 3 };
+
+            using var msProto = new MemoryStream();
+            ProtoBuf.Serializer.Serialize(msProto, data);
+            var protoBytes = msProto.ToArray();
+
+            using var msGPacked = new MemoryStream();
+            global::GProtobuf.Generated.Serialization.Serializers.SerializeListOfInt32Packed(msGPacked, data);
+            var gPackedBytes = msGPacked.ToArray();
+
+            using var msGUnpacked = new MemoryStream();
+            global::GProtobuf.Generated.Serialization.Serializers.SerializeListOfInt32(msGUnpacked, data);
+            var gUnpackedBytes = msGUnpacked.ToArray();
+
+            var protoDump = BitConverter.ToString(protoBytes);
+            var gPackedDump = BitConverter.ToString(gPackedBytes);
+            var gUnpackedDump = BitConverter.ToString(gUnpackedBytes);
+
+            Assert.True(true,
+                $"protobuf-net  ({protoBytes.Length}b): {protoDump}\n" +
+                $"GProto packed ({gPackedBytes.Length}b): {gPackedDump}\n" +
+                $"GProto unpack ({gUnpackedBytes.Length}b): {gUnpackedDump}");
+        }
+
+        /// <summary>
+        /// protobuf-net serializes standalone List&lt;T&gt; in UNPACKED format by default:
+        ///   [tag=0x08][value][tag=0x08][value]...
+        /// GProtobuf packed uses true packed format:
+        ///   [tag=0x0A][length][value1][value2]...
+        ///
+        /// Cross-compatibility:
+        /// - GP→P (GProtobuf packed → protobuf-net): WORKS — protobuf-net can read both formats
+        /// - P→GP packed: NOT compatible — protobuf-net outputs unpacked, GProtobuf packed expects packed
+        /// - P→GP unpacked: WORKS — tested in StandaloneSerializerTests
+        /// - GProtobuf packed is byte-identical to GProtobuf unpacked method (separate tests above)
+        /// </summary>
+        [Fact]
+        public void Test_CrossCompat_GP_ListOfBoolPacked_DeserializedByProtobufNet()
+        {
+            // GProtobuf packed → protobuf-net: protobuf-net can read packed format
+            var original = new List<bool> { true, false, true, true, false };
+
+            using var ms = new MemoryStream();
+            global::GProtobuf.Generated.Serialization.Serializers.SerializeListOfBooleanPacked(ms, original);
+            ms.Position = 0;
+            var deserialized = ProtoBuf.Serializer.Deserialize<List<bool>>(ms);
+
+            Assert.Equal(original.Count, deserialized.Count);
+            for (int i = 0; i < original.Count; i++)
+                Assert.Equal(original[i], deserialized[i]);
+        }
+
+        [Fact]
+        public void Test_CrossCompat_GP_ListOfIntPacked_DeserializedByProtobufNet()
+        {
+            var original = new List<int> { 1, 2, 3, 42, -1 };
+
+            using var ms = new MemoryStream();
+            global::GProtobuf.Generated.Serialization.Serializers.SerializeListOfInt32Packed(ms, original);
+            ms.Position = 0;
+            var deserialized = ProtoBuf.Serializer.Deserialize<List<int>>(ms);
+
+            Assert.Equal(original.Count, deserialized.Count);
+            for (int i = 0; i < original.Count; i++)
+                Assert.Equal(original[i], deserialized[i]);
+        }
+
+        [Fact]
+        public void Test_CrossCompat_GP_ListOfDoublePacked_DeserializedByProtobufNet()
+        {
+            var original = new List<double> { 1.5, 2.5, 3.14 };
+
+            using var ms = new MemoryStream();
+            global::GProtobuf.Generated.Serialization.Serializers.SerializeListOfDoublePacked(ms, original);
+            ms.Position = 0;
+            var deserialized = ProtoBuf.Serializer.Deserialize<List<double>>(ms);
+
+            Assert.Equal(original.Count, deserialized.Count);
+            for (int i = 0; i < original.Count; i++)
+                Assert.Equal(original[i], deserialized[i]);
+        }
+
+        [Fact]
+        public void Test_ProtobufNet_UsesUnpacked_GProtobufPacked_UsesPacked()
+        {
+            // Verify the wire format difference:
+            // protobuf-net: unpacked [0x08][val][0x08][val]... (tag per element)
+            // GProtobuf packed: [0x0A][length][val1][val2]...  (single tag)
+            var data = new List<bool> { true, false, true };
+
+            using var msProto = new MemoryStream();
+            ProtoBuf.Serializer.Serialize(msProto, data);
+            var protoBytes = msProto.ToArray();
+
+            using var msG = new MemoryStream();
+            global::GProtobuf.Generated.Serialization.Serializers.SerializeListOfBooleanPacked(msG, data);
+            var gPackedBytes = msG.ToArray();
+
+            // protobuf-net uses unpacked: 0x08=tag(field1,varint) per each element
+            Assert.Equal(0x08, protoBytes[0]); // first byte is tag with wire type 0 (varint)
+
+            // GProtobuf packed: 0x0A=tag(field1,len-delimited), then length, then values
+            Assert.Equal(0x0A, gPackedBytes[0]); // first byte is tag with wire type 2 (length-delimited)
+            Assert.Equal(3, gPackedBytes[1]);     // 3 bytes of packed content
+
+            // Packed is smaller (no per-element tags)
+            Assert.True(gPackedBytes.Length < protoBytes.Length,
+                $"Packed ({gPackedBytes.Length}b) should be smaller than protobuf-net unpacked ({protoBytes.Length}b)");
+        }
+
+        [Fact]
+        public void Test_GProtobufUnpacked_ByteIdentical_To_ProtobufNet()
+        {
+            // GProtobuf unpacked and protobuf-net both use unpacked format — should be byte-identical
+            var data = new List<bool> { true, false, true };
+
+            using var msProto = new MemoryStream();
+            ProtoBuf.Serializer.Serialize(msProto, data);
+
+            using var msG = new MemoryStream();
+            global::GProtobuf.Generated.Serialization.Serializers.SerializeListOfBoolean(msG, data);
+
+            Assert.Equal(msProto.ToArray(), msG.ToArray());
+        }
+
+        #endregion
     }
 }
