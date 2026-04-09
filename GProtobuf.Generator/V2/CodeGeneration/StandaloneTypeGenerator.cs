@@ -25,46 +25,19 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private readonly StringBuilderWithIndent _sb;
         private readonly TypeRegistry _registry;
         private readonly GeneratorOptions _options;
-        private readonly ProxyRegistry _proxyRegistry;
+        private readonly ProxyCodeHelper _proxyHelper;
 
         public StandaloneTypeGenerator(StringBuilderWithIndent sb, TypeRegistry registry, GeneratorOptions options = null, ProxyRegistry proxyRegistry = null)
         {
             _sb = sb;
             _registry = registry;
             _options = options ?? GeneratorOptions.Default;
-            _proxyRegistry = proxyRegistry;
+            _proxyHelper = new ProxyCodeHelper(sb, proxyRegistry, registry);
         }
 
-        private ProxyDefinition GetProxy(string typeName)
-        {
-            if (_proxyRegistry == null) return null;
-            var result = _proxyRegistry.GetProxy(typeName);
-            if (result != null) return result;
-            if (typeName.EndsWith("?"))
-                result = _proxyRegistry.GetProxy(typeName.TrimEnd('?'));
-            return result;
-        }
+        private ProxyDefinition GetProxy(string typeName) => _proxyHelper.GetProxy(typeName);
 
-        private static string GetProxyQualifiedPrefix(ProxyDefinition proxy)
-        {
-            return string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
-        }
-
-        /// <summary>
-        /// Returns the write method suffix: "" for derived types or simple types without callbacks,
-        /// "Content" for types that still need WriteXContent (base types with ProtoIncludes, types with callbacks).
-        /// </summary>
-        private string GetWriteMethodSuffix(string typeName)
-        {
-            bool isDerivedType = _registry.IsDerivedType(typeName);
-            if (isDerivedType) return "";
-            var typeDef = _registry.GetByFullName(TypeMapping.NormalizeTypeName(typeName));
-            if (typeDef == null) return "Content"; // fallback for unknown types
-            bool hasProtoIncludes = typeDef.ProtoIncludes != null && typeDef.ProtoIncludes.Count > 0;
-            bool hasCallbacks = (typeDef.BeforeSerializationCallbacks != null && typeDef.BeforeSerializationCallbacks.Count > 0)
-                || (typeDef.AfterSerializationCallbacks != null && typeDef.AfterSerializationCallbacks.Count > 0);
-            return (!hasProtoIncludes && !hasCallbacks) ? "" : "Content";
-        }
+        private string GetWriteMethodSuffix(string typeName) => _proxyHelper.GetWriteMethodSuffix(typeName);
 
         #region Deserializers
 
@@ -244,7 +217,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             var proxy = GetProxy(elementType);
             if (proxy != null)
             {
-                var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                 _sb.AppendIndentedLine("var subReader = reader.CreateSubReader(length);");
                 _sb.AppendIndentedLine($"var proxyItem = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref subReader);");
                 _sb.AppendIndentedLine($"{addMethod}(proxyItem.{proxy.ConvertMethodName}());");
@@ -430,7 +403,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         var proxy = GetProxy(elementType);
                         if (proxy != null)
                         {
-                            var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                            var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                             _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
                             _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
                             _sb.AppendIndentedLine($"var proxyItem_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref itemReader_{varName});");
@@ -483,7 +456,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         var proxy = GetProxy(elementType);
                         if (proxy != null)
                         {
-                            var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                            var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                             _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
                             _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
                             _sb.AppendIndentedLine($"var proxyItem_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref itemReader_{varName});");
@@ -545,7 +518,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     var proxy = GetProxy(typeName);
                     if (proxy != null)
                     {
-                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                         _sb.AppendIndentedLine($"var len_{varName} = (int)reader.ReadVarUInt32();");
                         _sb.AppendIndentedLine($"var subReader_{varName} = reader.CreateSubReader(len_{varName});");
                         _sb.AppendIndentedLine($"var proxy_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref subReader_{varName});");
@@ -613,7 +586,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     var proxy = GetProxy(elementType);
                     if (proxy != null)
                     {
-                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                         _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
                         _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
                         _sb.AppendIndentedLine($"var proxyItem_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref itemReader_{varName});");
@@ -683,7 +656,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     var proxy = GetProxy(elementType);
                     if (proxy != null)
                     {
-                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                         _sb.AppendIndentedLine($"var itemLen_{varName} = (int)reader.ReadVarUInt32();");
                         _sb.AppendIndentedLine($"var itemReader_{varName} = reader.CreateSubReader(itemLen_{varName});");
                         _sb.AppendIndentedLine($"var proxyItem_{varName} = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref itemReader_{varName});");
@@ -1017,7 +990,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     var proxy = GetProxy(elementType);
                     if (proxy != null)
                     {
-                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                         _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({varName}{proxy.CreateExtraArgs});");
                         _sb.AppendIndentedLine("var sizeCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
                         _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref sizeCalc, proxyItem);");
@@ -1199,7 +1172,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
                 if (proxy != null)
                 {
-                    var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                    var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                     _sb.AppendIndentedLine($"var _proxyElem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(_elem_{safeVarName}_{fieldNumber}{proxy.CreateExtraArgs});");
                     _sb.AppendIndentedLine($"var _elemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                     _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _elemCalc_{safeVarName}_{fieldNumber}, _proxyElem_{safeVarName}_{fieldNumber});");
@@ -1271,7 +1244,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 var proxy = GetProxy(elementType);
                 if (proxy != null)
                 {
-                    var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                    var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                     _sb.AppendIndentedLine($"var _proxyElem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(_elem_{safeVarName}_{fieldNumber}{proxy.CreateExtraArgs});");
                     _sb.AppendIndentedLine($"var _elemWriteCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                     _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _elemWriteCalc_{safeVarName}_{fieldNumber}, _proxyElem_{safeVarName}_{fieldNumber});");
@@ -1336,7 +1309,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     var proxy = GetProxy(typeName);
                     if (proxy != null)
                     {
-                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                         _sb.AppendIndentedLine($"var _proxyCalc_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({varName}{proxy.CreateExtraArgs});");
                         _sb.AppendIndentedLine($"var _calc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                         _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _calc_{safeVarName}_{fieldNumber}, _proxyCalc_{safeVarName}_{fieldNumber});");
@@ -1401,7 +1374,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
                     if (proxy != null)
                     {
-                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                         _sb.AppendIndentedLine($"var _proxyItem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(_item_{safeVarName}_{fieldNumber}{proxy.CreateExtraArgs});");
                         _sb.AppendIndentedLine($"var _itemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                         _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _itemCalc_{safeVarName}_{fieldNumber}, _proxyItem_{safeVarName}_{fieldNumber});");
@@ -1508,7 +1481,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 var proxy = GetProxy(typeName);
                 if (proxy != null)
                 {
-                    var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                    var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                     _sb.AppendIndentedLine($"var proxy_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({varName}{proxy.CreateExtraArgs});");
                     _sb.AppendIndentedLine($"var sizeCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                     _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref sizeCalc_{fieldNumber}, proxy_{fieldNumber});");
@@ -1582,7 +1555,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         var proxy = GetProxy(elementType);
                         if (proxy != null)
                         {
-                            var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                            var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                             _sb.AppendIndentedLine($"var proxyItem_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item_{fieldNumber}{proxy.CreateExtraArgs});");
                             _sb.AppendIndentedLine($"var itemCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                             _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref itemCalc_{fieldNumber}, proxyItem_{fieldNumber});");
@@ -1655,7 +1628,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     var proxy = GetProxy(elementType);
                     if (proxy != null)
                     {
-                        var proxyPrefix = GetProxyQualifiedPrefix(proxy);
+                        var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                         _sb.AppendIndentedLine($"var proxyItem_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item_{fieldNumber}{proxy.CreateExtraArgs});");
                         _sb.AppendIndentedLine($"var itemWriteCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                         _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref itemWriteCalc_{fieldNumber}, proxyItem_{fieldNumber});");

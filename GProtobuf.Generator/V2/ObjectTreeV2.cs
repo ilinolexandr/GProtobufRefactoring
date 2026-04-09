@@ -6,6 +6,8 @@ using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.CodeGeneration;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers.Core;
+using GProtobuf.Generator.Utilities;
+using GProtobuf.Generator.V2.Helpers;
 using GProtobuf.Generator.V2.Handlers.VirtualTypes;
 using GProtobuf.Generator.WireFormat;
 using Microsoft.CodeAnalysis;
@@ -772,12 +774,11 @@ namespace GProtobuf.Generator.V2
                 foreach (var proxy in _proxyRegistry.GetAll())
                 {
                     // Filter by namespace
-                    var lastDot = proxy.OriginalTypeFullName.LastIndexOf('.');
-                    var originalNs = lastDot >= 0 ? proxy.OriginalTypeFullName.Substring(0, lastDot) : "";
+                    var originalNs = TypeNameHelper.GetNamespace(proxy.OriginalTypeFullName);
                     if (ns != null && originalNs != ns) continue;
 
                     var originalClassName = TypeNameHelper.GetClassName(proxy.OriginalTypeFullName);
-                    var proxyPrefix = string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
+                    var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
 
                     if (_options.GenerateSpanReader)
                     {
@@ -1006,12 +1007,11 @@ namespace GProtobuf.Generator.V2
                 foreach (var proxy in _proxyRegistry.GetAll())
                 {
                     // Filter by namespace
-                    var lastDot = proxy.OriginalTypeFullName.LastIndexOf('.');
-                    var originalNs = lastDot >= 0 ? proxy.OriginalTypeFullName.Substring(0, lastDot) : "";
+                    var originalNs = TypeNameHelper.GetNamespace(proxy.OriginalTypeFullName);
                     if (ns != null && originalNs != ns) continue;
 
                     var originalClassName = TypeNameHelper.GetClassName(proxy.OriginalTypeFullName);
-                    var proxyPrefix = string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
+                    var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
 
                     if (_options.GenerateStreamWriter)
                     {

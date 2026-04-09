@@ -407,7 +407,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             if (proxy != null)
             {
-                var proxyPrefix = string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
+                var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
                 sb.AppendIndentedLine($"var proxyItem = {proxyPrefix}StreamReaders.Read{proxy.ProxyClassName}Content(ref reader);");
                 sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
                 sb.AppendIndentedLine($"var item = proxyItem.{proxy.ConvertMethodName}();");
