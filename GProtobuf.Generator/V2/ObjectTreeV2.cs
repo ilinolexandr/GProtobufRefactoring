@@ -480,7 +480,7 @@ namespace GProtobuf.Generator.V2
                 try
                 {
                     // Generate Deserializers class (entry point methods)
-                    GenerateDeserializers(sb, types, standaloneTypes);
+                    GenerateDeserializers(sb, types, standaloneTypes, ns);
                 }
                 catch (System.Exception ex)
                 {
@@ -490,7 +490,7 @@ namespace GProtobuf.Generator.V2
                 try
                 {
                     // Generate Serializers class (entry point methods)
-                    GenerateSerializers(sb, types, standaloneTypes);
+                    GenerateSerializers(sb, types, standaloneTypes, ns);
                 }
                 catch (System.Exception ex)
                 {
@@ -603,7 +603,7 @@ namespace GProtobuf.Generator.V2
 
         #region Deserializers Class
 
-        private void GenerateDeserializers(StringBuilderWithIndent sb, List<TypeDefinition> types, List<StandaloneTypeInfo> standaloneTypes)
+        private void GenerateDeserializers(StringBuilderWithIndent sb, List<TypeDefinition> types, List<StandaloneTypeInfo> standaloneTypes, string ns = null)
         {
             // Only generate if at least one reader is enabled
             if (!_options.GenerateSpanReader && !_options.GenerateStreamReader)
@@ -618,6 +618,9 @@ namespace GProtobuf.Generator.V2
             {
                 // Skip entry-point methods for types with SkipEntryPoints = true
                 if (type.SkipEntryPoints) continue;
+
+                // Skip types that have a proxy — proxy entry points are generated separately below
+                if (_proxyRegistry != null && _proxyRegistry.HasProxy(type.FullName)) continue;
 
                 var className = TypeNameHelper.GetClassName(type.FullName);
                 // Reference types can have optional null parameter; value types (structs, enums) cannot
@@ -764,6 +767,58 @@ namespace GProtobuf.Generator.V2
                 }
             }
 
+            // Generate deserializers for proxy-covered original types
+            // When [assembly: SerializationProxy(typeof(T), typeof(TProxy))] is registered,
+            // generate DeserializeT entry points that internally use the proxy
+            if (_proxyRegistry != null)
+            {
+                foreach (var proxy in _proxyRegistry.GetAll())
+                {
+                    // Filter by namespace
+                    var lastDot = proxy.OriginalTypeFullName.LastIndexOf('.');
+                    var originalNs = lastDot >= 0 ? proxy.OriginalTypeFullName.Substring(0, lastDot) : "";
+                    if (ns != null && originalNs != ns) continue;
+
+                    var originalClassName = TypeNameHelper.GetClassName(proxy.OriginalTypeFullName);
+                    var proxyPrefix = string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
+
+                    if (_options.GenerateSpanReader)
+                    {
+                        sb.AppendIndentedLine($"public static global::{proxy.OriginalTypeFullName} Deserialize{originalClassName}(ReadOnlySpan<byte> data)");
+                        sb.StartNewBlock();
+                        sb.AppendIndentedLine("var reader = new SpanReader(data);");
+                        sb.AppendIndentedLine($"var proxy = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref reader);");
+                        sb.AppendIndentedLine($"var result = proxy.{proxy.ConvertMethodName}();");
+                        if (proxy.ReturnMethodName != null)
+                            sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
+                        sb.AppendIndentedLine("return result;");
+                        sb.EndBlock();
+                        sb.AppendNewLine();
+                    }
+
+                    if (_options.GenerateStreamReader)
+                    {
+                        sb.AppendIndentedLine($"public static global::{proxy.OriginalTypeFullName} Deserialize{originalClassName}(Stream stream)");
+                        sb.StartNewBlock();
+                        sb.AppendIndentedLine("Span<byte> buffer = stackalloc byte[global::GProtobuf.Core.StreamReader.DefaultBufferSize];");
+                        sb.AppendIndentedLine($"return Deserialize{originalClassName}(stream, buffer);");
+                        sb.EndBlock();
+                        sb.AppendNewLine();
+
+                        sb.AppendIndentedLine($"public static global::{proxy.OriginalTypeFullName} Deserialize{originalClassName}(Stream stream, Span<byte> buffer)");
+                        sb.StartNewBlock();
+                        sb.AppendIndentedLine("var reader = new global::GProtobuf.Core.StreamReader(stream, buffer);");
+                        sb.AppendIndentedLine($"var proxy = {proxyPrefix}StreamReaders.Read{proxy.ProxyClassName}Content(ref reader);");
+                        sb.AppendIndentedLine($"var result = proxy.{proxy.ConvertMethodName}();");
+                        if (proxy.ReturnMethodName != null)
+                            sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
+                        sb.AppendIndentedLine("return result;");
+                        sb.EndBlock();
+                        sb.AppendNewLine();
+                    }
+                }
+            }
+
             // Generate deserializers for standalone types (List<T>, T[], Dictionary<K,V>)
             if (standaloneTypes.Count > 0)
             {
@@ -779,7 +834,7 @@ namespace GProtobuf.Generator.V2
 
         #region Serializers Class
 
-        private void GenerateSerializers(StringBuilderWithIndent sb, List<TypeDefinition> types, List<StandaloneTypeInfo> standaloneTypes)
+        private void GenerateSerializers(StringBuilderWithIndent sb, List<TypeDefinition> types, List<StandaloneTypeInfo> standaloneTypes, string ns = null)
         {
             // Only generate if at least one writer is enabled
             if (!_options.GenerateStreamWriter && !_options.GenerateBufferWriter && !_options.GenerateOnePassStreamWriter && !_options.GenerateStackBufferWriter)
@@ -794,6 +849,9 @@ namespace GProtobuf.Generator.V2
             {
                 // Skip entry-point methods for types with SkipEntryPoints = true
                 if (type.SkipEntryPoints) continue;
+
+                // Skip types that have a proxy — proxy entry points are generated separately below
+                if (_proxyRegistry != null && _proxyRegistry.HasProxy(type.FullName)) continue;
 
                 var className = TypeNameHelper.GetClassName(type.FullName);
 
@@ -943,6 +1001,49 @@ namespace GProtobuf.Generator.V2
 
                     sb.EndBlock();
                     sb.AppendNewLine();
+                }
+            }
+
+            // Generate serializers for proxy-covered original types
+            if (_proxyRegistry != null)
+            {
+                foreach (var proxy in _proxyRegistry.GetAll())
+                {
+                    // Filter by namespace
+                    var lastDot = proxy.OriginalTypeFullName.LastIndexOf('.');
+                    var originalNs = lastDot >= 0 ? proxy.OriginalTypeFullName.Substring(0, lastDot) : "";
+                    if (ns != null && originalNs != ns) continue;
+
+                    var originalClassName = TypeNameHelper.GetClassName(proxy.OriginalTypeFullName);
+                    var proxyPrefix = string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
+
+                    if (_options.GenerateStreamWriter)
+                    {
+                        sb.AppendIndentedLine($"public static void Serialize{originalClassName}(Stream stream, global::{proxy.OriginalTypeFullName} obj)");
+                        sb.StartNewBlock();
+                        sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(obj{proxy.CreateExtraArgs});");
+                        sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
+                        sb.AppendIndentedLine($"{proxyPrefix}StreamWriters.Write{proxy.ProxyClassName}(ref writer, proxy);");
+                        sb.AppendIndentedLine("writer.Flush();");
+                        if (proxy.ReturnMethodName != null)
+                            sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
+                        sb.EndBlock();
+                        sb.AppendNewLine();
+                    }
+
+                    if (_options.GenerateBufferWriter)
+                    {
+                        sb.AppendIndentedLine($"public static void Serialize{originalClassName}(IBufferWriter<byte> buffer, global::{proxy.OriginalTypeFullName} obj)");
+                        sb.StartNewBlock();
+                        sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(obj{proxy.CreateExtraArgs});");
+                        sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
+                        sb.AppendIndentedLine($"{proxyPrefix}BufferWriters.Write{proxy.ProxyClassName}(ref writer, proxy);");
+                        sb.AppendIndentedLine("writer.Flush();");
+                        if (proxy.ReturnMethodName != null)
+                            sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
+                        sb.EndBlock();
+                        sb.AppendNewLine();
+                    }
                 }
             }
 
