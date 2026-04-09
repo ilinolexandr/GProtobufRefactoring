@@ -31,19 +31,19 @@ namespace GProtobuf.Generator.Analysis
             "System.Decimal"
         };
 
-        public static StandaloneTypeInfo? Analyze(ITypeSymbol typeSymbol)
+        public static StandaloneTypeInfo? Analyze(ITypeSymbol typeSymbol, bool isPacked = false)
         {
             if (typeSymbol == null)
                 return null;
 
             if (typeSymbol is IArrayTypeSymbol arrayType)
             {
-                return AnalyzeArray(arrayType);
+                return AnalyzeArray(arrayType, isPacked);
             }
 
             if (typeSymbol is INamedTypeSymbol namedType && namedType.IsGenericType)
             {
-                return AnalyzeGenericType(namedType);
+                return AnalyzeGenericType(namedType, isPacked);
             }
 
             if (IsPrimitiveType(typeSymbol.ToDisplayString()))
@@ -54,7 +54,7 @@ namespace GProtobuf.Generator.Analysis
             return null;
         }
 
-        private static StandaloneTypeInfo? AnalyzeArray(IArrayTypeSymbol arrayType)
+        private static StandaloneTypeInfo? AnalyzeArray(IArrayTypeSymbol arrayType, bool isPacked = false)
         {
             var elementType = arrayType.ElementType;
             var elementTypeName = elementType.ToDisplayString();
@@ -83,7 +83,7 @@ namespace GProtobuf.Generator.Analysis
             }
 
             var targetNamespace = GetTargetNamespace(elementType);
-            var methodNameSuffix = "ArrayOf" + GetSafeTypeName(elementTypeName);
+            var methodNameSuffix = "ArrayOf" + GetSafeTypeName(elementTypeName) + (isPacked ? "Packed" : "");
 
             StandaloneTypeKind? elementKind = null;
             StandaloneTypeInfo? nestedElementInfo = null;
@@ -115,16 +115,17 @@ namespace GProtobuf.Generator.Analysis
                 ElementKind: elementKind,
                 NestedElementInfo: nestedElementInfo,
                 ElementIsEnum: isElementEnum,
-                ElementEnumUnderlyingType: elementEnumUnderlyingType);
+                ElementEnumUnderlyingType: elementEnumUnderlyingType,
+                IsPacked: isPacked);
         }
 
-        private static StandaloneTypeInfo? AnalyzeGenericType(INamedTypeSymbol namedType)
+        private static StandaloneTypeInfo? AnalyzeGenericType(INamedTypeSymbol namedType, bool isPacked = false)
         {
             var originalDef = namedType.OriginalDefinition.ToDisplayString();
 
             if (IsListType(originalDef) && namedType.TypeArguments.Length == 1)
             {
-                return AnalyzeListType(namedType);
+                return AnalyzeListType(namedType, isPacked);
             }
 
             if (IsDictionaryType(originalDef) && namedType.TypeArguments.Length == 2)
@@ -141,7 +142,7 @@ namespace GProtobuf.Generator.Analysis
             return null;
         }
 
-        private static StandaloneTypeInfo AnalyzeListType(INamedTypeSymbol namedType)
+        private static StandaloneTypeInfo AnalyzeListType(INamedTypeSymbol namedType, bool isPacked = false)
         {
             var elementType = namedType.TypeArguments[0];
             var elementTypeName = elementType.ToDisplayString();
@@ -155,7 +156,7 @@ namespace GProtobuf.Generator.Analysis
 
             var isPrimitive = IsPrimitiveType(elementTypeName) || isElementEnum;
             var targetNamespace = GetTargetNamespace(elementType);
-            var methodNameSuffix = "ListOf" + GetSafeTypeName(elementTypeName);
+            var methodNameSuffix = "ListOf" + GetSafeTypeName(elementTypeName) + (isPacked ? "Packed" : "");
 
             StandaloneTypeKind? elementKind = null;
             StandaloneTypeInfo? nestedElementInfo = null;
@@ -187,7 +188,8 @@ namespace GProtobuf.Generator.Analysis
                 ElementKind: elementKind,
                 NestedElementInfo: nestedElementInfo,
                 ElementIsEnum: isElementEnum,
-                ElementEnumUnderlyingType: elementEnumUnderlyingType);
+                ElementEnumUnderlyingType: elementEnumUnderlyingType,
+                IsPacked: isPacked);
         }
 
         private static StandaloneTypeInfo AnalyzeDictionaryType(INamedTypeSymbol namedType, bool isCustomDictionary, INamedTypeSymbol? dictionaryInterface = null)

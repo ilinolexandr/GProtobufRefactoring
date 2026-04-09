@@ -78,7 +78,7 @@ namespace GProtobuf.Generator.V2
         /// <param name="options">
         /// Generator options from [assembly: GProtobufOptions(...)]. Controls which generators are enabled.
         /// </param>
-        public ObjectTreeV2(HashSet<string> enumTypes, Microsoft.CodeAnalysis.Compilation compilation = null, ImmutableArray<ITypeSymbol> standaloneTypes = default, GeneratorOptions options = null, ProxyRegistry proxyRegistry = null)
+        public ObjectTreeV2(HashSet<string> enumTypes, Microsoft.CodeAnalysis.Compilation compilation = null, ImmutableArray<(ITypeSymbol Type, bool IsPacked)> standaloneTypes = default, GeneratorOptions options = null, ProxyRegistry proxyRegistry = null)
         {
             _compilation = compilation;
             _options = options ?? GeneratorOptions.Default;
@@ -96,9 +96,9 @@ namespace GProtobuf.Generator.V2
             // Analyze and register standalone types
             if (!standaloneTypes.IsDefault)
             {
-                foreach (var typeSymbol in standaloneTypes)
+                foreach (var (typeSymbol, isPacked) in standaloneTypes)
                 {
-                    var info = StandaloneTypeAnalyzer.Analyze(typeSymbol);
+                    var info = StandaloneTypeAnalyzer.Analyze(typeSymbol, isPacked);
                     if (info != null)
                     {
                         if (!_standaloneTypesByNamespace.TryGetValue(info.TargetNamespace, out var list))
@@ -767,9 +767,6 @@ namespace GProtobuf.Generator.V2
                 }
             }
 
-            // Generate deserializers for proxy-covered original types
-            // When [assembly: SerializationProxy(typeof(T), typeof(TProxy))] is registered,
-            // generate DeserializeT entry points that internally use the proxy
             if (_proxyRegistry != null)
             {
                 foreach (var proxy in _proxyRegistry.GetAll())
@@ -1004,7 +1001,6 @@ namespace GProtobuf.Generator.V2
                 }
             }
 
-            // Generate serializers for proxy-covered original types
             if (_proxyRegistry != null)
             {
                 foreach (var proxy in _proxyRegistry.GetAll())

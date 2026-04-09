@@ -128,55 +128,110 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // ReadOnlySpan<byte> overload
             _sb.AppendIndentedLine($"public static {returnType} {methodName}(ReadOnlySpan<byte> data)");
             _sb.StartNewBlock();
-            _sb.AppendIndentedLine($"var list = new {listType}();");
-            _sb.AppendIndentedLine("var reader = new SpanReader(data);");
-            _sb.AppendIndentedLine("while (!reader.IsEnd)");
-            _sb.StartNewBlock();
 
-            if (info.ElementIsPrimitive)
+            if (info.IsPacked)
             {
-                // Primitive types: protobuf-net uses unpacked format [tag=0x08][value] for each element
+                // Packed format: [tag (field 1, wire type 2)][length][value1][value2]...
+                // The packed read methods (ReadPacked*Array) internally read the length prefix
+                _sb.AppendIndentedLine("var reader = new SpanReader(data);");
                 _sb.AppendIndentedLine("var tag = reader.ReadVarUInt32();");
+                _sb.AppendIndentedLine("if ((tag & 0x07) != 2) throw new InvalidDataException($\"Expected wire type 2 (length-delimited) for packed field, got {tag & 0x07}\");");
 
-                if (info.ElementIsEnum)
+                var packedReadExpr = TypeMapping.GetPackedArrayReadExpression(elementType, DataFormat.Default, "reader");
+                if (packedReadExpr != null)
                 {
-                    // Enums are serialized as varints (wire type 0)
-                    _sb.AppendIndentedLine("if ((tag & 0x07) != 0) throw new InvalidDataException($\"Expected wire type 0 for enum, got {tag & 0x07}\");");
-                    _sb.AppendIndentedLine($"list.Add((global::{elementType})reader.ReadVarInt32());");
+                    // Use built-in packed read methods that read length + values internally
+                    _sb.AppendIndentedLine($"var array = {packedReadExpr};");
+                    if (returnStatement.Contains("ToArray"))
+                    {
+                        // Array return
+                        _sb.AppendIndentedLine("return array;");
+                    }
+                    else
+                    {
+                        // List return
+                        _sb.AppendIndentedLine($"return new {listType}(array);");
+                    }
+                }
+                else if (info.ElementIsEnum)
+                {
+                    // Enums: read length then varints from packed block
+                    _sb.AppendIndentedLine("var length = (int)reader.ReadVarUInt32();");
+                    _sb.AppendIndentedLine("var subReader = reader.CreateSubReader(length);");
+                    _sb.AppendIndentedLine($"var list = new {listType}();");
+                    _sb.AppendIndentedLine("while (!subReader.IsEnd)");
+                    _sb.StartNewBlock();
+                    _sb.AppendIndentedLine($"list.Add((global::{elementType})subReader.ReadVarInt32());");
+                    _sb.EndBlock();
+                    _sb.AppendIndentedLine(returnStatement);
                 }
                 else
                 {
-                    var expectedWireType = GetWireType(elementType);
-                    _sb.AppendIndentedLine($"if ((tag & 0x07) != {expectedWireType}) throw new InvalidDataException($\"Expected wire type {expectedWireType}, got {{tag & 0x07}}\");");
-                    var readExpr = GetPrimitiveReadExpression(elementType);
+                    // Fallback: read length then individual values
+                    _sb.AppendIndentedLine("var length = (int)reader.ReadVarUInt32();");
+                    _sb.AppendIndentedLine("var subReader = reader.CreateSubReader(length);");
+                    _sb.AppendIndentedLine($"var list = new {listType}();");
+                    _sb.AppendIndentedLine("while (!subReader.IsEnd)");
+                    _sb.StartNewBlock();
+                    var readExpr = GetPrimitiveReadExpression(elementType, "subReader");
                     _sb.AppendIndentedLine($"list.Add({readExpr});");
+                    _sb.EndBlock();
+                    _sb.AppendIndentedLine(returnStatement);
                 }
             }
             else
             {
-                var normalizedElementType = TypeMapping.NormalizeTypeName(elementType);
-                if (_registry.IsProtoVarint(normalizedElementType))
+                _sb.AppendIndentedLine($"var list = new {listType}();");
+                _sb.AppendIndentedLine("var reader = new SpanReader(data);");
+                _sb.AppendIndentedLine("while (!reader.IsEnd)");
+                _sb.StartNewBlock();
+
+                if (info.ElementIsPrimitive)
                 {
-                    // ProtoVarint types: serialized as varints (wire type 0)
-                    var varintType = _registry.GetProtoVarintType(normalizedElementType) ?? ProtoVarintType.UInt32;
-                    var valueMember = _registry.GetProtoVarintValueMember(normalizedElementType);
+                    // Primitive types: protobuf-net uses unpacked format [tag=0x08][value] for each element
                     _sb.AppendIndentedLine("var tag = reader.ReadVarUInt32();");
-                    _sb.AppendIndentedLine("if ((tag & 0x07) != 0) throw new InvalidDataException($\"Expected wire type 0 for ProtoVarint, got {tag & 0x07}\");");
-                    var readMethod = PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
-                    var globalTypeName = TypeMapping.GetGlobalGenericTypeName(elementType);
-                    _sb.AppendIndentedLine($"list.Add(new {globalTypeName}(reader.{readMethod}()));");
+
+                    if (info.ElementIsEnum)
+                    {
+                        // Enums are serialized as varints (wire type 0)
+                        _sb.AppendIndentedLine("if ((tag & 0x07) != 0) throw new InvalidDataException($\"Expected wire type 0 for enum, got {tag & 0x07}\");");
+                        _sb.AppendIndentedLine($"list.Add((global::{elementType})reader.ReadVarInt32());");
+                    }
+                    else
+                    {
+                        var expectedWireType = GetWireType(elementType);
+                        _sb.AppendIndentedLine($"if ((tag & 0x07) != {expectedWireType}) throw new InvalidDataException($\"Expected wire type {expectedWireType}, got {{tag & 0x07}}\");");
+                        var readExpr = GetPrimitiveReadExpression(elementType);
+                        _sb.AppendIndentedLine($"list.Add({readExpr});");
+                    }
                 }
                 else
                 {
-                    // Complex types: protobuf-net uses [tag=0x0A][length][message] for each item
-                    _sb.AppendIndentedLine("var tag = reader.ReadVarUInt32();");
-                    _sb.AppendIndentedLine("if ((tag & 0x07) != 2) throw new InvalidDataException($\"Expected wire type 2, got {tag & 0x07}\");");
-                    GenerateComplexElementRead(elementType, "list.Add");
+                    var normalizedElementType = TypeMapping.NormalizeTypeName(elementType);
+                    if (_registry.IsProtoVarint(normalizedElementType))
+                    {
+                        // ProtoVarint types: serialized as varints (wire type 0)
+                        var varintType = _registry.GetProtoVarintType(normalizedElementType) ?? ProtoVarintType.UInt32;
+                        var valueMember = _registry.GetProtoVarintValueMember(normalizedElementType);
+                        _sb.AppendIndentedLine("var tag = reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine("if ((tag & 0x07) != 0) throw new InvalidDataException($\"Expected wire type 0 for ProtoVarint, got {tag & 0x07}\");");
+                        var readMethod = PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
+                        var globalTypeName = TypeMapping.GetGlobalGenericTypeName(elementType);
+                        _sb.AppendIndentedLine($"list.Add(new {globalTypeName}(reader.{readMethod}()));");
+                    }
+                    else
+                    {
+                        // Complex types: protobuf-net uses [tag=0x0A][length][message] for each item
+                        _sb.AppendIndentedLine("var tag = reader.ReadVarUInt32();");
+                        _sb.AppendIndentedLine("if ((tag & 0x07) != 2) throw new InvalidDataException($\"Expected wire type 2, got {tag & 0x07}\");");
+                        GenerateComplexElementRead(elementType, "list.Add");
+                    }
                 }
+
+                _sb.EndBlock();
+                _sb.AppendIndentedLine(returnStatement);
             }
 
-            _sb.EndBlock();
-            _sb.AppendIndentedLine(returnStatement);
             _sb.EndBlock();
             _sb.AppendNewLine();
         }
@@ -766,6 +821,57 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         {
             var elementType = info.ElementType!;
 
+            if (info.IsPacked)
+            {
+                // Packed format: [tag=0x0A][totalLength][value1][value2]...
+                GeneratePackedCollectionSerializer(info, methodName, paramType, varName, elementType);
+            }
+            else
+            {
+                // Unpacked format: [tag][value] for each element
+                // Stream serializer
+                if (_options.GenerateStreamWriter)
+                {
+                    _sb.AppendIndentedLine($"public static void {methodName}(Stream stream, {paramType} {varName})");
+                    _sb.StartNewBlock();
+                    _sb.AppendIndentedLine($"if ({varName} == null) return;");
+                    _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
+                    _sb.AppendIndentedLine($"foreach (var item in {varName})");
+                    _sb.StartNewBlock();
+                    GenerateElementWrite(elementType, info.ElementIsPrimitive, info.ElementIsEnum, "item", "writer", false);
+                    _sb.EndBlock();
+                    _sb.AppendIndentedLine("writer.Flush();");
+                    _sb.EndBlock();
+                    _sb.AppendNewLine();
+                }
+
+                // IBufferWriter serializer
+                if (_options.GenerateBufferWriter)
+                {
+                    _sb.AppendIndentedLine($"public static void {methodName}(IBufferWriter<byte> buffer, {paramType} {varName})");
+                    _sb.StartNewBlock();
+                    _sb.AppendIndentedLine($"if ({varName} == null) return;");
+                    _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
+                    _sb.AppendIndentedLine($"foreach (var item in {varName})");
+                    _sb.StartNewBlock();
+                    GenerateElementWrite(elementType, info.ElementIsPrimitive, info.ElementIsEnum, "item", "writer", true);
+                    _sb.EndBlock();
+                    _sb.AppendIndentedLine("writer.Flush();");
+                    _sb.EndBlock();
+                    _sb.AppendNewLine();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Generates packed serializer for a collection.
+        /// Packed format: [tag (field 1, wire type 2)][totalLength][value1][value2]...
+        /// </summary>
+        private void GeneratePackedCollectionSerializer(StandaloneTypeInfo info, string methodName, string paramType, string varName, string elementType)
+        {
+            // tag = (1 << 3) | 2 = 0x0A (field 1, wire type 2 = length-delimited)
+            var tag = (1 << 3) | 2;
+
             // Stream serializer
             if (_options.GenerateStreamWriter)
             {
@@ -773,10 +879,24 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.StartNewBlock();
                 _sb.AppendIndentedLine($"if ({varName} == null) return;");
                 _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
+
+                // Write tag
+                _sb.AppendIndentedLine($"writer.WriteSingleByte(0x{tag:X2}); // field 1, wire type 2 (packed)");
+
+                // Calculate packed content size
+                _sb.AppendIndentedLine("var calculator = new global::GProtobuf.Core.WriteSizeCalculator();");
                 _sb.AppendIndentedLine($"foreach (var item in {varName})");
                 _sb.StartNewBlock();
-                GenerateElementWrite(elementType, info.ElementIsPrimitive, info.ElementIsEnum, "item", "writer", false);
+                GeneratePackedElementSize(elementType, info.ElementIsEnum, "item", "calculator");
                 _sb.EndBlock();
+
+                // Write length prefix then elements
+                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)calculator.Length);");
+                _sb.AppendIndentedLine($"foreach (var item in {varName})");
+                _sb.StartNewBlock();
+                GeneratePackedElementWrite(elementType, info.ElementIsEnum, "item", "writer");
+                _sb.EndBlock();
+
                 _sb.AppendIndentedLine("writer.Flush();");
                 _sb.EndBlock();
                 _sb.AppendNewLine();
@@ -789,13 +909,59 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.StartNewBlock();
                 _sb.AppendIndentedLine($"if ({varName} == null) return;");
                 _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
+
+                // Write tag
+                _sb.AppendIndentedLine($"writer.WriteSingleByte(0x{tag:X2}); // field 1, wire type 2 (packed)");
+
+                // Calculate packed content size
+                _sb.AppendIndentedLine("var calculator = new global::GProtobuf.Core.WriteSizeCalculator();");
                 _sb.AppendIndentedLine($"foreach (var item in {varName})");
                 _sb.StartNewBlock();
-                GenerateElementWrite(elementType, info.ElementIsPrimitive, info.ElementIsEnum, "item", "writer", true);
+                GeneratePackedElementSize(elementType, info.ElementIsEnum, "item", "calculator");
                 _sb.EndBlock();
+
+                // Write length prefix then elements
+                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)calculator.Length);");
+                _sb.AppendIndentedLine($"foreach (var item in {varName})");
+                _sb.StartNewBlock();
+                GeneratePackedElementWrite(elementType, info.ElementIsEnum, "item", "writer");
+                _sb.EndBlock();
+
                 _sb.AppendIndentedLine("writer.Flush();");
                 _sb.EndBlock();
                 _sb.AppendNewLine();
+            }
+        }
+
+        /// <summary>
+        /// Generates size calculation for a single element in packed encoding (no tag per element).
+        /// </summary>
+        private void GeneratePackedElementSize(string elementType, bool isEnum, string varName, string calculatorVar)
+        {
+            if (isEnum)
+            {
+                _sb.AppendIndentedLine($"{calculatorVar}.WriteVarInt32((int){varName});");
+            }
+            else
+            {
+                var sizeExpr = TypeMapping.GetElementSizeExpression(elementType, varName, DataFormat.Default, calculatorVar);
+                _sb.AppendIndentedLine($"{sizeExpr};");
+            }
+        }
+
+        /// <summary>
+        /// Generates write code for a single element in packed encoding (no tag per element).
+        /// </summary>
+        private void GeneratePackedElementWrite(string elementType, bool isEnum, string varName, string writerVar)
+        {
+            if (isEnum)
+            {
+                _sb.AppendIndentedLine($"{writerVar}.WriteVarInt32((int){varName});");
+            }
+            else
+            {
+                var writeExpr = TypeMapping.GetElementWriteExpression(elementType, varName, DataFormat.Default, writerVar);
+                _sb.AppendIndentedLine($"{writeExpr};");
             }
         }
 
@@ -1592,13 +1758,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Gets the read expression for a primitive type.
         /// Delegates to TypeMapping.GetElementReadExpression.
         /// </summary>
-        private static string GetPrimitiveReadExpression(string typeName)
+        private static string GetPrimitiveReadExpression(string typeName, string readerVar = "reader")
         {
             // Use TypeMapping for read expression - it provides more comprehensive handling
-            var readExpr = TypeMapping.GetElementReadExpression(typeName, DataFormat.Default, "reader");
+            var readExpr = TypeMapping.GetElementReadExpression(typeName, DataFormat.Default, readerVar);
 
             // Fallback for unexpected types
-            return readExpr ?? "reader.ReadVarInt32()";
+            return readExpr ?? $"{readerVar}.ReadVarInt32()";
         }
 
         /// <summary>

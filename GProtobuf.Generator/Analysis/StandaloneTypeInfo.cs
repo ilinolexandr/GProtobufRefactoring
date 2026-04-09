@@ -32,7 +32,8 @@ namespace GProtobuf.Generator.Analysis
         bool KeyIsEnum = false,
         string? KeyEnumUnderlyingType = null,
         bool ValueIsEnum = false,
-        string? ValueEnumUnderlyingType = null);
+        string? ValueEnumUnderlyingType = null,
+        bool IsPacked = false);
 
     /// <summary>
     /// Kind of standalone type for serialization.

@@ -262,7 +262,7 @@ namespace ProtoBuf
       var standaloneTypesPipeline = context.CompilationProvider
                 .Select((compilation, ct) =>
                 {
-                    var result = new List<ITypeSymbol>();
+                    var result = new List<(ITypeSymbol Type, bool IsPacked)>();
                     var generateSerializerAttr = compilation.GetTypeByMetadataName("GProtobuf.Core.GenerateSerializerAttribute");
                     if (generateSerializerAttr == null)
                         return result.ToImmutableArray();
@@ -274,7 +274,15 @@ namespace ProtoBuf
                             if (attr.ConstructorArguments.Length > 0 &&
                                 attr.ConstructorArguments[0].Value is ITypeSymbol typeSymbol)
                             {
-                                result.Add(typeSymbol);
+                                bool isPacked = false;
+                                foreach (var namedArg in attr.NamedArguments)
+                                {
+                                    if (namedArg.Key == "IsPacked" && namedArg.Value.Value is bool packedValue)
+                                    {
+                                        isPacked = packedValue;
+                                    }
+                                }
+                                result.Add((typeSymbol, isPacked));
                             }
                         }
                     }
