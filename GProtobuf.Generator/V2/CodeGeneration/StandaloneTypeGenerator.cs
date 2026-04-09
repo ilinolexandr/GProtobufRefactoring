@@ -43,8 +43,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         public void GenerateDeserializers(List<StandaloneTypeInfo> standaloneTypes)
         {
-            // Only generate if SpanReader is enabled (standalone deserializers use SpanReader)
-            if (!_options.GenerateSpanReader)
+            if (!_options.GenerateSpanReader && !_options.GenerateStreamReader)
             {
                 return;
             }
@@ -99,6 +98,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             var listType = $"global::System.Collections.Generic.List<{TypeMapping.GetGlobalGenericTypeName(elementType)}>";
 
             // ReadOnlySpan<byte> overload
+            if (_options.GenerateSpanReader)
+            {
             _sb.AppendIndentedLine($"public static {returnType} {methodName}(ReadOnlySpan<byte> data)");
             _sb.StartNewBlock();
 
@@ -207,6 +208,140 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             _sb.EndBlock();
             _sb.AppendNewLine();
+            }
+
+            // Stream overloads
+            if (_options.GenerateStreamReader)
+            {
+                GenerateCollectionStreamDeserializer(info, methodName, returnType, returnStatement);
+            }
+        }
+
+        /// <summary>
+        /// Generates Stream-based deserializer overloads for standalone collections.
+        /// Two overloads: (Stream) with default buffer and (Stream, Span&lt;byte&gt;) with custom buffer.
+        /// </summary>
+        private void GenerateCollectionStreamDeserializer(StandaloneTypeInfo info, string methodName, string returnType, string returnStatement)
+        {
+            var elementType = info.ElementType!;
+            var listType = $"global::System.Collections.Generic.List<{TypeMapping.GetGlobalGenericTypeName(elementType)}>";
+
+            // Stream overload with default buffer
+            _sb.AppendIndentedLine($"public static {returnType} {methodName}(Stream stream)");
+            _sb.StartNewBlock();
+            _sb.AppendIndentedLine("Span<byte> buffer = stackalloc byte[global::GProtobuf.Core.StreamReader.DefaultBufferSize];");
+            _sb.AppendIndentedLine($"return {methodName}(stream, buffer);");
+            _sb.EndBlock();
+            _sb.AppendNewLine();
+
+            // Stream overload with custom buffer
+            _sb.AppendIndentedLine($"public static {returnType} {methodName}(Stream stream, Span<byte> buffer)");
+            _sb.StartNewBlock();
+            _sb.AppendIndentedLine($"var list = new {listType}();");
+            _sb.AppendIndentedLine("var reader = new global::GProtobuf.Core.StreamReader(stream, buffer);");
+            _sb.AppendIndentedLine("while (!reader.IsEnd)");
+            _sb.StartNewBlock();
+
+            if (info.IsPacked)
+            {
+                // Packed: read tag + packed block
+                _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var fieldId);");
+                GenerateStreamPackedElementRead(info, elementType);
+            }
+            else if (info.ElementIsPrimitive)
+            {
+                _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var fieldId);");
+
+                if (info.ElementIsEnum)
+                {
+                    _sb.AppendIndentedLine($"list.Add((global::{elementType})reader.ReadVarInt32());");
+                }
+                else
+                {
+                    var readExpr = TypeMapping.GetReadExpression(TypeMapping.NormalizeTypeName(elementType), DataFormat.Default, "reader", "wireType");
+                    if (readExpr != null)
+                    {
+                        _sb.AppendIndentedLine($"list.Add({readExpr});");
+                    }
+                    else
+                    {
+                        _sb.AppendIndentedLine($"list.Add(reader.ReadVarInt32());");
+                    }
+                }
+            }
+            else
+            {
+                var normalizedElementType = TypeMapping.NormalizeTypeName(elementType);
+                _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var fieldId);");
+
+                if (_registry.IsProtoVarint(normalizedElementType))
+                {
+                    var varintType = _registry.GetProtoVarintType(normalizedElementType) ?? ProtoVarintType.UInt32;
+                    var readMethod = PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
+                    var globalTypeName = TypeMapping.GetGlobalGenericTypeName(elementType);
+                    _sb.AppendIndentedLine($"list.Add(new {globalTypeName}(reader.{readMethod}()));");
+                }
+                else
+                {
+                    // Complex type: read length-delimited with PushLimit/PopLimit
+                    _sb.AppendIndentedLine("var itemLength = reader.ReadVarUInt32();");
+                    _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit((int)itemLength);");
+
+                    var proxy = GetProxy(elementType);
+                    if (proxy != null)
+                    {
+                        var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
+                        _sb.AppendIndentedLine($"var proxyItem = {proxyPrefix}StreamReaders.Read{proxy.ProxyClassName}Content(ref reader);");
+                        _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                        _sb.AppendIndentedLine($"list.Add(proxyItem.{proxy.ConvertMethodName}());");
+                        if (proxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"proxyItem.{proxy.ReturnMethodName}();");
+                    }
+                    else
+                    {
+                        var className = TypeNameHelper.GetClassName(elementType);
+                        var readersClass = NamespaceHelper.GetStreamReadersClass(elementType, _registry);
+                        bool hasProtoIncludeInheritance = _registry.IsDerivedType(elementType);
+                        var methodSuffix = hasProtoIncludeInheritance ? "" : "Content";
+                        _sb.AppendIndentedLine($"var item = {readersClass}.Read{className}{methodSuffix}(ref reader);");
+                        _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                        _sb.AppendIndentedLine("list.Add(item);");
+                    }
+                }
+            }
+
+            _sb.EndBlock();
+            _sb.AppendIndentedLine(returnStatement);
+            _sb.EndBlock();
+            _sb.AppendNewLine();
+        }
+
+        private void GenerateStreamPackedElementRead(StandaloneTypeInfo info, string elementType)
+        {
+            _sb.AppendIndentedLine("var packedLength = reader.ReadVarUInt32();");
+            _sb.AppendIndentedLine("var packedOldLimit = reader.PushLimit((int)packedLength);");
+            _sb.AppendIndentedLine("while (!reader.IsEnd)");
+            _sb.StartNewBlock();
+
+            if (info.ElementIsEnum)
+            {
+                _sb.AppendIndentedLine($"list.Add((global::{elementType})reader.ReadVarInt32());");
+            }
+            else
+            {
+                var readExpr = TypeMapping.GetReadExpression(TypeMapping.NormalizeTypeName(elementType), DataFormat.Default, "reader", "0");
+                if (readExpr != null)
+                {
+                    _sb.AppendIndentedLine($"list.Add({readExpr});");
+                }
+                else
+                {
+                    _sb.AppendIndentedLine($"list.Add(reader.ReadVarInt32());");
+                }
+            }
+
+            _sb.EndBlock();
+            _sb.AppendIndentedLine("reader.PopLimit(packedOldLimit);");
         }
 
         private void GenerateComplexElementRead(string elementType, string addMethod)
