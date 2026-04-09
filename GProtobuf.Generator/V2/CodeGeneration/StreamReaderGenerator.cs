@@ -948,7 +948,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 if (typeInChain?.ProtoMembers != null)
                 {
                     var tempListFields = typeInChain.ProtoMembers
-                        .Where(m => m.IsCollection && (
+                        .Where(m => m.IsCollection && !TypeMapping.IsByteCollectionType(TypeMapping.NormalizeTypeName(m.Type)) && (
                             m.CollectionKind == CollectionKind.Array ||
                             (m.CollectionKind == CollectionKind.InterfaceCollection && m.Type != null &&
                              TypeMapping.NormalizeTypeName(m.Type).StartsWith("System.Collections.Generic.IEnumerable<") &&
@@ -1471,6 +1471,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 "System.DateTime" => $"global::GProtobuf.Core.StreamReaders.ReadDateTime(ref {readerVar}, {wireTypeVar})",
                 "System.TimeSpan" => $"global::GProtobuf.Core.StreamReaders.ReadTimeSpan(ref {readerVar}, {wireTypeVar})",
                 "System.Byte[]" or "byte[]" => $"global::GProtobuf.Core.StreamReaders.ReadByteArray(ref {readerVar})",
+                TypeMapping.ListByteTypeName => $"new global::System.Collections.Generic.List<byte>(global::GProtobuf.Core.StreamReaders.ReadByteArray(ref {readerVar}))",
+                TypeMapping.ICollectionByteTypeName or TypeMapping.IListByteTypeName or TypeMapping.IEnumerableByteTypeName =>
+                    $"new global::System.Collections.Generic.List<byte>(global::GProtobuf.Core.StreamReaders.ReadByteArray(ref {readerVar}))",
                 _ => $"{readerVar}.ReadVarInt32()" // fallback
             };
         }
@@ -1636,6 +1639,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     _sb.AppendIndentedLine($"{targetVariable} = global::GProtobuf.Core.StreamReaders.ReadByteArray(ref reader);");
                     break;
 
+                case TypeMapping.ListByteTypeName:
+                case TypeMapping.ICollectionByteTypeName:
+                case TypeMapping.IListByteTypeName:
+                case TypeMapping.IEnumerableByteTypeName:
+                    _sb.AppendIndentedLine(PrimitiveTypeCodeGenerator.GetAssignmentStatement(normalizedType, targetVariable, "reader"));
+                    break;
+
                 case "System.Guid":
                     _sb.AppendIndentedLine($"{targetVariable} = global::GProtobuf.Core.StreamReaders.ReadGuid(ref reader, wireType);");
                     break;
@@ -1696,7 +1706,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             // Track array fields that need temp list
             var fieldsNeedingTempList = type.ProtoMembers?
-                .Where(m => m.IsCollection && (
+                .Where(m => m.IsCollection && !TypeMapping.IsByteCollectionType(TypeMapping.NormalizeTypeName(m.Type)) && (
                     m.CollectionKind == CollectionKind.Array ||
                     (m.CollectionKind == CollectionKind.InterfaceCollection && m.Type != null &&
                      TypeMapping.NormalizeTypeName(m.Type).StartsWith("System.Collections.Generic.IEnumerable<") &&
@@ -2053,6 +2063,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 case TypeMapping.ArraySegmentByteTypeName:
                 case TypeMapping.MemoryByteTypeName:
                 case TypeMapping.ReadOnlyMemoryByteTypeName:
+                    _sb.AppendIndentedLine(PrimitiveTypeCodeGenerator.GetAssignmentStatement(typeName, $"result.{member.Name}", "reader"));
+                    break;
+                case TypeMapping.ListByteTypeName:
+                case TypeMapping.ICollectionByteTypeName:
+                case TypeMapping.IListByteTypeName:
+                case TypeMapping.IEnumerableByteTypeName:
                     _sb.AppendIndentedLine(PrimitiveTypeCodeGenerator.GetAssignmentStatement(typeName, $"result.{member.Name}", "reader"));
                     break;
                 case "System.Guid":
@@ -2843,6 +2859,10 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private bool NeedsTempList(string typeName)
         {
+            // Byte collections (List<byte>, ICollection<byte>, IList<byte>, IEnumerable<byte>) are serialized
+            // as length-delimited bytes, not as repeated fields - they don't need temp lists
+            if (TypeMapping.IsByteCollectionType(TypeMapping.NormalizeTypeName(typeName)))
+                return false;
             return IsArrayType(typeName) || IsIEnumerableType(typeName);
         }
 
@@ -2996,6 +3016,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 case TypeMapping.ArraySegmentByteTypeName:
                 case TypeMapping.MemoryByteTypeName:
                 case TypeMapping.ReadOnlyMemoryByteTypeName:
+                    _sb.AppendIndentedLine(PrimitiveTypeCodeGenerator.GetAssignmentStatement(typeName, $"instance.{member.Name}", "reader"));
+                    break;
+                case TypeMapping.ListByteTypeName:
+                case TypeMapping.ICollectionByteTypeName:
+                case TypeMapping.IListByteTypeName:
+                case TypeMapping.IEnumerableByteTypeName:
                     _sb.AppendIndentedLine(PrimitiveTypeCodeGenerator.GetAssignmentStatement(typeName, $"instance.{member.Name}", "reader"));
                     break;
                 case "System.Guid":

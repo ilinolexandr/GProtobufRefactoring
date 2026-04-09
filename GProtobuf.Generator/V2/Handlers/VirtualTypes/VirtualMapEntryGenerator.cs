@@ -287,9 +287,9 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
         private void GenerateFieldRead(string targetVar, string typeName, TypeAnalysisInfo typeInfo, bool isEnum, string fieldPrefix = "", string wireTypeVar = "entryWireType")
         {
-            // byte[] is a primitive type (bytes), not a collection - check this FIRST before anything else
+            // byte[] and byte collections are primitive types (bytes), not collections - check this FIRST before anything else
             var normalizedType = TypeMapping.NormalizeTypeName(typeName);
-            if (normalizedType == "System.Byte[]")
+            if (normalizedType == "System.Byte[]" || TypeMapping.IsByteCollectionType(normalizedType))
             {
                 var readExpr = TypeMapping.GetReadExpression(typeName, DataFormat.Default, "reader");
                 if (readExpr != null)
@@ -1031,11 +1031,16 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
         private void GenerateStreamReaderFieldRead(string targetVar, string typeName, TypeAnalysisInfo typeInfo, bool isEnum, string fieldPrefix, string readerVar, string wireTypeVar)
         {
-            // byte[] is a primitive type (bytes), not a collection
+            // byte[] and byte collections are primitive types (bytes), not collections
             var normalizedType = TypeMapping.NormalizeTypeName(typeName);
             if (normalizedType == "System.Byte[]")
             {
                 _sb.AppendIndentedLine($"{targetVar} = global::GProtobuf.Core.StreamReaders.ReadByteArray(ref {readerVar});");
+                return;
+            }
+            if (TypeMapping.IsByteCollectionType(normalizedType))
+            {
+                _sb.AppendIndentedLine(PrimitiveTypeCodeGenerator.GetAssignmentStatement(normalizedType, targetVar, readerVar));
                 return;
             }
 
@@ -1564,22 +1569,22 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
         private void GenerateFieldSizeCalculation(string sourceVar, string typeName, TypeAnalysisInfo typeInfo,
             bool isEnum, string calcVar, int fieldId, string lengthCacheVar = null)
         {
-            // byte[] is a primitive type (bytes), not a collection - check this FIRST before anything else
+            // byte[] and byte collections are primitive types (bytes), not collections - check this FIRST before anything else
             var normalizedType = TypeMapping.NormalizeTypeName(typeName);
-            bool isByteArray = (normalizedType == "System.Byte[]");
+            bool isByteArrayLike = (normalizedType == "System.Byte[]" || TypeMapping.IsByteCollectionType(normalizedType));
 
             var wireType = isEnum ? WireType.VarInt : GetWireType(typeInfo);
             var (_, tagBytes) = TypeMapping.PrecomputeTagBytes(fieldId, wireType);
 
             // For collections, arrays, and dictionaries, tag is added per element inside the loop
-            // Exception: byte[] is treated as a primitive and needs tag added here
-            if (!typeInfo.IsCollection && !typeInfo.IsDictionary && (!typeInfo.IsArray || isByteArray))
+            // Exception: byte[] and byte collections are treated as primitives and need tag added here
+            if (!typeInfo.IsCollection && !typeInfo.IsDictionary && (!typeInfo.IsArray || isByteArrayLike))
             {
                 _sb.AppendIndentedLine($"{calcVar}.AddByteLength({tagBytes}); // tag for field {fieldId}");
             }
 
-            // byte[] is a primitive type (bytes), not a collection - handle BEFORE other checks
-            if (isByteArray)
+            // byte[] and byte collections are primitive types (bytes), not collections - handle BEFORE other checks
+            if (isByteArrayLike)
             {
                 var sizeExpr = TypeMapping.GetSizeExpression(typeName, sourceVar, DataFormat.Default, calcVar);
                 if (sizeExpr != null)
@@ -1889,23 +1894,23 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
         private void GenerateFieldWrite(string sourceVar, string typeName, TypeAnalysisInfo typeInfo,
             bool isEnum, int fieldId, string cachedLengthVar = null)
         {
-            // byte[] is a primitive type (bytes), not a collection - check this FIRST before anything else
+            // byte[] and byte collections are primitive types (bytes), not collections - check this FIRST before anything else
             var normalizedType = TypeMapping.NormalizeTypeName(typeName);
-            bool isByteArray = (normalizedType == "System.Byte[]");
+            bool isByteArrayLike = (normalizedType == "System.Byte[]" || TypeMapping.IsByteCollectionType(normalizedType));
 
             var wireType = isEnum ? WireType.VarInt : GetWireType(typeInfo);
             var (bytesString, _) = TypeMapping.PrecomputeTagBytes(fieldId, wireType);
 
             // For collections, arrays, and dictionaries, tag is written per element inside the loop
-            // Exception: byte[] is treated as a primitive and needs tag written here
-            if (!typeInfo.IsCollection && !typeInfo.IsDictionary && (!typeInfo.IsArray || isByteArray))
+            // Exception: byte[] and byte collections are treated as primitives and need tag written here
+            if (!typeInfo.IsCollection && !typeInfo.IsDictionary && (!typeInfo.IsArray || isByteArrayLike))
             {
                 // Write tag
                 _sb.AppendIndentedLine($"writer.WriteSingleByte({bytesString}); // field {fieldId}");
             }
 
-            // byte[] is a primitive type (bytes), not a collection - handle BEFORE other checks
-            if (isByteArray)
+            // byte[] and byte collections are primitive types (bytes), not collections - handle BEFORE other checks
+            if (isByteArrayLike)
             {
                 var writeExpr = TypeMapping.GetWriteExpression(typeName, sourceVar, DataFormat.Default, "writer");
                 if (writeExpr != null)

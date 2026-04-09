@@ -702,7 +702,7 @@ namespace GProtobuf.Generator.V2.Handlers
             if (!TypeMapping.IsSimpleType(typeName)) return;
 
             var normalizedType = TypeMapping.NormalizeTypeName(typeName);
-            bool isReferenceType = normalizedType == "System.String" || normalizedType == "System.Byte[]";
+            bool isReferenceType = normalizedType == "System.String" || normalizedType == "System.Byte[]" || TypeMapping.IsByteCollectionType(normalizedType);
 
             // Fast path: use field helper for non-nullable, non-required fields with 1-2 byte tags
             if (!isNullable && !isRequired)
@@ -990,7 +990,7 @@ namespace GProtobuf.Generator.V2.Handlers
             var wireType = TypeMapping.GetWireType(typeName, format);
 
             var normalizedType = TypeMapping.NormalizeTypeName(typeName);
-            bool isReferenceType = normalizedType == "System.String" || normalizedType == "System.Byte[]";
+            bool isReferenceType = normalizedType == "System.String" || normalizedType == "System.Byte[]" || TypeMapping.IsByteCollectionType(normalizedType);
 
             // Fast path: use field helper for non-nullable, non-required fields with 1-2 byte tags
             if (!isNullable && !isRequired)

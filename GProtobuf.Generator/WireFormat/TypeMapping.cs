@@ -21,6 +21,12 @@ namespace GProtobuf.Generator.WireFormat
         public const string MemoryByteTypeName = "System.Memory<byte>";
         public const string ReadOnlyMemoryByteTypeName = "System.ReadOnlyMemory<byte>";
 
+        // Byte collection types - serialized as length-delimited bytes (same as byte[])
+        public const string ListByteTypeName = "System.Collections.Generic.List<byte>";
+        public const string ICollectionByteTypeName = "System.Collections.Generic.ICollection<byte>";
+        public const string IListByteTypeName = "System.Collections.Generic.IList<byte>";
+        public const string IEnumerableByteTypeName = "System.Collections.Generic.IEnumerable<byte>";
+
         #endregion
 
         #region Type Classification
@@ -31,6 +37,18 @@ namespace GProtobuf.Generator.WireFormat
         public static bool IsBooleanType(string typeName)
         {
             return NormalizeTypeName(typeName) == BooleanTypeName;
+        }
+
+        /// <summary>
+        /// Checks if type is a byte collection (List&lt;byte&gt;, ICollection&lt;byte&gt;, etc.)
+        /// that should be serialized as length-delimited bytes, same as byte[].
+        /// </summary>
+        public static bool IsByteCollectionType(string typeName)
+        {
+            return typeName == ListByteTypeName ||
+                   typeName == ICollectionByteTypeName ||
+                   typeName == IListByteTypeName ||
+                   typeName == IEnumerableByteTypeName;
         }
 
         /// <summary>
@@ -47,6 +65,7 @@ namespace GProtobuf.Generator.WireFormat
                 "System.Boolean" or "System.String" or "System.Char" => true,
                 "System.Byte[]" => true,
                 ArraySegmentByteTypeName or MemoryByteTypeName or ReadOnlyMemoryByteTypeName => true,
+                ListByteTypeName or ICollectionByteTypeName or IListByteTypeName or IEnumerableByteTypeName => true,
                 "System.Guid" or "System.TimeSpan" or "System.DateTime" => true,
                 _ => false
             };
@@ -84,7 +103,7 @@ namespace GProtobuf.Generator.WireFormat
 
         /// <summary>
         /// Checks if type can be used in non-packed repeated fields (includes string, byte, Guid, TimeSpan).
-        /// Note: byte[] is NOT an element type - it's a field type. For List&lt;byte&gt;, element is byte (primitive).
+        /// Note: byte[] is NOT an element type - it's a field type. byte is kept here for HashSet&lt;byte&gt; and similar collections.
         /// </summary>
         public static bool IsNonPackedArrayType(string elementTypeName)
         {
@@ -127,6 +146,7 @@ namespace GProtobuf.Generator.WireFormat
                 ArraySegmentByteTypeName => $"{valueExpr}.Array != null",
                 MemoryByteTypeName => $"!{valueExpr}.IsEmpty",
                 ReadOnlyMemoryByteTypeName => $"!{valueExpr}.IsEmpty",
+                ListByteTypeName or ICollectionByteTypeName or IListByteTypeName or IEnumerableByteTypeName => $"{valueExpr} != null",
                 "System.Guid" => $"{valueExpr} != global::System.Guid.Empty",
                 "System.TimeSpan" => $"{valueExpr} != global::System.TimeSpan.Zero",
                 "System.DateTime" => $"{valueExpr} != default(global::System.DateTime)",
@@ -164,7 +184,9 @@ namespace GProtobuf.Generator.WireFormat
                 "System.Boolean" or "System.Char" => WireType.VarInt,
                 "System.Single" => WireType.Fixed32b,
                 "System.Double" => WireType.Fixed64b,
-                "System.String" or "System.Byte[]" or ArraySegmentByteTypeName or MemoryByteTypeName or ReadOnlyMemoryByteTypeName or "System.Guid" or "System.DateTime" or "System.TimeSpan" => WireType.Len, // TimeSpan serialized as sub-message (Level200)
+                "System.String" or "System.Byte[]" or ArraySegmentByteTypeName or MemoryByteTypeName or ReadOnlyMemoryByteTypeName
+                    or ListByteTypeName or ICollectionByteTypeName or IListByteTypeName or IEnumerableByteTypeName
+                    or "System.Guid" or "System.DateTime" or "System.TimeSpan" => WireType.Len, // TimeSpan serialized as sub-message (Level200)
                 _ => WireType.Len
             };
         }
@@ -258,6 +280,9 @@ namespace GProtobuf.Generator.WireFormat
                 ArraySegmentByteTypeName => $"new global::System.ArraySegment<byte>({readerVar}.ReadByteArray())",
                 MemoryByteTypeName => $"new global::System.Memory<byte>({readerVar}.ReadByteArray())",
                 ReadOnlyMemoryByteTypeName => $"{readerVar}.ReadByteArrayAsMemory()",
+                ListByteTypeName => $"new global::System.Collections.Generic.List<byte>({readerVar}.ReadByteArray())",
+                ICollectionByteTypeName or IListByteTypeName or IEnumerableByteTypeName =>
+                    $"new global::System.Collections.Generic.List<byte>({readerVar}.ReadByteArray())",
                 "System.Guid" => $"{readerVar}.ReadGuid({wireTypeVar})",
                 "System.TimeSpan" => $"{readerVar}.ReadTimeSpan({wireTypeVar})",
                 "System.DateTime" => $"{readerVar}.ReadDateTime({wireTypeVar})",
@@ -402,6 +427,9 @@ namespace GProtobuf.Generator.WireFormat
                 ArraySegmentByteTypeName => $"new global::System.ReadOnlySpan<byte>({valueExpr}.Array, {valueExpr}.Offset, {valueExpr}.Count)",
                 MemoryByteTypeName => $"{valueExpr}.Span",
                 ReadOnlyMemoryByteTypeName => $"{valueExpr}.Span",
+                ListByteTypeName => $"global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan({valueExpr})",
+                ICollectionByteTypeName or IListByteTypeName or IEnumerableByteTypeName =>
+                    $"global::System.Linq.Enumerable.ToArray({valueExpr})",
                 _ => null
             };
         }
@@ -411,6 +439,8 @@ namespace GProtobuf.Generator.WireFormat
             return normalizedType switch
             {
                 ArraySegmentByteTypeName => $"{valueExpr}.Count",
+                ListByteTypeName or ICollectionByteTypeName or IListByteTypeName => $"{valueExpr}.Count",
+                IEnumerableByteTypeName => $"global::System.Linq.Enumerable.Count({valueExpr})",
                 _ => $"{valueExpr}.Length"
             };
         }
@@ -473,7 +503,8 @@ namespace GProtobuf.Generator.WireFormat
                 "System.Char" => $"{writerVar}.WriteVarUInt32((uint){valueExpr})",
                 "System.String" => $"{writerVar}.WriteString({valueExpr})",
                 "System.Byte[]" => $"{writerVar}.WriteVarUInt32((uint){valueExpr}.Length); {writerVar}.WriteBytes({valueExpr})",
-                ArraySegmentByteTypeName or MemoryByteTypeName or ReadOnlyMemoryByteTypeName =>
+                ArraySegmentByteTypeName or MemoryByteTypeName or ReadOnlyMemoryByteTypeName
+                    or ListByteTypeName or ICollectionByteTypeName or IListByteTypeName or IEnumerableByteTypeName =>
                     $"{writerVar}.WriteVarUInt32((uint){GetByteWrapperLengthExpression(normalized, valueExpr)}); {writerVar}.WriteBytes({GetByteWrapperSpanExpression(normalized, valueExpr)})",
                 "System.Guid" => $"{writerVar}.WriteGuid({valueExpr})",
                 "System.TimeSpan" => $"{writerVar}.WriteTimeSpan({valueExpr})",
@@ -607,7 +638,8 @@ namespace GProtobuf.Generator.WireFormat
                 "System.Char" => $"{calculatorVar}.WriteVarUInt32((uint){valueExpr})",
                 "System.String" => $"{calculatorVar}.WriteString({valueExpr})",
                 "System.Byte[]" => $"{calculatorVar}.WriteBytes({valueExpr})",
-                ArraySegmentByteTypeName or MemoryByteTypeName or ReadOnlyMemoryByteTypeName =>
+                ArraySegmentByteTypeName or MemoryByteTypeName or ReadOnlyMemoryByteTypeName
+                    or ListByteTypeName or ICollectionByteTypeName or IListByteTypeName or IEnumerableByteTypeName =>
                     $"{calculatorVar}.WriteBytes({GetByteWrapperSpanExpression(normalized, valueExpr)})",
                 "System.Guid" => $"{calculatorVar}.WriteGuid({valueExpr})",
                 "System.TimeSpan" => $"{calculatorVar}.WriteTimeSpan({valueExpr})",

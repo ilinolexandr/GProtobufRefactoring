@@ -49,6 +49,9 @@ namespace GProtobuf.Generator.V2.Helpers
                 TypeMapping.ArraySegmentByteTypeName => $"new global::System.ArraySegment<byte>(global::GProtobuf.Core.StreamReaders.ReadByteArray(ref {readerVar}))",
                 TypeMapping.MemoryByteTypeName => $"new global::System.Memory<byte>(global::GProtobuf.Core.StreamReaders.ReadByteArray(ref {readerVar}))",
                 TypeMapping.ReadOnlyMemoryByteTypeName => $"new global::System.ReadOnlyMemory<byte>(global::GProtobuf.Core.StreamReaders.ReadByteArray(ref {readerVar}))",
+                TypeMapping.ListByteTypeName => $"new global::System.Collections.Generic.List<byte>(global::GProtobuf.Core.StreamReaders.ReadByteArray(ref {readerVar}))",
+                TypeMapping.ICollectionByteTypeName or TypeMapping.IListByteTypeName or TypeMapping.IEnumerableByteTypeName =>
+                    $"new global::System.Collections.Generic.List<byte>(global::GProtobuf.Core.StreamReaders.ReadByteArray(ref {readerVar}))",
                 _ => null
             };
         }
@@ -101,6 +104,7 @@ namespace GProtobuf.Generator.V2.Helpers
                 "System.TimeSpan" => false,
                 "System.Byte[]" => false,
                 TypeMapping.ArraySegmentByteTypeName or TypeMapping.MemoryByteTypeName or TypeMapping.ReadOnlyMemoryByteTypeName => false,
+                TypeMapping.ListByteTypeName or TypeMapping.ICollectionByteTypeName or TypeMapping.IListByteTypeName or TypeMapping.IEnumerableByteTypeName => false,
                 _ => false
             };
         }
