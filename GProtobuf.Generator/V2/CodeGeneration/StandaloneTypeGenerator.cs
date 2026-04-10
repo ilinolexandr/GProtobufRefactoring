@@ -1126,7 +1126,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     if (proxy != null)
                     {
                         var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
-                        _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({varName}{proxy.CreateExtraArgs});");
+                        _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}({varName}{proxy.WrapExtraArgs});");
                         _sb.AppendIndentedLine("var sizeCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
                         _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref sizeCalc, proxyItem);");
                         _sb.AppendIndentedLine($"{writerName}.WriteVarUInt32((uint)sizeCalc.Length);");
@@ -1308,7 +1308,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 if (proxy != null)
                 {
                     var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
-                    _sb.AppendIndentedLine($"var _proxyElem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(_elem_{safeVarName}_{fieldNumber}{proxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var _proxyElem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(_elem_{safeVarName}_{fieldNumber}{proxy.WrapExtraArgs});");
                     _sb.AppendIndentedLine($"var _elemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                     _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _elemCalc_{safeVarName}_{fieldNumber}, _proxyElem_{safeVarName}_{fieldNumber});");
                     _sb.AppendIndentedLine($"{resultVarName} += {tagSize} + global::GProtobuf.Core.Utils.GetVarintSize((uint)_elemCalc_{safeVarName}_{fieldNumber}.Length) + _elemCalc_{safeVarName}_{fieldNumber}.Length;");
@@ -1380,7 +1380,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 if (proxy != null)
                 {
                     var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
-                    _sb.AppendIndentedLine($"var _proxyElem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(_elem_{safeVarName}_{fieldNumber}{proxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var _proxyElem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(_elem_{safeVarName}_{fieldNumber}{proxy.WrapExtraArgs});");
                     _sb.AppendIndentedLine($"var _elemWriteCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                     _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _elemWriteCalc_{safeVarName}_{fieldNumber}, _proxyElem_{safeVarName}_{fieldNumber});");
                     _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)_elemWriteCalc_{safeVarName}_{fieldNumber}.Length);");
@@ -1445,7 +1445,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     if (proxy != null)
                     {
                         var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
-                        _sb.AppendIndentedLine($"var _proxyCalc_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({varName}{proxy.CreateExtraArgs});");
+                        _sb.AppendIndentedLine($"var _proxyCalc_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}({varName}{proxy.WrapExtraArgs});");
                         _sb.AppendIndentedLine($"var _calc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                         _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _calc_{safeVarName}_{fieldNumber}, _proxyCalc_{safeVarName}_{fieldNumber});");
                         _sb.AppendIndentedLine($"var {resultVarName} = {tagSize} + global::GProtobuf.Core.Utils.GetVarintSize((uint)_calc_{safeVarName}_{fieldNumber}.Length) + _calc_{safeVarName}_{fieldNumber}.Length;");
@@ -1510,7 +1510,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     if (proxy != null)
                     {
                         var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
-                        _sb.AppendIndentedLine($"var _proxyItem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(_item_{safeVarName}_{fieldNumber}{proxy.CreateExtraArgs});");
+                        _sb.AppendIndentedLine($"var _proxyItem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(_item_{safeVarName}_{fieldNumber}{proxy.WrapExtraArgs});");
                         _sb.AppendIndentedLine($"var _itemCalc_{safeVarName}_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                         _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref _itemCalc_{safeVarName}_{fieldNumber}, _proxyItem_{safeVarName}_{fieldNumber});");
                         _sb.AppendIndentedLine($"_listContentSize_{safeVarName}_{fieldNumber} += 1 + global::GProtobuf.Core.Utils.GetVarintSize((uint)_itemCalc_{safeVarName}_{fieldNumber}.Length) + _itemCalc_{safeVarName}_{fieldNumber}.Length;");
@@ -1617,7 +1617,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 if (proxy != null)
                 {
                     var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
-                    _sb.AppendIndentedLine($"var proxy_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({varName}{proxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var proxy_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}({varName}{proxy.WrapExtraArgs});");
                     _sb.AppendIndentedLine($"var sizeCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                     _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref sizeCalc_{fieldNumber}, proxy_{fieldNumber});");
                     _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)sizeCalc_{fieldNumber}.Length);");
@@ -1691,7 +1691,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         if (proxy != null)
                         {
                             var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
-                            _sb.AppendIndentedLine($"var proxyItem_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item_{fieldNumber}{proxy.CreateExtraArgs});");
+                            _sb.AppendIndentedLine($"var proxyItem_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(item_{fieldNumber}{proxy.WrapExtraArgs});");
                             _sb.AppendIndentedLine($"var itemCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                             _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref itemCalc_{fieldNumber}, proxyItem_{fieldNumber});");
                             _sb.AppendIndentedLine($"{listSizeVar} += 1 + global::GProtobuf.Core.Utils.GetVarintSize((uint)itemCalc_{fieldNumber}.Length) + itemCalc_{fieldNumber}.Length;");
@@ -1764,7 +1764,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     if (proxy != null)
                     {
                         var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
-                        _sb.AppendIndentedLine($"var proxyItem_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item_{fieldNumber}{proxy.CreateExtraArgs});");
+                        _sb.AppendIndentedLine($"var proxyItem_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(item_{fieldNumber}{proxy.WrapExtraArgs});");
                         _sb.AppendIndentedLine($"var itemWriteCalc_{fieldNumber} = new global::GProtobuf.Core.WriteSizeCalculator();");
                         _sb.AppendIndentedLine($"{proxyPrefix}SizeCalculators.Calculate{proxy.ProxyClassName}ContentSize(ref itemWriteCalc_{fieldNumber}, proxyItem_{fieldNumber});");
                         _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)itemWriteCalc_{fieldNumber}.Length);");

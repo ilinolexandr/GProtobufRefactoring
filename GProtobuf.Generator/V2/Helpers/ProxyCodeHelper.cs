@@ -71,7 +71,7 @@ namespace GProtobuf.Generator.V2.Helpers
         /// </summary>
         public void EmitCreate(ProxyDefinition proxy, string sourceVar, string proxyVar)
         {
-            _sb.AppendIndentedLine($"var {proxyVar} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({sourceVar}{proxy.CreateExtraArgs});");
+            _sb.AppendIndentedLine($"var {proxyVar} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}({sourceVar}{proxy.WrapExtraArgs});");
         }
 
         /// <summary>

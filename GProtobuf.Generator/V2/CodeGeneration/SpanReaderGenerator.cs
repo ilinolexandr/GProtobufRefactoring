@@ -105,12 +105,22 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         }
 
         /// <summary>
-        /// Generates object creation code, using FormatterServices if type has no parameterless constructor.
-        /// LEGACY: This method is kept for backward compatibility with old code paths.
+        /// Generates object creation code. If <paramref name="type"/> is registered as a proxy with
+        /// a [ProxyAcquire] factory, emits a call to that factory (enables pool-based reuse).
+        /// Otherwise falls back to `new T()` or FormatterServices.GetUninitializedObject for types
+        /// lacking a parameterless constructor.
         /// </summary>
         private void GenerateObjectCreation(TypeDefinition type, string variableName = "result")
         {
             var fullTypeName = $"global::{type.FullName}";
+
+            // Proxy [ProxyAcquire] factory takes precedence — call it instead of `new T()`.
+            var proxyDef = _proxyRegistry?.GetProxyByProxyType(type.FullName);
+            if (proxyDef != null && !string.IsNullOrEmpty(proxyDef.AcquireMethodName))
+            {
+                _sb.AppendIndentedLine($"{fullTypeName} {variableName} = {fullTypeName}.{proxyDef.AcquireMethodName}();");
+                return;
+            }
 
             if (type.HasParameterlessConstructor)
             {

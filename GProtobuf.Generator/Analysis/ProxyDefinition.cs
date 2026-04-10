@@ -40,10 +40,17 @@ namespace GProtobuf.Generator.Analysis
         public string ProxyNamespace { get; set; }
 
         /// <summary>
-        /// Name of the static factory method marked with [ProxyCreate].
-        /// Converts original type to proxy type.
+        /// Name of the static factory method marked with [ProxyWrap].
+        /// Wraps an original type instance into a proxy instance for serialization.
         /// </summary>
-        public string CreateMethodName { get; set; }
+        public string WrapMethodName { get; set; }
+
+        /// <summary>
+        /// Name of the optional static factory method marked with [ProxyAcquire].
+        /// When non-null, the generator emits a call to this method instead of `new ProxyType()`
+        /// when constructing a proxy instance during deserialization (enables pool reuse).
+        /// </summary>
+        public string AcquireMethodName { get; set; }
 
         /// <summary>
         /// Name of the instance method marked with [ProxyConvert].
@@ -58,16 +65,16 @@ namespace GProtobuf.Generator.Analysis
         public string ReturnMethodName { get; set; }
 
         /// <summary>
-        /// Number of parameters in the [ProxyCreate] method.
+        /// Number of parameters in the [ProxyWrap] method.
         /// 1 = standard (source only), 2 = pooling (source + reuse instance).
         /// </summary>
-        public int CreateParameterCount { get; set; } = 1;
+        public int WrapParameterCount { get; set; } = 1;
 
         /// <summary>
-        /// Returns the extra arguments string for the [ProxyCreate] call.
+        /// Returns the extra arguments string for the [ProxyWrap] call.
         /// For 1-parameter: "" (empty), for 2-parameter: ", default" (passes default reuse instance).
         /// </summary>
-        public string CreateExtraArgs => CreateParameterCount >= 2 ? ", default" : "";
+        public string WrapExtraArgs => WrapParameterCount >= 2 ? ", default" : "";
 
         /// <summary>
         /// Whether the proxy type is a struct (affects null-checking and allocation).

@@ -26,7 +26,7 @@ namespace TestProxies
         [ProtoMember(1)] public int X { get; set; }
         [ProtoMember(2)] public int Y { get; set; }
 
-        [ProxyCreate]
+        [ProxyWrap]
         public static CrossNsPointProxy FromOriginal(CrossNsPoint source)
             => new() { X = source.X, Y = source.Y };
 

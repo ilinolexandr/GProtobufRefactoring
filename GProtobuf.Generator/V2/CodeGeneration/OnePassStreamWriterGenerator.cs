@@ -473,7 +473,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     _sb.StartNewBlock();
                 }
 
-                _sb.AppendIndentedLine($"var proxyVal = global::{valProxy.ProxyTypeFullName}.{valProxy.CreateMethodName}({proxyArg}{valProxy.CreateExtraArgs});");
+                _sb.AppendIndentedLine($"var proxyVal = global::{valProxy.ProxyTypeFullName}.{valProxy.WrapMethodName}({proxyArg}{valProxy.WrapExtraArgs});");
                 TagCodeHelper.WriteTag(_sb, 2, WireType.Len);
                 _sb.AppendIndentedLine("writer.BeginSubMessage();");
                 var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(valProxy.ProxyNamespace, _currentNamespace);
@@ -596,7 +596,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             var elemProxy = GetProxyForType(elementType);
             if (elemProxy != null)
             {
-                _sb.AppendIndentedLine($"var proxyElem = global::{elemProxy.ProxyTypeFullName}.{elemProxy.CreateMethodName}({itemVar}{elemProxy.CreateExtraArgs});");
+                _sb.AppendIndentedLine($"var proxyElem = global::{elemProxy.ProxyTypeFullName}.{elemProxy.WrapMethodName}({itemVar}{elemProxy.WrapExtraArgs});");
                 TagCodeHelper.WriteTag(_sb, fieldId, WireType.Len);
                 _sb.AppendIndentedLine("writer.BeginSubMessage();");
                 var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(elemProxy.ProxyNamespace, _currentNamespace);
@@ -1376,7 +1376,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.StartNewBlock();
 
             // Create proxy from original
-            _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item{proxy.CreateExtraArgs});");
+            _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(item{proxy.WrapExtraArgs});");
 
             TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
             _sb.AppendIndentedLine("writer.BeginSubMessage();");
@@ -1483,7 +1483,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
 
             // Create proxy from original
-            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({localVar}{proxy.CreateExtraArgs});");
+            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}({localVar}{proxy.WrapExtraArgs});");
 
             // Write tag + sub-message
             TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);

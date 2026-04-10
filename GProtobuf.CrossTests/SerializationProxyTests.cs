@@ -63,7 +63,7 @@ public struct Vector3Proxy
     [ProtoMember(2)] public float Y { get; set; }
     [ProtoMember(3)] public float Z { get; set; }
 
-    [ProxyCreate]
+    [ProxyWrap]
     public static Vector3Proxy FromOriginal(ExternalVector3 source)
         => new() { X = source.X, Y = source.Y, Z = source.Z };
 
@@ -87,7 +87,7 @@ public class ColorProxy
     [ProtoMember(3)] public int B { get; set; }
     [ProtoMember(4)] public int A { get; set; }
 
-    [ProxyCreate]
+    [ProxyWrap]
     public static ColorProxy FromOriginal(ExternalColor source)
         => new() { R = source.R, G = source.G, B = source.B, A = source.A };
 
@@ -103,7 +103,7 @@ public struct ReadonlyPointProxy
     [ProtoMember(1)] public double X { get; set; }
     [ProtoMember(2)] public double Y { get; set; }
 
-    [ProxyCreate]
+    [ProxyWrap]
     public static ReadonlyPointProxy FromOriginal(ExternalReadonlyPoint source)
         => new() { X = source.X, Y = source.Y };
 
@@ -112,7 +112,7 @@ public struct ReadonlyPointProxy
         => new(X, Y);
 }
 
-// ==================== Зовнішній тип для тесту 2-параметрового ProxyCreate ====================
+// ==================== Зовнішній тип для тесту 2-параметрового ProxyWrap ====================
 
 /// <summary>Зовнішній struct для тесту pooling proxy</summary>
 public struct ExternalSize
@@ -123,7 +123,7 @@ public struct ExternalSize
     public ExternalSize(int w, int h) { Width = w; Height = h; }
 }
 
-/// <summary>Proxy з 2-параметровим [ProxyCreate] (pooling pattern)</summary>
+/// <summary>Proxy з 2-параметровим [ProxyWrap] (pooling pattern)</summary>
 [ProtoContract]
 public struct SizeProxy
 {
@@ -132,7 +132,7 @@ public struct SizeProxy
     [ProtoMember(1)] public int Width { get; set; }
     [ProtoMember(2)] public int Height { get; set; }
 
-    [ProxyCreate]
+    [ProxyWrap]
     public static SizeProxy FromOriginal(ExternalSize source, SizeProxy reuse)
     {
         CreateCallCount++;
@@ -352,7 +352,7 @@ public class ProxyNestedDictTestMessage
     public Dictionary<string, Dictionary<int, ExternalVector3>>? Data { get; set; }
 }
 
-/// <summary>Кейс P3: Proxy з 2-параметровим [ProxyCreate] (pooling)</summary>
+/// <summary>Кейс P3: Proxy з 2-параметровим [ProxyWrap] (pooling)</summary>
 [ProtoContract]
 public class ProxyPoolingTestMessage
 {
@@ -934,7 +934,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
         deserialized.Data["inner"][2].Z.Should().Be(60f);
     }
 
-    // Кейс P3: 2-параметровий [ProxyCreate] — pooling proxy roundtrip
+    // Кейс P3: 2-параметровий [ProxyWrap] — pooling proxy roundtrip
     [Fact]
     public void ProxyType_TwoParamCreate_RoundTrip()
     {
@@ -963,7 +963,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
 
         // Verify FromOriginal was called (with 2 params — source + default reuse)
         SizeProxy.CreateCallCount.Should().BeGreaterThan(0,
-            "[ProxyCreate] with 2 parameters should be called during serialization");
+            "[ProxyWrap] with 2 parameters should be called during serialization");
     }
 
     // Edge Case A4.2: Two proxy types in separate dictionaries

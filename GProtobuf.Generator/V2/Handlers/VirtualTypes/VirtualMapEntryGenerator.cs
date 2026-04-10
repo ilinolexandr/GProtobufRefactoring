@@ -1679,7 +1679,7 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
                 {
                     var proxySizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(sizeProxy.ProxyTypeFullName, _typeRegistry);
                     var sizeValueAccess = GetNullableValueAccess(sourceVar, typeName);
-                    _sb.AppendIndentedLine($"var proxyForSize_{fieldId} = global::{sizeProxy.ProxyTypeFullName}.{sizeProxy.CreateMethodName}({sizeValueAccess}{sizeProxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var proxyForSize_{fieldId} = global::{sizeProxy.ProxyTypeFullName}.{sizeProxy.WrapMethodName}({sizeValueAccess}{sizeProxy.WrapExtraArgs});");
                     _sb.AppendIndentedLine($"var tempCalc{fieldId} = new global::GProtobuf.Core.WriteSizeCalculator();");
                     _sb.AppendIndentedLine($"{proxySizeCalcClass}.Calculate{sizeProxy.ProxyClassName}ContentSize(ref tempCalc{fieldId}, proxyForSize_{fieldId});");
                     if (sizeProxy.ReturnMethodName != null)
@@ -1849,7 +1849,7 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
                     _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
                     _sb.StartNewBlock();
                     _sb.AppendIndentedLine($"{calcVar}.AddByteLength({proxyTagBytes}); // tag for repeated field {fieldId}");
-                    _sb.AppendIndentedLine($"var proxyItem = global::{elemSizeProxy.ProxyTypeFullName}.{elemSizeProxy.CreateMethodName}(item{elemSizeProxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var proxyItem = global::{elemSizeProxy.ProxyTypeFullName}.{elemSizeProxy.WrapMethodName}(item{elemSizeProxy.WrapExtraArgs});");
                     _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
                     _sb.AppendIndentedLine($"{proxySizeCalcClass}.Calculate{elemSizeProxy.ProxyClassName}ContentSize(ref itemCalc, proxyItem);");
                     _sb.AppendIndentedLine($"{calcVar}.WriteVarUInt32((uint)itemCalc.Length);");
@@ -2023,7 +2023,7 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
                     bool proxyCanSkip = !proxyIsDerived && !proxyHasIncludes && !proxyHasCallbacks;
                     var proxyMethodSuffix = (proxyIsDerived || proxyCanSkip) ? "" : "Content";
 
-                    _sb.AppendIndentedLine($"var proxyForWrite_{fieldId} = global::{writeProxy.ProxyTypeFullName}.{writeProxy.CreateMethodName}({writeValueAccess}{writeProxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var proxyForWrite_{fieldId} = global::{writeProxy.ProxyTypeFullName}.{writeProxy.WrapMethodName}({writeValueAccess}{writeProxy.WrapExtraArgs});");
 
                     if (cachedLengthVar != null)
                     {
@@ -2218,7 +2218,7 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
                     _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
                     _sb.StartNewBlock();
-                    _sb.AppendIndentedLine($"var proxyItem = global::{elemWriteProxy.ProxyTypeFullName}.{elemWriteProxy.CreateMethodName}(item{elemWriteProxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var proxyItem = global::{elemWriteProxy.ProxyTypeFullName}.{elemWriteProxy.WrapMethodName}(item{elemWriteProxy.WrapExtraArgs});");
                     _sb.AppendIndentedLine($"writer.WriteSingleByte({proxyBytesString}); // tag for repeated field {fieldId}");
                     _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
                     _sb.AppendIndentedLine($"{proxySizeCalcClass}.Calculate{elemWriteProxy.ProxyClassName}ContentSize(ref itemCalc, proxyItem);");

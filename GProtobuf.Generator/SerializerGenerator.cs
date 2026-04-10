@@ -47,7 +47,7 @@ namespace ProtoBuf
     /// <summary>
     /// Registers a serialization proxy: when the original type appears as a field,
     /// the proxy type (which must have [ProtoContract]) is used for serialization instead.
-    /// The proxy type must have methods marked with [ProxyCreate] and [ProxyConvert].
+    /// The proxy type must have methods marked with [ProxyWrap] and [ProxyConvert].
     /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
     internal sealed class SerializationProxyAttribute : global::System.Attribute
@@ -63,15 +63,28 @@ namespace ProtoBuf
 }
 ");
 
-            ctx.AddSource("ProxyCreateAttribute.g.cs", @"
+            ctx.AddSource("ProxyWrapAttribute.g.cs", @"
 namespace ProtoBuf
 {
     /// <summary>
-    /// Marks a static factory method on a proxy type that creates a proxy instance from the original type.
+    /// Marks a static factory method on a proxy type that wraps an original instance into a proxy instance for serialization.
     /// The method must be static, take one parameter of the original type, and return the proxy type.
     /// </summary>
     [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
-    internal sealed class ProxyCreateAttribute : global::System.Attribute { }
+    internal sealed class ProxyWrapAttribute : global::System.Attribute { }
+}
+");
+
+            ctx.AddSource("ProxyAcquireAttribute.g.cs", @"
+namespace ProtoBuf
+{
+    /// <summary>
+    /// Marks an optional static factory method on a proxy type that produces a fresh proxy instance during deserialization.
+    /// When present, the generator calls this method instead of `new ProxyType()` before populating fields, enabling
+    /// pool-based reuse of proxy instances. The method must be static, take no parameters, and return the proxy type.
+    /// </summary>
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
+    internal sealed class ProxyAcquireAttribute : global::System.Attribute { }
 }
 ");
 
@@ -447,13 +460,19 @@ namespace ProtoBuf
                         {
                             foreach (var (diagId, diagMsg) in proxy.Diagnostics)
                             {
+                                // GPROTO018 (Acquire + matching constructor conflict) is an error
+                                // because the generator cannot honor [ProxyAcquire] when constructor-based
+                                // deserialization wins — the user must remove one or the other.
+                                var severity = diagId == "GPROTO018"
+                                    ? DiagnosticSeverity.Error
+                                    : DiagnosticSeverity.Warning;
                                 context.ReportDiagnostic(Diagnostic.Create(
                                     new DiagnosticDescriptor(
                                         diagId,
                                         "GProtobuf Serialization Proxy",
                                         diagMsg,
                                         "GProtobuf",
-                                        DiagnosticSeverity.Warning,
+                                        severity,
                                         true),
                                     Location.None));
                             }
@@ -1613,7 +1632,7 @@ namespace ProtoBuf
 
     /// <summary>
     /// Analyzes a proxy type registered via [assembly: SerializationProxy(typeof(X), typeof(Y))].
-    /// Validates that Y has [ProtoContract], [ProxyCreate], and [ProxyConvert] methods.
+    /// Validates that Y has [ProtoContract], [ProxyWrap], and [ProxyConvert] methods, and optionally a valid [ProxyAcquire].
     /// Returns ProxyDefinition with diagnostics (check IsValid before using).
     /// </summary>
     private static ProxyDefinition AnalyzeProxy(INamedTypeSymbol originalType, INamedTypeSymbol proxyType, Compilation compilation)
@@ -1638,9 +1657,10 @@ namespace ProtoBuf
             proxy.Diagnostics.Add(("GPROTO010", $"Proxy type '{proxyName}' must have [ProtoContract] attribute"));
         }
 
-        // Шукаємо [ProxyCreate], [ProxyConvert], [ProxyReturn] методи
-        bool foundCreate = false;
+        // Шукаємо [ProxyWrap], [ProxyAcquire], [ProxyConvert], [ProxyReturn] методи
+        bool foundWrap = false;
         bool foundConvert = false;
+        int acquireCount = 0;
 
         foreach (var member in proxyType.GetMembers())
         {
@@ -1651,19 +1671,49 @@ namespace ProtoBuf
             {
                 var attrName = attr.AttributeClass?.Name;
 
-                if (attrName == "ProxyCreateAttribute")
+                if (attrName == "ProxyWrapAttribute")
                 {
-                    foundCreate = true;
+                    foundWrap = true;
                     if (method.IsStatic && method.Parameters.Length >= 1)
                     {
-                        proxy.CreateMethodName = method.Name;
-                        proxy.CreateParameterCount = method.Parameters.Length;
+                        proxy.WrapMethodName = method.Name;
+                        proxy.WrapParameterCount = method.Parameters.Length;
                     }
                     else
                     {
-                        // GPROTO012: [ProxyCreate] має бути static з параметром типу X
+                        // GPROTO012: [ProxyWrap] має бути static з параметром типу X
                         proxy.Diagnostics.Add(("GPROTO012",
-                            $"[ProxyCreate] method '{method.Name}' in '{proxyName}' must be static, take one parameter of type '{originalName}', and return '{proxyName}'"));
+                            $"[ProxyWrap] method '{method.Name}' in '{proxyName}' must be static, take one parameter of type '{originalName}', and return '{proxyName}'"));
+                    }
+                }
+                else if (attrName == "ProxyAcquireAttribute")
+                {
+                    acquireCount++;
+                    bool isStatic = method.IsStatic;
+                    bool noParams = method.Parameters.Length == 0;
+                    bool returnsProxy = SymbolEqualityComparer.Default.Equals(method.ReturnType, proxyType);
+
+                    if (!isStatic)
+                    {
+                        // GPROTO019: [ProxyAcquire] має бути static
+                        proxy.Diagnostics.Add(("GPROTO019",
+                            $"[ProxyAcquire] method '{method.Name}' in '{proxyName}' must be static, take no parameters, and return '{proxyName}'"));
+                    }
+                    else if (!noParams)
+                    {
+                        // GPROTO019: [ProxyAcquire] має take no parameters
+                        proxy.Diagnostics.Add(("GPROTO019",
+                            $"[ProxyAcquire] method '{method.Name}' in '{proxyName}' must take no parameters and return '{proxyName}'"));
+                    }
+                    else if (!returnsProxy)
+                    {
+                        // GPROTO019: [ProxyAcquire] має повертати proxy type
+                        proxy.Diagnostics.Add(("GPROTO019",
+                            $"[ProxyAcquire] method '{method.Name}' in '{proxyName}' must return '{proxyName}'"));
+                    }
+                    else
+                    {
+                        proxy.AcquireMethodName = method.Name;
                     }
                 }
                 else if (attrName == "ProxyConvertAttribute")
@@ -1690,11 +1740,11 @@ namespace ProtoBuf
             }
         }
 
-        // GPROTO011: Потрібен рівно один [ProxyCreate]
-        if (!foundCreate)
+        // GPROTO011: Потрібен рівно один [ProxyWrap]
+        if (!foundWrap)
         {
             proxy.Diagnostics.Add(("GPROTO011",
-                $"Proxy type '{proxyName}' must have exactly one method with [ProxyCreate] attribute"));
+                $"Proxy type '{proxyName}' must have exactly one method with [ProxyWrap] attribute"));
         }
 
         // GPROTO013: Потрібен рівно один [ProxyConvert]
@@ -1702,6 +1752,45 @@ namespace ProtoBuf
         {
             proxy.Diagnostics.Add(("GPROTO013",
                 $"Proxy type '{proxyName}' must have exactly one method with [ProxyConvert] attribute"));
+        }
+
+        // GPROTO020: at most one [ProxyAcquire]
+        if (acquireCount > 1)
+        {
+            // Drop AcquireMethodName so downstream emission falls back to new()
+            proxy.AcquireMethodName = null;
+            proxy.Diagnostics.Add(("GPROTO020",
+                $"Proxy type '{proxyName}' must have at most one method with [ProxyAcquire] attribute"));
+        }
+
+        // GPROTO018: [ProxyAcquire] cannot coexist with constructor-based deserialization (matching ctor).
+        // A "matching constructor" is any non-parameterless constructor whose parameters can map to ProtoMembers
+        // by name. We approximate by detecting any constructor that has parameters AND those parameter names match
+        // [ProtoMember] property names on the proxy type. If such a ctor exists, the generator's
+        // ConstructorMatcher would otherwise win and never call our Acquire factory.
+        if (proxy.AcquireMethodName != null)
+        {
+            var protoMemberNames = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+            foreach (var member in proxyType.GetMembers())
+            {
+                if (member is IPropertySymbol prop &&
+                    prop.GetAttributes().Any(a => a.AttributeClass?.Name == "ProtoMemberAttribute"))
+                {
+                    protoMemberNames.Add(prop.Name);
+                }
+            }
+
+            bool hasMatchingCtor = proxyType.InstanceConstructors.Any(ctor =>
+                !ctor.IsImplicitlyDeclared &&
+                ctor.Parameters.Length > 0 &&
+                ctor.Parameters.All(p => protoMemberNames.Contains(p.Name)));
+
+            if (hasMatchingCtor)
+            {
+                proxy.AcquireMethodName = null;
+                proxy.Diagnostics.Add(("GPROTO018",
+                    $"Proxy type '{proxyName}' has [ProxyAcquire] but also a matching constructor that would be used for deserialization. Remove [ProxyAcquire] or remove the matching constructor."));
+            }
         }
 
         return proxy;

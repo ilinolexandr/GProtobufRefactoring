@@ -4858,6 +4858,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         {
             var fullTypeName = $"global::{type.FullName}";
 
+            // Proxy [ProxyAcquire] factory takes precedence — call it instead of `new T()`.
+            var proxyDef = _proxyRegistry?.GetProxyByProxyType(type.FullName);
+            if (proxyDef != null && !string.IsNullOrEmpty(proxyDef.AcquireMethodName))
+            {
+                _sb.AppendIndentedLine($"{fullTypeName} {variableName} = {fullTypeName}.{proxyDef.AcquireMethodName}();");
+                return;
+            }
+
             if (type.HasParameterlessConstructor)
             {
                 _sb.AppendIndentedLine($"{fullTypeName} {variableName} = new {fullTypeName}();");

@@ -938,7 +938,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         /// <summary>
         /// Generates size calculation for a field whose type has a serialization proxy.
-        /// Converts original → proxy via [ProxyCreate], calculates proxy size.
+        /// Converts original → proxy via [ProxyWrap], calculates proxy size.
         /// </summary>
         private void GenerateProxyTypeSize(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
         {
@@ -953,7 +953,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             string localVar = member.IsNullable ? $"{sourceVar}.Value" : sourceVar;
 
             // Create proxy from original
-            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({localVar}{proxy.CreateExtraArgs});");
+            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}({localVar}{proxy.WrapExtraArgs});");
 
             // Tag size
             TagCodeHelper.AddTagSize(_sb, member.FieldId, WireType.Len);

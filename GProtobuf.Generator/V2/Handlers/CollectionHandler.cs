@@ -106,7 +106,7 @@ namespace GProtobuf.Generator.V2.Handlers
                 var proxy = _proxyRegistry?.GetProxy(elementTypeName);
                 if (proxy != null)
                 {
-                    _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(item{proxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(item{proxy.WrapExtraArgs});");
                     TagCodeHelper.WriteTag(_sb, fieldId, WireType.Len);
                     var proxyQualifiedPrefix = string.IsNullOrEmpty(proxy.ProxyNamespace) ? "" : $"global::{proxy.ProxyNamespace}.Serialization.";
                     _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
@@ -448,7 +448,7 @@ namespace GProtobuf.Generator.V2.Handlers
                 var sizeProxy = _proxyRegistry?.GetProxy(elementTypeName);
                 if (sizeProxy != null)
                 {
-                    _sb.AppendIndentedLine($"var proxyItem = global::{sizeProxy.ProxyTypeFullName}.{sizeProxy.CreateMethodName}(item{sizeProxy.CreateExtraArgs});");
+                    _sb.AppendIndentedLine($"var proxyItem = global::{sizeProxy.ProxyTypeFullName}.{sizeProxy.WrapMethodName}(item{sizeProxy.WrapExtraArgs});");
                     TagCodeHelper.AddTagSize(_sb, fieldId, WireType.Len, calculatorVar);
                     var proxySizePrefix = string.IsNullOrEmpty(sizeProxy.ProxyNamespace) ? "" : $"global::{sizeProxy.ProxyNamespace}.Serialization.";
                     _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");

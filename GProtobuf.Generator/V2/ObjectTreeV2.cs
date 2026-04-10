@@ -1017,7 +1017,7 @@ namespace GProtobuf.Generator.V2
                     {
                         sb.AppendIndentedLine($"public static void Serialize{originalClassName}(Stream stream, global::{proxy.OriginalTypeFullName} obj)");
                         sb.StartNewBlock();
-                        sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(obj{proxy.CreateExtraArgs});");
+                        sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(obj{proxy.WrapExtraArgs});");
                         sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
                         sb.AppendIndentedLine($"{proxyPrefix}StreamWriters.Write{proxy.ProxyClassName}(ref writer, proxy);");
                         sb.AppendIndentedLine("writer.Flush();");
@@ -1031,7 +1031,7 @@ namespace GProtobuf.Generator.V2
                     {
                         sb.AppendIndentedLine($"public static void Serialize{originalClassName}(IBufferWriter<byte> buffer, global::{proxy.OriginalTypeFullName} obj)");
                         sb.StartNewBlock();
-                        sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}(obj{proxy.CreateExtraArgs});");
+                        sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(obj{proxy.WrapExtraArgs});");
                         sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
                         sb.AppendIndentedLine($"{proxyPrefix}BufferWriters.Write{proxy.ProxyClassName}(ref writer, proxy);");
                         sb.AppendIndentedLine("writer.Flush();");

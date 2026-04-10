@@ -1317,7 +1317,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         /// <summary>
         /// Generates write code for a field whose type has a serialization proxy.
-        /// Converts original → proxy via [ProxyCreate], serializes proxy, optionally calls [ProxyReturn].
+        /// Converts original → proxy via [ProxyWrap], serializes proxy, optionally calls [ProxyReturn].
         /// </summary>
         private void GenerateProxyTypeWrite(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
         {
@@ -1337,7 +1337,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
 
             // Create proxy from original
-            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = global::{proxy.ProxyTypeFullName}.{proxy.CreateMethodName}({localVar}{proxy.CreateExtraArgs});");
+            _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}({localVar}{proxy.WrapExtraArgs});");
 
             // Write tag
             TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
