@@ -948,13 +948,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 if (typeInChain?.ProtoMembers != null)
                 {
                     var tempListFields = typeInChain.ProtoMembers
-                        .Where(m => m.IsCollection && !TypeMapping.IsByteCollectionType(TypeMapping.NormalizeTypeName(m.Type)) && (
-                            m.CollectionKind == CollectionKind.Array ||
-                            (m.CollectionKind == CollectionKind.InterfaceCollection && m.Type != null &&
-                             TypeMapping.NormalizeTypeName(m.Type).StartsWith("System.Collections.Generic.IEnumerable<") &&
-                             !m.Type.Contains("ICollection") &&
-                             !m.Type.Contains("IList"))
-                        ))
+                        .Where(m => !TypeMapping.IsByteCollectionType(TypeMapping.NormalizeTypeName(m.Type))
+                                    && ObjectArrayBuilderHelper.IsFieldNeedingTempListOrBuilder(m, _registry))
                         .ToList();
 
                     fieldsNeedingTempList.AddRange(tempListFields);
@@ -965,7 +960,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             var fieldsUsingObjectBuilder = fieldsNeedingTempList.Where(m => ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList();
             var fieldsUsingTempList = fieldsNeedingTempList.Where(m => !ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList();
 
-            // Declare ObjectArrayBuilder for class element collections
+            // Declare ObjectArrayBuilder for class element collections.
+            // ReadXxxContent uses a freshly constructed `result`, so no pre-seed needed.
             ObjectArrayBuilderHelper.GenerateDeclarations(_sb, fieldsUsingObjectBuilder,
                 m => TypeMapping.GetGlobalTypeName(m.CollectionElementType));
 
@@ -1706,22 +1702,18 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             _sb.AppendNewLine();
 
-            // Track array fields that need temp list
+            // Track fields that need method-level temp list / builder
             var fieldsNeedingTempList = type.ProtoMembers?
-                .Where(m => m.IsCollection && !TypeMapping.IsByteCollectionType(TypeMapping.NormalizeTypeName(m.Type)) && (
-                    m.CollectionKind == CollectionKind.Array ||
-                    (m.CollectionKind == CollectionKind.InterfaceCollection && m.Type != null &&
-                     TypeMapping.NormalizeTypeName(m.Type).StartsWith("System.Collections.Generic.IEnumerable<") &&
-                     !m.Type.Contains("ICollection") &&
-                     !m.Type.Contains("IList"))
-                ))
+                .Where(m => !TypeMapping.IsByteCollectionType(TypeMapping.NormalizeTypeName(m.Type))
+                            && ObjectArrayBuilderHelper.IsFieldNeedingTempListOrBuilder(m, _registry))
                 .ToList();
 
             // Separate fields into ObjectArrayBuilder (for classes) and List<T> (for structs/primitives)
             var fieldsUsingObjectBuilder = fieldsNeedingTempList?.Where(m => ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList() ?? new List<ProtoMemberAttribute>();
             var fieldsUsingTempList = fieldsNeedingTempList?.Where(m => !ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList() ?? new List<ProtoMemberAttribute>();
 
-            // Declare ObjectArrayBuilder for class element collections
+            // Declare ObjectArrayBuilder for class element collections.
+            // ReadXxxContent uses a freshly constructed `result`, so no pre-seed needed.
             ObjectArrayBuilderHelper.GenerateDeclarations(_sb, fieldsUsingObjectBuilder,
                 m => TypeMapping.GetGlobalTypeName(m.CollectionElementType));
 
@@ -2209,10 +2201,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 (member.CollectionKind == CollectionKind.InterfaceCollection &&
                  normalizedMemberType.StartsWith("System.Collections.Generic.IEnumerable<")));
 
-            // Check if we should use ObjectArrayBuilder (currently: class element types and string).
-            // When true, the parent generator has pre-declared a _builder_{Name} variable and will
-            // handle conversion + dispose; we just need to Add() into it here.
-            bool useObjectArrayBuilder = needsTempList && ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry);
+            // Phase 2: List<T>/IList<T>/ICollection<T> with class/string element types are
+            // routed through _builder_{Name} (declared at method level by the parent filter).
+            bool useObjectArrayBuilder = ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilderForRead(member, _registry);
 
             // Determine collection type name for initialization
             string collectionTypeName;
@@ -2464,8 +2455,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 (member.CollectionKind == CollectionKind.InterfaceCollection &&
                  normalizedMemberType.StartsWith("System.Collections.Generic.IEnumerable<")));
 
-            // Check if we should use ObjectArrayBuilder for class elements
-            bool useObjectArrayBuilder = needsTempList && ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry);
+            // Phase 2: List<Class>/IList<Class>/ICollection<Class> are routed through _builder_X.
+            bool useObjectArrayBuilder = ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilderForRead(member, _registry);
 
             // Determine collection type name for initialization
             string collectionTypeName;
@@ -2800,16 +2791,22 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// </summary>
         private void GeneratePopulateMethodBody(TypeDefinition type, string nsPrefix)
         {
-            // For array and IEnumerable fields, declare temp lists before the while loop
-            var tempListMembers = type.ProtoMembers?.Where(m => NeedsTempList(m.Type)).ToList() ?? new List<ProtoMemberAttribute>();
+            // Fields that need method-level temp list / builder declarations.
+            // Includes: Array, IEnumerable<T>, and (Phase 2) List<T>/IList<T>/ICollection<T>
+            // when the element type is class- or string-eligible for ObjectArrayBuilder.
+            var tempListMembers = type.ProtoMembers?
+                .Where(m => NeedsTempList(m.Type) || ObjectArrayBuilderHelper.IsFieldNeedingTempListOrBuilder(m, _registry))
+                .ToList() ?? new List<ProtoMemberAttribute>();
 
             // Separate fields into ObjectArrayBuilder (for classes) and List<T> (for structs/primitives)
             var fieldsUsingObjectBuilder = tempListMembers.Where(m => ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList();
             var fieldsUsingTempList = tempListMembers.Where(m => !ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList();
 
-            // Declare ObjectArrayBuilder for class element collections
+            // Declare ObjectArrayBuilder for class element collections.
+            // Populate methods receive caller-provided `instance` so pre-seed for MERGE safety.
             ObjectArrayBuilderHelper.GenerateDeclarations(_sb, fieldsUsingObjectBuilder,
-                m => TypeMapping.GetGlobalTypeName(m.CollectionElementType ?? GetArrayElementType(m.Type)));
+                m => TypeMapping.GetGlobalTypeName(m.CollectionElementType ?? GetArrayElementType(m.Type)),
+                targetVarForPreSeed: "instance");
 
             // Declare temp lists for non-class collection fields
             foreach (var member in fieldsUsingTempList)
@@ -2931,7 +2928,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (type.ProtoMembers == null)
                 return false;
 
-            return type.ProtoMembers.Any(m => NeedsTempList(m.Type));
+            // Includes Array/IEnumerable (NeedsTempList) and Phase 2 builder-eligible kinds
+            // (List<Class>/IList<Class>/ICollection<Class> + the string variants).
+            // Types with any such field cannot use the stateless PopulateOwnFields/BaseFieldsOnly
+            // helpers because those would reference _builder_X variables that are only declared
+            // in the full read/populate methods.
+            return type.ProtoMembers.Any(m => NeedsTempList(m.Type)
+                || ObjectArrayBuilderHelper.IsFieldNeedingTempListOrBuilder(m, _registry));
         }
 
         private string GetArrayElementType(string arrayTypeName)
@@ -4244,9 +4247,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // Check if this needs a temp list (array or IEnumerable)
             bool needsTempListForType = NeedsTempList(member.Type);
 
-            // Check if we should use ObjectArrayBuilder (currently: class element types and string).
-            // When true, the parent generator has pre-declared a _builder_{Name} variable.
-            bool useObjectArrayBuilder = needsTempListForType && ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry);
+            // Phase 2: also route List<string>/IList<string>/ICollection<string> through _builder_X.
+            bool useObjectArrayBuilder = ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilderForRead(member, _registry);
 
             // For arrays and IEnumerable, use temp list; for other collections, use instance directly
             string targetCollection;
@@ -4459,8 +4461,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // Check if this needs a temp list (array or IEnumerable)
             bool needsTempListForType = NeedsTempList(member.Type);
 
-            // Check if we should use ObjectArrayBuilder for class elements
-            bool useObjectArrayBuilder = needsTempListForType && ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry);
+            // Phase 2: also route List<Class>/IList<Class>/ICollection<Class> through _builder_X.
+            bool useObjectArrayBuilder = ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilderForRead(member, _registry);
 
             // For arrays and IEnumerable, use temp list; for other collections, use instance directly
             string targetCollection;

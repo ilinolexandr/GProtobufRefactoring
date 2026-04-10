@@ -217,6 +217,22 @@ namespace GProtobuf.Generator.V2.Handlers
                         actualTargetVar = useObjectArrayBuilder ? $"_builder_{fieldName}" : $"_tempList_{fieldName}";
                         needsTempList = !useObjectArrayBuilder;
                     }
+                    else if (useObjectArrayBuilder &&
+                             (collectionTypeName.Contains("IList<") || collectionTypeName.Contains("ICollection<")))
+                    {
+                        // Phase 2: route IList<Class> / ICollection<Class> through _builder_X.
+                        // The parent generator pre-declared the builder and pre-seeded existing items
+                        // so MERGE semantics with caller-supplied instance are preserved.
+                        actualTargetVar = $"_builder_{fieldName}";
+                    }
+                }
+                else if (collectionKind == CollectionKind.ConcreteCollection && useObjectArrayBuilder &&
+                         collectionTypeName != null &&
+                         (collectionTypeName == "System.Collections.Generic.List" ||
+                          collectionTypeName.StartsWith("System.Collections.Generic.List<")))
+                {
+                    // Phase 2: route List<Class> through _builder_X (exact List<T>, not subclass).
+                    actualTargetVar = $"_builder_{fieldName}";
                 }
             }
 
