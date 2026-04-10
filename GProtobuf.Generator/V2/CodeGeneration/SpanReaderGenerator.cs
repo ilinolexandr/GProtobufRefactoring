@@ -908,7 +908,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.Type,
                         readerVar,
                         wireTypeVar,
-                        fieldIdVar);
+                        fieldIdVar,
+                        useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilderForRead(member, _registry),
+                        memberName: member.Name);
                 }
             }
             else if (TupleHandler.IsTupleType(member.CollectionElementType))
@@ -2088,7 +2090,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.Type,
                         readerVar,
                         wireTypeVar,
-                        fieldIdVar);
+                        fieldIdVar,
+                        useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilderForRead(member, _registry),
+                        memberName: member.Name);
                 }
             }
             else if (TupleHandler.IsTupleType(member.CollectionElementType))
@@ -2452,7 +2456,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.DataFormat,
                         member.FieldId,
                         member.CollectionKind,
-                        member.Type);
+                        member.Type,
+                        useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilderForRead(member, _registry),
+                        memberName: member.Name);
                 }
             }
             else if (TupleHandler.IsTupleType(member.CollectionElementType))
@@ -2796,7 +2802,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.DataFormat,
                         member.FieldId,
                         member.CollectionKind,
-                        member.Type);
+                        member.Type,
+                        useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilderForRead(member, _registry),
+                        memberName: member.Name);
                 }
             }
             else if (TupleHandler.IsTupleType(member.CollectionElementType))

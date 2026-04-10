@@ -43,6 +43,12 @@ namespace GProtobuf.Generator.V2.Helpers
             if (string.IsNullOrEmpty(elementTypeName))
                 return false;
 
+            // String is a reference type and satisfies the where T : class constraint.
+            // Route it to ObjectArrayBuilder before the IsSimpleType check below.
+            var normalized = TypeMapping.NormalizeTypeName(elementTypeName);
+            if (normalized == "System.String")
+                return true;
+
             // Simple types (primitives, DateTime, Guid, etc.) - use List<T>
             if (TypeMapping.IsSimpleType(elementTypeName))
                 return false;
@@ -65,6 +71,41 @@ namespace GProtobuf.Generator.V2.Helpers
 
             // Unknown types - default to false to be safe
             return false;
+        }
+
+        /// <summary>
+        /// Checks whether the collection kind requires temporary storage at method level
+        /// (Array or IEnumerable&lt;T&gt;). These are the only kinds eligible for the
+        /// class-level _builder_X / _tempList_X declarations.
+        /// </summary>
+        internal static bool IsArrayOrIEnumerable(ProtoMemberAttribute member)
+        {
+            if (member == null || !member.IsCollection)
+                return false;
+
+            if (member.CollectionKind == CollectionKind.Array)
+                return true;
+
+            if (member.CollectionKind == CollectionKind.InterfaceCollection && member.Type != null)
+            {
+                var normalized = TypeMapping.NormalizeTypeName(member.Type);
+                return normalized.StartsWith("System.Collections.Generic.IEnumerable<")
+                    && !member.Type.Contains("ICollection")
+                    && !member.Type.Contains("IList");
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true when the field will be backed by a class-level ObjectArrayBuilder.
+        /// Combines element-type eligibility with collection kind eligibility (Array or IEnumerable&lt;T&gt;).
+        /// Use this at PrimitiveHandler/CollectionHandler call sites to know whether to write
+        /// directly to the _builder_X variable instead of a local temp list.
+        /// </summary>
+        internal static bool ShouldUseObjectArrayBuilderForRead(ProtoMemberAttribute member, TypeRegistry registry)
+        {
+            return IsArrayOrIEnumerable(member) && ShouldUseObjectArrayBuilder(member, registry);
         }
 
         /// <summary>

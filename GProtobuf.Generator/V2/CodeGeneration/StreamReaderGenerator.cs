@@ -1233,7 +1233,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.Type,
                         readerVar,
                         wireTypeVar,
-                        fieldIdVar);
+                        fieldIdVar,
+                        useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilderForRead(member, _registry),
+                        memberName: member.Name);
                 }
             }
             else if (TupleHandler.IsTupleType(member.CollectionElementType))
@@ -2207,6 +2209,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 (member.CollectionKind == CollectionKind.InterfaceCollection &&
                  normalizedMemberType.StartsWith("System.Collections.Generic.IEnumerable<")));
 
+            // Check if we should use ObjectArrayBuilder (currently: class element types and string).
+            // When true, the parent generator has pre-declared a _builder_{Name} variable and will
+            // handle conversion + dispose; we just need to Add() into it here.
+            bool useObjectArrayBuilder = needsTempList && ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry);
+
             // Determine collection type name for initialization
             string collectionTypeName;
             if (isCustomCollection)
@@ -2222,9 +2229,25 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     : $"global::System.Collections.Generic.List<{elementType}>";
             }
 
-            string targetCollection = needsTempList ? $"_tempList_{member.Name}" : $"result.{member.Name}";
+            string targetCollection;
+            if (useObjectArrayBuilder)
+            {
+                targetCollection = $"_builder_{member.Name}";
+            }
+            else if (needsTempList)
+            {
+                targetCollection = $"_tempList_{member.Name}";
+            }
+            else
+            {
+                targetCollection = $"result.{member.Name}";
+            }
 
-            if (needsTempList)
+            if (useObjectArrayBuilder)
+            {
+                // No lazy init - ObjectArrayBuilder is pre-initialized at method level
+            }
+            else if (needsTempList)
             {
                 _sb.AppendIndentedLine($"if ({targetCollection} == null)");
                 _sb.StartNewBlock();
@@ -4221,9 +4244,18 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // Check if this needs a temp list (array or IEnumerable)
             bool needsTempListForType = NeedsTempList(member.Type);
 
+            // Check if we should use ObjectArrayBuilder (currently: class element types and string).
+            // When true, the parent generator has pre-declared a _builder_{Name} variable.
+            bool useObjectArrayBuilder = needsTempListForType && ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry);
+
             // For arrays and IEnumerable, use temp list; for other collections, use instance directly
             string targetCollection;
-            if (needsTempListForType)
+            if (useObjectArrayBuilder)
+            {
+                // ObjectArrayBuilder is pre-initialized at method level - no lazy init needed
+                targetCollection = $"_builder_{member.Name}";
+            }
+            else if (needsTempListForType)
             {
                 targetCollection = $"_tempList_{member.Name}";
                 _sb.AppendIndentedLine($"if ({targetCollection} == null)");

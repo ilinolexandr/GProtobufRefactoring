@@ -150,6 +150,18 @@ namespace GProtobuf.Generator.V2.Handlers
         /// <summary>
         /// Generates read code for non-packed repeated primitive field with collection kind support.
         /// </summary>
+        /// <param name="useObjectArrayBuilder">
+        /// When true, the field is backed by a class-level <c>_builder_{memberName}</c>
+        /// (an <see cref="GProtobuf.Core.ObjectArrayBuilder{T}"/>) declared by the parent generator.
+        /// In this mode no local tempList is created and no final assignment is emitted —
+        /// the parent generator handles conversion via <see cref="ObjectArrayBuilderHelper.GenerateConversion"/>.
+        /// Currently supported only for <c>System.String</c> elements (other element types must satisfy
+        /// the <c>where T : class</c> constraint of <c>ObjectArrayBuilder</c>).
+        /// </param>
+        /// <param name="memberName">
+        /// The proto member name, used to derive <c>_builder_{memberName}</c> when
+        /// <paramref name="useObjectArrayBuilder"/> is true.
+        /// </param>
         public void GenerateNonPackedArrayRead(
             StringBuilderWithIndent sb,
             string targetVar,
@@ -160,7 +172,9 @@ namespace GProtobuf.Generator.V2.Handlers
             string collectionTypeName,
             string readerVar = "reader",
             string wireTypeVar = "wireType",
-            string fieldIdVar = "fieldId")
+            string fieldIdVar = "fieldId",
+            bool useObjectArrayBuilder = false,
+            string memberName = null)
         {
             var normalized = TypeMapping.NormalizeTypeName(elementTypeName);
             var shortType = TypeMapping.GetShortTypeName(elementTypeName);
@@ -174,6 +188,19 @@ namespace GProtobuf.Generator.V2.Handlers
                 : TypeMapping.GetElementReadExpression(elementTypeName, format, readerVar);
 
             var expectedWireType = isEnum ? "WireType.VarInt" : TypeMapping.GetWireTypeString(elementTypeName, format);
+
+            // String backed by ObjectArrayBuilder: emit only the read loop into _builder_{memberName}.
+            // Final conversion + dispose are handled by the parent generator.
+            if (useObjectArrayBuilder && normalized == "System.String" && !string.IsNullOrEmpty(memberName))
+            {
+                var builderVar = $"_builder_{memberName}";
+                sb.AppendIndentedLine($"do");
+                sb.StartNewBlock();
+                sb.AppendIndentedLine($"{builderVar}.Add({elementReadExpr});");
+                sb.EndBlock();
+                sb.AppendIndentedLine($"while ({readerVar}.TryPeekSameField({fieldId}, {expectedWireType}));");
+                return;
+            }
 
             // For managed types (string, Guid, TimeSpan), use List<T>
             if (normalized == "System.String" || normalized == "System.Guid" || normalized == "System.TimeSpan")
