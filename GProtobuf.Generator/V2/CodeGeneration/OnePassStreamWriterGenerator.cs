@@ -458,7 +458,16 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             var valProxy = GetProxyForType(virtualType.ValueType);
             if (valProxy != null)
             {
-                _sb.AppendIndentedLine($"var proxyVal = global::{valProxy.ProxyTypeFullName}.{valProxy.CreateMethodName}({sourceVar}{valProxy.CreateExtraArgs});");
+                bool isNullableValue = TypeHelper.IsNullableType(virtualType.ValueType);
+                string proxyArg = isNullableValue ? $"{sourceVar}.Value" : sourceVar;
+
+                if (isNullableValue)
+                {
+                    _sb.AppendIndentedLine($"if ({sourceVar}.HasValue)");
+                    _sb.StartNewBlock();
+                }
+
+                _sb.AppendIndentedLine($"var proxyVal = global::{valProxy.ProxyTypeFullName}.{valProxy.CreateMethodName}({proxyArg}{valProxy.CreateExtraArgs});");
                 TagCodeHelper.WriteTag(_sb, 2, WireType.Len);
                 _sb.AppendIndentedLine("writer.BeginSubMessage();");
                 var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(valProxy.ProxyNamespace, _currentNamespace);
@@ -470,6 +479,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.AppendIndentedLine("writer.EndSubMessage();");
                 if (valProxy.ReturnMethodName != null)
                     _sb.AppendIndentedLine($"proxyVal.{valProxy.ReturnMethodName}();");
+
+                if (isNullableValue)
+                {
+                    _sb.EndBlock();
+                }
                 return;
             }
 
