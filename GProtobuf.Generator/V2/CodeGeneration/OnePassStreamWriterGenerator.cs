@@ -277,6 +277,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 return;
             }
 
+            if (GetProxyForType(virtualType.ValueType) != null)
+            {
+                GenerateCustomTypeValueWrite(virtualType, sourceVar, valueTypeInfo);
+                return;
+            }
+
             // Check for nullable struct types (T? where T is a custom struct)
             // This must be checked before GetNullableUnderlyingType which only handles simple types
             if (TypeHelper.IsNullableType(virtualType.ValueType))
