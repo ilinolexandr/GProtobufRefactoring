@@ -84,5 +84,7 @@ namespace GProtobuf.Generator.Analysis
         bool IsProtoVarint = false,
         ProtoVarintType ProtoVarintType = ProtoVarintType.UInt32,
         string? ProtoVarintValueMember = null,
-        bool SkipEntryPoints = false);
+        bool SkipEntryPoints = false,
+        // Get-only [ProtoMember] property names skipped during analysis; reported as GPROTO005.
+        List<string>? IgnoredGetOnlyProperties = null);
 }

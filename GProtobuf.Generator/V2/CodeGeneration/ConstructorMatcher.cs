@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GProtobuf.Generator.Analysis;
 
 namespace GProtobuf.Generator.V2.CodeGeneration
 {
@@ -16,6 +17,45 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             public string Name { get; set; }
             public ITypeSymbol Type { get; set; }
             public bool IsReadonly { get; set; }
+        }
+
+        /// <summary>Builds FieldInfo list from a TypeDefinition; returns null when type has no ProtoMembers or TypeSymbol.</summary>
+        public static List<FieldInfo>? BuildFieldInfos(TypeDefinition type)
+        {
+            if (type?.TypeSymbol == null || type.ProtoMembers == null || type.ProtoMembers.Count == 0)
+                return null;
+
+            var result = new List<FieldInfo>(type.ProtoMembers.Count);
+            foreach (var protoMember in type.ProtoMembers)
+            {
+                var member = type.TypeSymbol.GetMembers(protoMember.Name).FirstOrDefault();
+                if (member is IFieldSymbol field)
+                {
+                    result.Add(new FieldInfo
+                    {
+                        FieldId = protoMember.FieldId,
+                        Name = protoMember.Name,
+                        Type = field.Type,
+                        IsReadonly = field.IsReadOnly,
+                    });
+                }
+                else if (member is IPropertySymbol property)
+                {
+                    // Get-only / init-only / non-public setter all need constructor injection.
+                    bool isReadonlyProp = property.SetMethod == null
+                        || property.SetMethod.IsInitOnly
+                        || property.SetMethod.DeclaredAccessibility != Accessibility.Public;
+
+                    result.Add(new FieldInfo
+                    {
+                        FieldId = protoMember.FieldId,
+                        Name = protoMember.Name,
+                        Type = property.Type,
+                        IsReadonly = isReadonlyProp,
+                    });
+                }
+            }
+            return result;
         }
 
         public class ConstructorMatchResult

@@ -103,6 +103,21 @@ namespace GProtobuf.Generator.Attributes
         public bool IsNullable { get; set; }
 
         /// <summary>
+        /// True if the property has an init-only setter (`{ get; init; }`).
+        /// Init properties cannot be assigned outside of an object initializer or constructor,
+        /// so the generator must use the deferred-construction code path or constructor injection.
+        /// Always false for fields.
+        /// </summary>
+        public bool IsInit { get; set; }
+
+        /// <summary>
+        /// True if the property has a publicly accessible regular `set` accessor (not init).
+        /// Used by readers to decide whether direct `instance.X = value` assignment is legal.
+        /// For fields, true when the field is non-readonly.
+        /// </summary>
+        public bool HasPublicSetter { get; set; }
+
+        /// <summary>
         /// Indicates if this member is a collection type
         /// </summary>
         public bool IsCollection { get; set; }

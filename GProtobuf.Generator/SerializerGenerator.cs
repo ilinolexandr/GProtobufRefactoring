@@ -3,7 +3,9 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using GProtobuf.Generator.Analysis;
+using GProtobuf.Generator.Diagnostics;
 using GProtobuf.Generator.V2;
+using GProtobuf.Generator.V2.CodeGeneration;
 using GProtobuf.Generator.V2.Handlers.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -135,7 +137,7 @@ namespace ProtoBuf
                 var typeWithAttribute = (syntaxContext.TargetSymbol as INamedTypeSymbol)!;
                 var namespaceName = syntaxContext.TargetSymbol.ContainingNamespace.ToDisplayString();
                 var protoIncludes = GetProtoIncludeAttributes(typeWithAttribute);
-                var protoMembers = GetProtoMemberAttributes(typeWithAttribute);
+                var protoMembers = GetProtoMemberAttributes(typeWithAttribute, out var ignoredGetOnly);
                 var customBufferMembers = GetCustomBufferMembers(typeWithAttribute);
                 var hasParameterlessConstructor = HasParameterlessConstructor(typeWithAttribute);
                 var baseClass = GetBaseClass(typeWithAttribute);
@@ -184,7 +186,8 @@ namespace ProtoBuf
                     IsProtoVarint: typeProtoVarintInfo?.IsValid ?? false,
                     ProtoVarintType: typeProtoVarintInfo?.VarintType ?? ProtoVarintType.UInt32,
                     ProtoVarintValueMember: typeProtoVarintInfo?.ValueMemberName,
-                    SkipEntryPoints: skipEntryPoints);
+                    SkipEntryPoints: skipEntryPoints,
+                    IgnoredGetOnlyProperties: ignoredGetOnly);
 
                 return (namespaceName, typeDefinition);
             });
@@ -206,7 +209,7 @@ namespace ProtoBuf
 
                 var namespaceName = syntaxContext.TargetSymbol.ContainingNamespace.ToDisplayString();
                 var protoIncludes = GetProtoIncludeAttributes(typeWithAttribute);
-                var protoMembers = GetProtoMemberAttributes(typeWithAttribute);
+                var protoMembers = GetProtoMemberAttributes(typeWithAttribute, out var ignoredGetOnly);
                 var customBufferMembers = GetCustomBufferMembers(typeWithAttribute);
                 var hasParameterlessConstructor = HasParameterlessConstructor(typeWithAttribute);
                 var baseClass = GetBaseClass(typeWithAttribute);
@@ -250,7 +253,8 @@ namespace ProtoBuf
                     AfterDeserializationCallbacks: afterDeserCallbacks,
                     IsProtoVarint: typeProtoVarintInfo?.IsValid ?? false,
                     ProtoVarintType: typeProtoVarintInfo?.VarintType ?? ProtoVarintType.UInt32,
-                    ProtoVarintValueMember: typeProtoVarintInfo?.ValueMemberName);
+                    ProtoVarintValueMember: typeProtoVarintInfo?.ValueMemberName,
+                    IgnoredGetOnlyProperties: ignoredGetOnly);
 
                 return (namespaceName, typeDefinition);
             });
@@ -413,6 +417,9 @@ namespace ProtoBuf
 
                 try
                 {
+                    // Repository-level analysis diagnostics: GPROTO003/004/005.
+                    ReportRepositoryDiagnostics(context, typeDefinitions);
+
                     // Report diagnostic that generator is starting
                     context.ReportDiagnostic(Diagnostic.Create(
                         new DiagnosticDescriptor(
@@ -506,15 +513,123 @@ namespace ProtoBuf
             });
     }
     
+    /// <summary>Walks every TypeDefinition and reports GPROTO003/004/005 where applicable.</summary>
+    private static void ReportRepositoryDiagnostics(
+        SourceProductionContext context,
+        ImmutableArray<(string namespaceName, TypeDefinition typeDefinition)> typeDefinitions)
+    {
+        foreach (var (_, type) in typeDefinitions)
+        {
+            if (type == null)
+                continue;
+
+            // GPROTO005 — get-only [ProtoMember] property silently dropped.
+            if (type.IgnoredGetOnlyProperties != null && type.IgnoredGetOnlyProperties.Count > 0)
+            {
+                foreach (var propName in type.IgnoredGetOnlyProperties)
+                {
+                    var propLocation = type.TypeSymbol?.GetMembers(propName)
+                        .FirstOrDefault()?.Locations.FirstOrDefault()
+                        ?? type.TypeSymbol?.Locations.FirstOrDefault()
+                        ?? Location.None;
+
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        GProtobufDiagnostics.GetOnlyProtoMemberIgnored,
+                        propLocation,
+                        propName,
+                        type.FullName));
+                }
+            }
+
+            if (type.TypeSymbol == null || type.IsAbstract || type.IsEnum)
+                continue;
+            if (type.ProtoMembers == null || type.ProtoMembers.Count == 0)
+                continue;
+
+            // Detect immutable [ProtoMember]s requiring constructor analysis.
+            bool hasReadonlyField = false;
+            bool hasInitOnlyProperty = false;
+            foreach (var member in type.ProtoMembers)
+            {
+                var symbol = type.TypeSymbol.GetMembers(member.Name).FirstOrDefault();
+                if (symbol is IFieldSymbol fs && fs.IsReadOnly)
+                {
+                    hasReadonlyField = true;
+                }
+                else if (symbol is IPropertySymbol ps && ps.SetMethod != null && ps.SetMethod.IsInitOnly)
+                {
+                    hasInitOnlyProperty = true;
+                }
+
+                if (hasReadonlyField && hasInitOnlyProperty)
+                    break;
+            }
+
+            if (!hasReadonlyField && !hasInitOnlyProperty)
+                continue;
+
+            bool hasMatchingConstructor = HasConstructorMatchingAllProtoMembers(type);
+            var typeLocation = type.TypeSymbol.Locations.FirstOrDefault() ?? Location.None;
+
+            // GPROTO003 — readonly fields can only be assigned via constructor injection.
+            if (hasReadonlyField && !hasMatchingConstructor)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    GProtobufDiagnostics.ReadonlyFieldsWithoutMatchingConstructor,
+                    typeLocation,
+                    type.FullName));
+            }
+
+            // GPROTO004 — init-only properties need parameterless ctor (deferred path) or matching ctor.
+            if (hasInitOnlyProperty && !type.HasParameterlessConstructor && !hasMatchingConstructor)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    GProtobufDiagnostics.InitOnlyWithoutConstructor,
+                    typeLocation,
+                    type.FullName));
+            }
+        }
+    }
+
+    /// <summary>True if the type has a public ctor whose params match all ProtoMembers (constructor injection available).</summary>
+    private static bool HasConstructorMatchingAllProtoMembers(TypeDefinition type)
+    {
+        var protoFields = ConstructorMatcher.BuildFieldInfos(type);
+        if (protoFields == null)
+            return false;
+
+        var match = ConstructorMatcher.FindBestConstructor(type.TypeSymbol!, protoFields);
+        return match.IsSuccess
+            && match.Constructor != null
+            && match.ParameterMappings != null
+            && match.ParameterMappings.Count > 0;
+    }
+
     private static List<ProtoMemberAttribute> GetProtoMemberAttributes(INamedTypeSymbol typeSymbol)
+        => GetProtoMemberAttributes(typeSymbol, out _);
+
+    private static List<ProtoMemberAttribute> GetProtoMemberAttributes(INamedTypeSymbol typeSymbol, out List<string> ignoredGetOnlyProperties)
     {
         var result = new List<ProtoMemberAttribute>();
+        ignoredGetOnlyProperties = null;
 
         foreach (var property in typeSymbol.GetMembers().OfType<IPropertySymbol>())
         {
-            // Skipni properties bez set metódy
+            // Skip get-only; capture name for GPROTO005 if user marked it [ProtoMember].
             if (property.SetMethod == null)
+            {
+                bool hasProtoMember = property.GetAttributes().Any(a =>
+                    a.AttributeClass?.ToDisplayString().Contains("ProtoMemberAttribute") ?? false);
+                if (hasProtoMember)
+                {
+                    ignoredGetOnlyProperties ??= new List<string>();
+                    ignoredGetOnlyProperties.Add(property.Name);
+                }
                 continue;
+            }
+
+            bool isInitOnly = property.SetMethod.IsInitOnly;
+            bool hasPublicSetter = property.SetMethod.DeclaredAccessibility == Accessibility.Public && !isInitOnly;
 
             // Prechádzame všetky atribúty property
             foreach (var attribute in property.GetAttributes())
@@ -575,6 +690,8 @@ namespace ProtoBuf
                         Namespace = nmspace,
                         Interfaces = property.Type.AllInterfaces.Select(i => i.ToDisplayString()).ToList(),
                         IsNullable = isNullable,
+                        IsInit = isInitOnly,
+                        HasPublicSetter = hasPublicSetter,
                         IsCollection = collectionInfo.IsCollection,
                         CollectionElementType = collectionInfo.ElementType != null ? TypeMapping.NormalizeTypeName(collectionInfo.ElementType) : null,
                         CollectionKind = collectionInfo.Kind,
@@ -688,6 +805,8 @@ namespace ProtoBuf
                         Namespace = nmspace,
                         Interfaces = field.Type.AllInterfaces.Select(i => i.ToDisplayString()).ToList(),
                         IsNullable = isNullable,
+                        IsInit = false,
+                        HasPublicSetter = !field.IsReadOnly,
                         IsCollection = collectionInfo.IsCollection,
                         CollectionElementType = collectionInfo.ElementType != null ? TypeMapping.NormalizeTypeName(collectionInfo.ElementType) : null,
                         CollectionKind = collectionInfo.Kind,

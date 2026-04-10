@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GProtobuf.Generator.Analysis;
@@ -18,6 +19,24 @@ namespace GProtobuf.Generator.V2.CodeGeneration
     /// </summary>
     internal class SpanReaderGenerator : GeneratorBase
     {
+        /// <summary>
+        /// When non-null, overrides the assignment target used by the field-read body helpers.
+        /// Each helper that would normally write `result.{member.Name} = ...` will instead write
+        /// `{_memberTargetResolver(member.Name)} = ...`. Used by the deferred-initializer code path
+        /// (init-only properties) to redirect assignments to local temp variables before constructing
+        /// the final instance via an object initializer.
+        /// </summary>
+        private System.Func<string, string> _memberTargetResolver;
+
+        /// <summary>
+        /// Returns the assignment target for a member by name. Defaults to "result.{name}" unless
+        /// overridden via <see cref="_memberTargetResolver"/>.
+        /// </summary>
+        private string GetMemberTarget(string memberName)
+            => _memberTargetResolver != null ? _memberTargetResolver(memberName) : $"result.{memberName}";
+
+        private string GetMemberTarget(ProtoMemberAttribute member) => GetMemberTarget(member.Name);
+
         public SpanReaderGenerator(StringBuilderWithIndent sb, TypeRegistry registry, GeneratorOptions options = null)
             : base(sb, registry, options)
         {
@@ -42,6 +61,10 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             : base(sb, registry, virtualMapRegistry, virtualTupleRegistry, passRegistryToPrimitiveHandler: true, options, virtualTypesNamespace, proxyRegistry)
         {
         }
+
+        /// <summary>Shims to the cached init-chain helpers on TypeRegistry.</summary>
+        private bool ChainHasInit(string typeName) => _registry.ChainHasInit(typeName);
+        private bool IsRootOfInitChain(TypeDefinition type) => _registry.IsRootOfInitChain(type);
 
         /// <summary>
         /// Analyzes type and determines deserialization strategy (parameterless constructor, constructor with params, or FormatterServices).
@@ -76,39 +99,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 }
             }
 
-            // Collect ProtoMember field information
-            var protoFields = new List<ConstructorMatcher.FieldInfo>();
-            if (type.ProtoMembers != null)
-            {
-                foreach (var protoMember in type.ProtoMembers)
-                {
-                    // Find corresponding field or property in TypeSymbol
-                    var member = type.TypeSymbol.GetMembers(protoMember.Name).FirstOrDefault();
-
-                    if (member is Microsoft.CodeAnalysis.IFieldSymbol field)
-                    {
-                        protoFields.Add(new ConstructorMatcher.FieldInfo
-                        {
-                            FieldId = protoMember.FieldId,
-                            Name = protoMember.Name,
-                            Type = field.Type,
-                            IsReadonly = field.IsReadOnly
-                        });
-                    }
-                    else if (member is Microsoft.CodeAnalysis.IPropertySymbol property)
-                    {
-                        protoFields.Add(new ConstructorMatcher.FieldInfo
-                        {
-                            FieldId = protoMember.FieldId,
-                            Name = protoMember.Name,
-                            Type = property.Type,
-                            IsReadonly = property.SetMethod == null || property.SetMethod.DeclaredAccessibility != Microsoft.CodeAnalysis.Accessibility.Public
-                        });
-                    }
-                }
-            }
-
-            // Use ConstructorMatcher to find best constructor
+            // Collect ProtoMember field information via the shared builder.
+            var protoFields = ConstructorMatcher.BuildFieldInfos(type) ?? new List<ConstructorMatcher.FieldInfo>();
             return ConstructorMatcher.FindBestConstructor(type.TypeSymbol, protoFields);
         }
 
@@ -200,8 +192,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     }
                 }
 
-                // Generate OwnFieldsPopulate for derived types
-                if (_registry.IsDerivedType(type.FullName))
+                // OwnFieldsPopulate for derived types; skipped for init-in-chain (dispatcher handles them).
+                if (_registry.IsDerivedType(type.FullName) && !ChainHasInit(type.FullName))
                 {
                     try
                     {
@@ -247,8 +239,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         }
                     }
 
-                    // Generate OwnFieldsPopulate for ProtoInclude derived types
-                    if (_registry.IsDerivedType(protoIncludeTypeName))
+                    // OwnFieldsPopulate for ProtoInclude derived; skipped for init-in-chain.
+                    if (_registry.IsDerivedType(protoIncludeTypeName) && !ChainHasInit(protoIncludeTypeName))
                     {
                         try
                         {
@@ -437,6 +429,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// </summary>
         private void GenerateReadMethodForBaseWithIncludes(TypeDefinition type, string className)
         {
+            // Init-in-chain: unified deferred-construction path via object initializer.
+            if (IsRootOfInitChain(type))
+            {
+                GenerateReadMethodForBaseDeferredInit(type, className);
+                return;
+            }
+
             _sb.AppendIndentedLine($"global::{type.FullName} result = default(global::{type.FullName});");
             _sb.AppendNewLine();
             _sb.AppendIndentedLine("while (!reader.IsEnd)");
@@ -472,6 +471,46 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
 
             _sb.AppendIndentedLine("return result;");
+        }
+
+        /// <summary>Generates the deferred-init Read{Base} dispatcher (Span variant: GetSlice into a fresh reader).</summary>
+        private void GenerateReadMethodForBaseDeferredInit(TypeDefinition type, string className)
+        {
+            var derivedInfos = DeferredInitDispatcher.CollectDerivedInfos(_registry, type);
+            var strategy = new DeferredInitDispatcher.Strategy
+            {
+                GenerateFieldReadCase = (member, wireTypeVar, readerVar) =>
+                    GenerateFieldReadCaseForDerived(member, wireTypeVar, readerVar),
+                EmitOpenWrapperRegion = () =>
+                    _sb.AppendIndentedLine("var wrapperReader = new SpanReader(reader.GetSlice(wrapperLength));"),
+                EmitCloseWrapperRegion = () => { },
+                InnerReaderVar = "wrapperReader",
+                ScopedTargetResolver = ScopedTargetResolverScope,
+            };
+
+            DeferredInitDispatcher.EmitDispatcherBody(_sb, type, derivedInfos, strategy);
+        }
+
+        /// <summary>IDisposable scope that swaps _memberTargetResolver for its duration.</summary>
+        private IDisposable ScopedTargetResolverScope(System.Func<string, string> newResolver)
+        {
+            var previous = _memberTargetResolver;
+            _memberTargetResolver = newResolver;
+            return new ResolverRestoreScope(this, previous);
+        }
+
+        private sealed class ResolverRestoreScope : IDisposable
+        {
+            private readonly SpanReaderGenerator _gen;
+            private readonly System.Func<string, string> _previous;
+
+            public ResolverRestoreScope(SpanReaderGenerator gen, System.Func<string, string> previous)
+            {
+                _gen = gen;
+                _previous = previous;
+            }
+
+            public void Dispose() => _gen._memberTargetResolver = _previous;
         }
 
         /// <summary>
@@ -618,6 +657,15 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private void GenerateReadMethodForDerived(TypeDefinition type, string className)
         {
             var chain = _registry.GetInheritanceChain(type.FullName);
+
+            // Init-in-chain (chain==2): delegate to polymorphic Read{Base}.
+            if (chain.Count == 2 && !type.IsStruct && ChainHasInit(type.FullName))
+            {
+                var rootName = _registry.GetRootType(type.FullName);
+                var rootClassName = TypeNameHelper.GetClassName(rootName);
+                _sb.AppendIndentedLine($"return (global::{type.FullName})Read{rootClassName}(ref reader);");
+                return;
+            }
 
             if (chain.Count == 2 && !type.IsStruct)
             {
@@ -813,7 +861,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (member.IsMap)
             {
                 var mapHandler = new MapHandler(_sb, _virtualMapRegistry, "SpanReaders", _registry, _virtualTypesNamespace);
-                mapHandler.GenerateRead(member, $"result.{member.Name}", readerVar);
+                mapHandler.GenerateRead(member, GetMemberTarget(member), readerVar);
             }
             else if (member.IsCollection)
             {
@@ -822,20 +870,20 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             else if (member.IsEnum)
             {
                 // Use fully qualified type name for enums to avoid namespace issues
-                _sb.AppendIndentedLine($"result.{member.Name} = (global::{member.Type}){readerVar}.ReadVarInt32();");
+                _sb.AppendIndentedLine($"{GetMemberTarget(member)} = (global::{member.Type}){readerVar}.ReadVarInt32();");
             }
             else if (TupleHandler.IsTupleType(member.Type))
             {
-                _tupleHandler.GenerateTupleRead($"result.{member.Name}", member.Type, readerVar);
+                _tupleHandler.GenerateTupleRead(GetMemberTarget(member), member.Type, readerVar);
             }
             else if (_primitiveHandler.CanHandle(member.Type))
             {
-                _primitiveHandler.GenerateRead(_sb, $"result.{member.Name}", member.Type, member.DataFormat, readerVar, wireTypeVar, UseStringPooling);
+                _primitiveHandler.GenerateRead(_sb, GetMemberTarget(member), member.Type, member.DataFormat, readerVar, wireTypeVar, UseStringPooling);
             }
             else if (member.IsProtoVarint)
             {
                 // ProtoVarint type - read varint and construct using the constructor
-                ProtoVarintTypeSupport.GenerateRead(_sb, member, $"result.{member.Name}", readerVar);
+                ProtoVarintTypeSupport.GenerateRead(_sb, member, GetMemberTarget(member), readerVar);
             }
             else if (TypeMapping.IsUnsupportedType(member.Type))
             {
@@ -882,7 +930,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 {
                     _primitiveHandler.GenerateDualModePackedArrayRead(
                         _sb,
-                        $"result.{member.Name}",
+                        GetMemberTarget(member),
                         member.CollectionElementType,
                         member.DataFormat,
                         member.CollectionKind,
@@ -895,7 +943,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     var fieldIdVar = wireTypeVar.Replace("wireType", "fieldId");
                     _primitiveHandler.GenerateNonPackedArrayRead(
                         _sb,
-                        $"result.{member.Name}",
+                        GetMemberTarget(member),
                         member.CollectionElementType,
                         member.DataFormat,
                         member.FieldId,
@@ -912,7 +960,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 // Tuple collection - generate inline
                 _tupleHandler.GenerateTupleCollectionRead(
-                    $"result.{member.Name}",
+                    GetMemberTarget(member),
                     member.CollectionElementType,
                     member.FieldId,
                     member.CollectionKind,
@@ -924,7 +972,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 // Complex type collection
                 var elementClassName = TypeNameHelper.GetClassName(member.CollectionElementType);
                 _collectionHandler.GenerateComplexCollectionRead(
-                    $"result.{member.Name}",
+                    GetMemberTarget(member),
                     member.CollectionElementType,
                     elementClassName,
                     member.CollectionKind,
@@ -958,7 +1006,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             string methodSuffix = isDerivedType ? "" : "Content";
 
             var nsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNamespace, _currentNamespace);
-            _sb.AppendIndentedLine($"result.{member.Name} = {nsPrefix}SpanReaders.Read{typeName}{methodSuffix}(ref nestedReader);");
+            _sb.AppendIndentedLine($"{GetMemberTarget(member)} = {nsPrefix}SpanReaders.Read{typeName}{methodSuffix}(ref nestedReader);");
         }
 
         /// <summary>
@@ -970,7 +1018,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine($"var length = {readerVar}.ReadVarInt32();");
             _sb.AppendIndentedLine($"var nestedReader = new SpanReader({readerVar}.GetSlice(length));");
             _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = {proxyNsPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref nestedReader);");
-            _sb.AppendIndentedLine($"result.{member.Name} = proxyValue_{member.FieldId}.{proxy.ConvertMethodName}();");
+            _sb.AppendIndentedLine($"{GetMemberTarget(member)} = proxyValue_{member.FieldId}.{proxy.ConvertMethodName}();");
             if (proxy.ReturnMethodName != null)
                 _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{proxy.ReturnMethodName}();");
         }
@@ -1083,8 +1131,116 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 return;
             }
 
+            // Init-only properties cannot be assigned via standard `instance.X = value`. If the type
+            // has any init members and we couldn't find a matching constructor, fall through to the
+            // deferred-construction path that builds the instance via an object initializer expression.
+            bool hasInitMembers = type.ProtoMembers != null && type.ProtoMembers.Any(m => m.IsInit);
+            if (hasInitMembers)
+            {
+                if (!type.HasParameterlessConstructor)
+                {
+                    _sb.AppendIndentedLine($"// ERROR: type '{type.FullName}' has init-only properties but no parameterless constructor and no matching constructor was found.");
+                    _sb.AppendIndentedLine($"throw new global::System.InvalidOperationException(\"Cannot deserialize type '{type.FullName}': init-only properties require either a matching constructor or a parameterless constructor.\");");
+                    return;
+                }
+
+                GenerateReadContentWithDeferredInitializer(type, className);
+                return;
+            }
+
             GenerateObjectCreation(type, "result");
             _sb.AppendIndentedLine($"Populate{className}(ref reader, {GeneratorHelpers.GetPopulateInstanceArgument(type, "result")});");
+            _sb.AppendIndentedLine("return result;");
+        }
+
+        /// <summary>
+        /// Generates Read{ClassName}Content for types with init-only properties via the deferred
+        /// object-initializer pattern: read all members into local temp variables, then construct
+        /// the instance using `new T { ... }` so init properties can be set legally.
+        /// </summary>
+        private void GenerateReadContentWithDeferredInitializer(TypeDefinition type, string className)
+        {
+            var fullTypeName = $"global::{type.FullName}";
+            var members = type.ProtoMembers ?? new List<ProtoMemberAttribute>();
+
+            _sb.AppendIndentedLine("// Deferred construction for type with init-only properties:");
+            _sb.AppendIndentedLine("// read all members into local temp variables, then build the instance via an object initializer.");
+
+            // Declare temp variables (one per ProtoMember). Reference types default to null,
+            // value types to default(T); collection-typed init members start as null and the
+            // collection handlers will allocate as needed when the first element is read.
+            foreach (var member in members)
+            {
+                // Use GetGlobalGenericTypeName so primitive aliases (string/int/...) and
+                // generic types (e.g. List<int>) get the correct code-gen form.
+                var declaredTypeName = TypeMapping.GetGlobalGenericTypeName(member.Type);
+                _sb.AppendIndentedLine($"{declaredTypeName} tmp_{member.Name} = default;");
+            }
+            _sb.AppendNewLine();
+
+            // Switch resolver so the field-read body helpers write to tmp_{Name} instead of result.{Name}.
+            var previousResolver = _memberTargetResolver;
+            _memberTargetResolver = name => $"tmp_{name}";
+            try
+            {
+                _sb.AppendIndentedLine("while (!reader.IsEnd)");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var fieldId);");
+                _sb.AppendNewLine();
+
+                if (members.Count > 0)
+                {
+                    _sb.AppendIndentedLine("switch (fieldId)");
+                    _sb.StartNewBlock();
+
+                    foreach (var member in GeneratorHelpers.GetSortedFieldsForDispatch(members))
+                    {
+                        GenerateFieldReadCase(member);
+                    }
+
+                    _sb.AppendIndentedLine("default:");
+                    _sb.IncreaseIndent();
+                    _sb.AppendIndentedLine("reader.SkipField(wireType);");
+                    _sb.AppendIndentedLine("break;");
+                    _sb.DecreaseIndent();
+
+                    _sb.EndBlock();
+                }
+                else
+                {
+                    _sb.AppendIndentedLine("reader.SkipField(wireType);");
+                }
+
+                _sb.EndBlock();
+            }
+            finally
+            {
+                _memberTargetResolver = previousResolver;
+            }
+
+            _sb.AppendNewLine();
+            _sb.AppendIndentedLine("// Build the final instance via object initializer so init-only properties can be set.");
+            if (members.Count == 0)
+            {
+                _sb.AppendIndentedLine($"{fullTypeName} result = new {fullTypeName}();");
+            }
+            else
+            {
+                _sb.AppendIndentedLine($"{fullTypeName} result = new {fullTypeName}");
+                _sb.AppendIndentedLine("{");
+                _sb.IncreaseIndent();
+                for (int i = 0; i < members.Count; i++)
+                {
+                    var member = members[i];
+                    var comma = i < members.Count - 1 ? "," : string.Empty;
+                    _sb.AppendIndentedLine($"{member.Name} = tmp_{member.Name}{comma}");
+                }
+                _sb.DecreaseIndent();
+                _sb.AppendIndentedLine("};");
+            }
+
+            _sb.AppendNewLine();
+            GenerateAfterDeserializationCallbacks(type, "result");
             _sb.AppendIndentedLine("return result;");
         }
 
@@ -1332,6 +1488,16 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 && (type.ProtoIncludes == null || type.ProtoIncludes.Count == 0)
                 && !type.IsAbstract
                 && !type.IsStruct;
+
+            // Init-in-chain leaf-derived: delegate to the polymorphic Read{Base}.
+            if (isLeafDerived && ChainHasInit(type.FullName))
+            {
+                var rootName = _registry.GetRootType(type.FullName);
+                var rootClassName = TypeNameHelper.GetClassName(rootName);
+                _sb.AppendIndentedLine($"return (global::{type.FullName})Read{rootClassName}(ref reader);");
+                return;
+            }
+
             if (isLeafDerived)
             {
                 GenerateObjectCreation(type, "result");
@@ -1620,7 +1786,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     }
                     else if (member is Microsoft.CodeAnalysis.IPropertySymbol property)
                     {
-                        return property.SetMethod == null || property.SetMethod.DeclaredAccessibility != Microsoft.CodeAnalysis.Accessibility.Public;
+                        // init-only setters make the property effectively immutable post-construction,
+                        // so the struct should be treated as readonly here.
+                        return property.SetMethod == null
+                            || property.SetMethod.IsInitOnly
+                            || property.SetMethod.DeclaredAccessibility != Microsoft.CodeAnalysis.Accessibility.Public;
                     }
                     return false;
                 }) ?? false;
@@ -1628,16 +1798,16 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 isReadonlyStruct = hasReadonlyFields;
             }
 
-            // Generate Populate method signature
+            // Init-only members (own or anywhere in chain) → Populate becomes a no-op consumer.
+            bool hasInitMembers = type.ProtoMembers != null && type.ProtoMembers.Any(m => m.IsInit);
+            bool chainHasInit = ChainHasInit(type.FullName);
+
             _sb.AppendIndentedLine($"public static void Populate{className}(ref SpanReader reader, {GeneratorHelpers.GetPopulateInstanceParameter(type)})");
             _sb.StartNewBlock();
 
-            if (isReadonlyStruct)
+            if (isReadonlyStruct || hasInitMembers || chainHasInit)
             {
-                // For readonly structs, Populate method is a no-op
-                // Fields cannot be modified after construction, so just consume the reader
-                _sb.AppendIndentedLine("// Readonly struct - fields cannot be modified after construction");
-                _sb.AppendIndentedLine("// This method consumes the reader but does not modify the instance");
+                _sb.AppendIndentedLine("// No-op: fields cannot be modified after construction.");
                 _sb.AppendIndentedLine("while (!reader.IsEnd)");
                 _sb.StartNewBlock();
                 _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var _);");
@@ -1701,6 +1871,19 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine($"/// </summary>");
             _sb.AppendIndentedLine($"public static void Populate{className}OwnFields(ref SpanReader reader, {GeneratorHelpers.GetPopulateInstanceParameter(type)})");
             _sb.StartNewBlock();
+
+            // Init-in-chain: no-op consumer (own fields cannot be mutated post-construction).
+            if (ChainHasInit(type.FullName))
+            {
+                _sb.AppendIndentedLine("while (!reader.IsEnd)");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var _);");
+                _sb.AppendIndentedLine("reader.SkipField(wireType);");
+                _sb.EndBlock();
+                _sb.EndBlock();
+                _sb.AppendNewLine();
+                return;
+            }
 
             if (ownMembers == null || ownMembers.Count == 0)
             {
@@ -2609,16 +2792,16 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else if (TupleHandler.IsTupleType(member.Type))
             {
-                _tupleHandler.GenerateTupleRead($"result.{member.Name}", member.Type);
+                _tupleHandler.GenerateTupleRead(GetMemberTarget(member), member.Type);
             }
             else if (_primitiveHandler.CanHandle(member.Type))
             {
-                _primitiveHandler.GenerateRead(_sb, $"result.{member.Name}", member.Type, member.DataFormat, "reader", "wireType", UseStringPooling);
+                _primitiveHandler.GenerateRead(_sb, GetMemberTarget(member), member.Type, member.DataFormat, "reader", "wireType", UseStringPooling);
             }
             else if (member.IsProtoVarint)
             {
                 // ProtoVarint type - read varint and construct using the constructor
-                ProtoVarintTypeSupport.GenerateRead(_sb, member, $"result.{member.Name}");
+                ProtoVarintTypeSupport.GenerateRead(_sb, member, GetMemberTarget(member));
             }
             else if (TypeMapping.IsUnsupportedType(member.Type))
             {
@@ -2678,13 +2861,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     GenerateEnumFieldReadBody(member);
                     break;
                 case FieldCategory.Tuple:
-                    _tupleHandler.GenerateTupleRead($"result.{member.Name}", member.Type);
+                    _tupleHandler.GenerateTupleRead(GetMemberTarget(member), member.Type);
                     break;
                 case FieldCategory.Primitive:
-                    _primitiveHandler.GenerateRead(_sb, $"result.{member.Name}", member.Type, member.DataFormat, "reader", "wireType", UseStringPooling);
+                    _primitiveHandler.GenerateRead(_sb, GetMemberTarget(member), member.Type, member.DataFormat, "reader", "wireType", UseStringPooling);
                     break;
                 case FieldCategory.ProtoVarint:
-                    ProtoVarintTypeSupport.GenerateRead(_sb, member, $"result.{member.Name}");
+                    ProtoVarintTypeSupport.GenerateRead(_sb, member, GetMemberTarget(member));
                     break;
                 case FieldCategory.Unsupported:
                     _sb.AppendIndentedLine($"// ⚠️ WARNING: Field '{member.Name}' with type '{member.Type}' is unsupported and will be skipped");
@@ -2737,13 +2920,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private void GenerateEnumFieldReadBody(ProtoMemberAttribute member)
         {
             // Use fully qualified type name for enums to avoid namespace issues
-            _sb.AppendIndentedLine($"result.{member.Name} = (global::{member.Type})reader.ReadVarInt32();");
+            _sb.AppendIndentedLine($"{GetMemberTarget(member)} = (global::{member.Type})reader.ReadVarInt32();");
         }
 
         private void GenerateMapFieldReadBody(ProtoMemberAttribute member)
         {
             var mapHandler = new MapHandler(_sb, _virtualMapRegistry, "SpanReaders", _registry, _virtualTypesNamespace);
-            mapHandler.GenerateRead(member, $"result.{member.Name}");
+            mapHandler.GenerateRead(member, GetMemberTarget(member));
         }
 
         private void GenerateCollectionFieldReadBody(ProtoMemberAttribute member)
@@ -2751,6 +2934,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // Check if element type is enum (enums use packed encoding like primitives)
             var normalizedType = TypeMapping.NormalizeTypeName(member.CollectionElementType);
             bool isEnumCollection = _registry != null && (_registry.IsEnum(member.CollectionElementType) || _registry.IsEnum(normalizedType));
+
+            var collectionTarget = GetMemberTarget(member);
 
             // Check if it's a primitive collection that can use PrimitiveHandler
             if (_primitiveHandler.CanHandleCollection(member.CollectionElementType) || isEnumCollection)
@@ -2763,7 +2948,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 {
                     _primitiveHandler.GenerateDualModePackedArrayRead(
                         _sb,
-                        $"result.{member.Name}",
+                        collectionTarget,
                         member.CollectionElementType,
                         member.DataFormat,
                         member.CollectionKind,
@@ -2775,7 +2960,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 {
                     _primitiveHandler.GenerateNonPackedArrayRead(
                         _sb,
-                        $"result.{member.Name}",
+                        collectionTarget,
                         member.CollectionElementType,
                         member.DataFormat,
                         member.FieldId,
@@ -2789,7 +2974,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 // Tuple collection - generate inline
                 _tupleHandler.GenerateTupleCollectionRead(
-                    $"result.{member.Name}",
+                    collectionTarget,
                     member.CollectionElementType,
                     member.FieldId,
                     member.CollectionKind,
@@ -2801,7 +2986,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 // Complex type collection
                 var elementClassName = TypeNameHelper.GetClassName(member.CollectionElementType);
                 _collectionHandler.GenerateComplexCollectionRead(
-                    $"result.{member.Name}",
+                    collectionTarget,
                     member.CollectionElementType,
                     elementClassName,
                     member.CollectionKind,
@@ -2845,7 +3030,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
             _sb.AppendIndentedLine("var nestedReader = new SpanReader(reader.GetSlice(length));");
             _sb.AppendIndentedLine($"var proxyValue_{member.FieldId} = {proxyNsPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref nestedReader);");
-            _sb.AppendIndentedLine($"result.{member.Name} = proxyValue_{member.FieldId}.{proxy.ConvertMethodName}();");
+            _sb.AppendIndentedLine($"{GetMemberTarget(member)} = proxyValue_{member.FieldId}.{proxy.ConvertMethodName}();");
             if (proxy.ReturnMethodName != null)
                 _sb.AppendIndentedLine($"proxyValue_{member.FieldId}.{proxy.ReturnMethodName}();");
         }
@@ -2858,6 +3043,21 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private void GenerateNestedDerivedTypeReadBody(ProtoMemberAttribute member, string typeName)
         {
             var typeNamespace = _registry.GetNamespaceForType(member.Type);
+
+            // Init-in-chain nested derived: delegate to polymorphic Read{Root}.
+            if (ChainHasInit(member.Type))
+            {
+                var rootName = _registry.GetRootType(member.Type);
+                var rootClassName = TypeNameHelper.GetClassName(rootName);
+                var rootNamespace = _registry.GetNamespaceForType(rootName);
+                var rootNsPrefix = GeneratorHelpers.GetNamespacePrefix(rootNamespace, _currentNamespace);
+                var initMemberTarget = GetMemberTarget(member);
+
+                _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
+                _sb.AppendIndentedLine("var nestedReader = new SpanReader(reader.GetSlice(length));");
+                _sb.AppendIndentedLine($"{initMemberTarget} = (global::{member.Type}){rootNsPrefix}SpanReaders.Read{rootClassName}(ref nestedReader);");
+                return;
+            }
 
             // Get nested derived type info (parent type, ProtoInclude, wrapper tag)
             var derivedInfo = GeneratorHelpers.TryGetNestedDerivedTypeInfo(member.Type, _registry);
@@ -2899,15 +3099,16 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             string derivedReaderPrefix = GeneratorHelpers.GetNamespacePrefix(typeNamespace, _currentNamespace) + "SpanReaders.";
 
+            var memberTarget = GetMemberTarget(member);
             _sb.AppendIndentedLine($"// Read derived object from wrapper (derived fields only)");
-            _sb.AppendIndentedLine($"result.{member.Name} = new global::{member.Type}();");
-            _sb.AppendIndentedLine($"{derivedReaderPrefix}Populate{typeName}OwnFields(ref wrapperReader, result.{member.Name});");
+            _sb.AppendIndentedLine($"{memberTarget} = new global::{member.Type}();");
+            _sb.AppendIndentedLine($"{derivedReaderPrefix}Populate{typeName}OwnFields(ref wrapperReader, {memberTarget});");
             _sb.AppendNewLine();
 
             // Read remaining base fields (AFTER wrapper) directly into the derived instance
             _sb.AppendIndentedLine($"// Read base fields (AFTER wrapper) - populate directly on derived instance");
             string parentReaderPrefix = GeneratorHelpers.GetNamespacePrefix(derivedInfo.ParentNamespace, _currentNamespace) + "SpanReaders.";
-            _sb.AppendIndentedLine($"{parentReaderPrefix}Populate{parentTypeName}(ref nestedReader, result.{member.Name});");
+            _sb.AppendIndentedLine($"{parentReaderPrefix}Populate{parentTypeName}(ref nestedReader, {memberTarget});");
 
             _sb.EndBlock();
             _sb.AppendIndentedLine("else");
@@ -2915,7 +3116,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             // No wrapper - direct deserialization (backward compatibility or base type instance)
             _sb.AppendIndentedLine("// No wrapper - read as standard type");
-            _sb.AppendIndentedLine($"result.{member.Name} = {derivedReaderPrefix}Read{typeName}Content(ref nestedReader);");
+            _sb.AppendIndentedLine($"{memberTarget} = {derivedReaderPrefix}Read{typeName}Content(ref nestedReader);");
 
             _sb.EndBlock();
         }
@@ -2931,7 +3132,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // Check if type is from different namespace and qualify the call
             var typeNamespace = _registry.GetNamespaceForType(member.Type);
             var nsPrefix = GeneratorHelpers.GetNamespacePrefix(typeNamespace, _currentNamespace);
-            _sb.AppendIndentedLine($"result.{member.Name} = {nsPrefix}SpanReaders.Read{typeName}Content(ref nestedReader);");
+            _sb.AppendIndentedLine($"{GetMemberTarget(member)} = {nsPrefix}SpanReaders.Read{typeName}Content(ref nestedReader);");
         }
 
         /// <summary>

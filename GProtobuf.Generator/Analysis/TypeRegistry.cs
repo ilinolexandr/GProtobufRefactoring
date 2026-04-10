@@ -29,6 +29,10 @@ namespace GProtobuf.Generator.Analysis
         // Flat inheritance (field aggregation without ProtoInclude)
         private readonly Dictionary<string, string> _baseClassOf = new Dictionary<string, string>();
 
+        // Memoization for init-chain helpers (cached per polymorphic root, not per node).
+        private readonly Dictionary<string, bool> _chainHasInitByRoot = new Dictionary<string, bool>();
+        private readonly Dictionary<string, int> _chainMaxDepthByRoot = new Dictionary<string, int>();
+
         private static readonly string[] EmptyStringArray = Array.Empty<string>();
         private static readonly TypeDefinition[] EmptyTypeArray = Array.Empty<TypeDefinition>();
         private static readonly ProtoMemberAttribute[] EmptyProtoMemberArray = Array.Empty<ProtoMemberAttribute>();
@@ -145,7 +149,8 @@ namespace GProtobuf.Generator.Analysis
 
                     if (memberSymbol is Microsoft.CodeAnalysis.IFieldSymbol fs && fs.IsReadOnly)
                         return true;
-                    if (memberSymbol is Microsoft.CodeAnalysis.IPropertySymbol ps && ps.SetMethod == null)
+                    if (memberSymbol is Microsoft.CodeAnalysis.IPropertySymbol ps
+                        && (ps.SetMethod == null || ps.SetMethod.IsInitOnly))
                         return true;
                 }
             }
@@ -326,6 +331,79 @@ namespace GProtobuf.Generator.Analysis
                 result.Add(child);
                 CollectAllDerivedTypes(child, result);
             }
+        }
+
+        /// <summary>True if any type in the ProtoInclude chain has at least one init-only [ProtoMember]. Cached per root.</summary>
+        public bool ChainHasInit(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+                return false;
+
+            var root = GetRootType(typeName);
+            if (_chainHasInitByRoot.TryGetValue(root, out var cached))
+                return cached;
+
+            bool result = HasInitMembers(root);
+            if (!result)
+            {
+                foreach (var child in GetAllDerivedTypes(root))
+                {
+                    if (HasInitMembers(child)) { result = true; break; }
+                }
+            }
+
+            _chainHasInitByRoot[root] = result;
+            return result;
+        }
+
+        private bool HasInitMembers(string typeName)
+        {
+            var t = GetByFullName(typeName);
+            if (t?.ProtoMembers == null) return false;
+            for (int i = 0; i < t.ProtoMembers.Count; i++)
+                if (t.ProtoMembers[i].IsInit) return true;
+            return false;
+        }
+
+        /// <summary>Maximum ProtoInclude chain depth from this type's polymorphic root (1 = root only). Cached per root.</summary>
+        public int GetMaxChainDepth(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+                return 0;
+
+            var root = GetRootType(typeName);
+            if (_chainMaxDepthByRoot.TryGetValue(root, out var cached))
+                return cached;
+
+            int depth = MaxDepthFrom(root, 1);
+            _chainMaxDepthByRoot[root] = depth;
+            return depth;
+        }
+
+        private int MaxDepthFrom(string typeName, int currentDepth)
+        {
+            if (!_childrenOf.TryGetValue(typeName, out var children) || children.Count == 0)
+                return currentDepth;
+
+            int max = currentDepth;
+            foreach (var child in children)
+            {
+                int d = MaxDepthFrom(child, currentDepth + 1);
+                if (d > max) max = d;
+            }
+            return max;
+        }
+
+        /// <summary>True if the type is a polymorphic root of a chain ≤ maxDepth with init members (eligible for deferred-init dispatcher).</summary>
+        public bool IsRootOfInitChain(TypeDefinition type, int maxDepth = 2)
+        {
+            if (type == null || type.IsEnum || type.TypeSymbol == null)
+                return false;
+            if (!IsBaseType(type.FullName) || IsDerivedType(type.FullName))
+                return false;
+            if (!ChainHasInit(type.FullName))
+                return false;
+            return GetMaxChainDepth(type.FullName) <= maxDepth;
         }
 
         public IReadOnlyList<ProtoMemberAttribute> GetOwnProtoMembers(string fullTypeName)

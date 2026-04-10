@@ -8,7 +8,7 @@ namespace GProtobuf.CrossTests.Refactored;
 
 public sealed class ConstructorDiagnosticTests
 {
-    [Fact(Skip = "GPROTO003 diagnostic not yet implemented in the generator")]
+    [Fact]
     public void ReadonlyStruct_WithNoMatchingConstructor_ShouldProduceGPROTO003()
     {
         // language=C#
