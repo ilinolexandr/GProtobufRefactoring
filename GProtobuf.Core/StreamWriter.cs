@@ -658,11 +658,11 @@ namespace GProtobuf.Core
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteBoolField(byte tag, bool value)
-        { if (value) { WriteSingleByte(tag); WriteBool(value); } }
+        { if (value) { WriteSingleByte(tag); WriteBoolTrue(); } }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteBoolField(byte tag1, byte tag2, bool value)
-        { if (value) { WriteTwoBytes(tag1, tag2); WriteBool(value); } }
+        { if (value) { WriteTwoBytes(tag1, tag2); WriteBoolTrue(); } }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDoubleField(byte tag, double value)

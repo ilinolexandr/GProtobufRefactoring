@@ -705,11 +705,11 @@ namespace GProtobuf.Core
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void CalculateBoolField(bool value)
-        { if (value) { AddByte(); WriteBool(value); } }
+        { if (value) { AddByte(); WriteBoolTrue(); } }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void CalculateBoolField2(bool value)
-        { if (value) { AddBytes2(); WriteBool(value); } }
+        { if (value) { AddBytes2(); WriteBoolTrue(); } }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void CalculateDoubleField(double value)
