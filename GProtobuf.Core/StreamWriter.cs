@@ -721,41 +721,5 @@ namespace GProtobuf.Core
         { if (value != 0) { WriteTwoBytes(tag1, tag2); WriteFixed64(value); } }
 
         #endregion
-
-        #region Custom Buffer Support
-
-        private byte[] _largeBuffer;
-
-        /// <summary>
-        /// Caller MUST call <see cref="Advance(int)"/> after writing to the returned span.
-        /// </summary>
-        public Span<byte> GetSpan(int size)
-        {
-            if (bufferPosition + size <= buffer.Length)
-                return buffer.Slice(bufferPosition, size);
-
-            Flush();
-
-            if (size <= buffer.Length)
-                return buffer.Slice(0, size);
-
-            _largeBuffer = ArrayPool<byte>.Shared.Rent(size);
-            return _largeBuffer.AsSpan(0, size);
-        }
-
-        public void Advance(int count)
-        {
-            if (_largeBuffer != null)
-            {
-                Stream.Write(_largeBuffer.AsSpan(0, count));
-                ArrayPool<byte>.Shared.Return(_largeBuffer);
-                _largeBuffer = null;
-                return;
-            }
-
-            bufferPosition += count;
-        }
-
-        #endregion
     }
 }

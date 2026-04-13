@@ -20,6 +20,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private readonly string _writerType;
         private readonly string _className;
         private readonly string _writerKind;
+        private readonly HashSet<string> _generatedCustomBufferHelpers = new HashSet<string>();
 
         public StreamWriterGenerator(StringBuilderWithIndent sb, TypeRegistry registry)
             : this(sb, registry, null, null, "Stream")
@@ -121,6 +122,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     {
                         GenerateOwnFieldsWriteMethod(protoIncludeType, className);
                     }
+
+                    // Generate [NoInlining] helper methods for custom buffer fields
+                    GenerateCustomBufferHelperMethods(protoIncludeType);
 
                     processedTypes.Add(protoIncludeTypeName);
                 }
@@ -306,6 +310,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 GenerateWriteAsParentMethods(type, className);
             }
+
+            // Generate [NoInlining] helper methods for custom buffer fields
+            GenerateCustomBufferHelperMethods(type);
         }
 
         /// <summary>
@@ -405,7 +412,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 foreach (var customMember in type.CustomBufferMembers)
                 {
-                    GenerateCustomBufferFieldWrite(customMember, "instance");
+                    GenerateCustomBufferFieldWrite(customMember, "instance", type);
                 }
             }
         }
@@ -447,7 +454,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             // Write ONLY the fields defined in this base class, no switch/dispatch
             ForEachProtoMember(type.ProtoMembers, "instance", (member, src) => GenerateFieldWrite(member, src));
-            ForEachCustomBufferMember(type.CustomBufferMembers, "instance", (member, src) => GenerateCustomBufferFieldWrite(member, src));
+            ForEachCustomBufferMember(type.CustomBufferMembers, "instance", (member, src) => GenerateCustomBufferFieldWrite(member, src, type));
 
             _sb.EndBlock();
             _sb.AppendNewLine();
@@ -1117,32 +1124,68 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         #region Custom Buffer Field Generation
 
         /// <summary>
-        /// Generates code to write a custom buffer field.
-        /// Custom buffer fields use user-defined methods for size calculation and buffer filling.
+        /// Generates a call to the extracted helper method for writing a custom buffer field.
+        /// The helper method uses stackalloc for small buffers and ArrayPool for large ones,
+        /// marked [NoInlining] so the stackalloc frame is released immediately on return.
         /// </summary>
-        private void GenerateCustomBufferFieldWrite(CustomBufferMember member, string objectName)
+        private void GenerateCustomBufferFieldWrite(CustomBufferMember member, string objectName, TypeDefinition ownerType)
         {
-            _sb.AppendIndentedLine($"// Custom buffer field {member.FieldId}");
+            var ownerClassName = TypeNameHelper.GetClassName(ownerType.FullName);
+            _sb.AppendIndentedLine($"WriteCustomBuffer_{ownerClassName}_{member.FieldId}(ref writer, {objectName});");
+        }
 
-            // Call user's size method to get the size
-            _sb.AppendIndentedLine($"var customSize_{member.FieldId} = {objectName}.{member.SizeMethodName}();");
+        /// <summary>
+        /// Generates [NoInlining] static helper methods for each custom buffer field of the given type.
+        /// Uses stackalloc for size ≤ 512 and ArrayPool for larger buffers.
+        /// </summary>
+        private void GenerateCustomBufferHelperMethods(TypeDefinition type)
+        {
+            if (type.CustomBufferMembers == null || type.CustomBufferMembers.Count == 0)
+                return;
 
-            // Skip serialization if size is 0
-            _sb.AppendIndentedLine($"if (customSize_{member.FieldId} > 0)");
-            _sb.StartNewBlock();
+            var className = TypeNameHelper.GetClassName(type.FullName);
 
-            // Write tag (field ID + WireType.Len)
-            TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
+            foreach (var member in type.CustomBufferMembers)
+            {
+                var key = $"{type.FullName}_{member.FieldId}";
+                if (!_generatedCustomBufferHelpers.Add(key))
+                    continue;
 
-            // Write length prefix
-            _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint)customSize_{member.FieldId});");
+                _sb.AppendIndentedLine("[global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]");
+                _sb.AppendIndentedLine($"private static void WriteCustomBuffer_{className}_{member.FieldId}(ref {_writerType} writer, global::{type.FullName} obj)");
+                _sb.StartNewBlock();
 
-            // Get buffer and call user's fill method
-            _sb.AppendIndentedLine($"var customBuffer_{member.FieldId} = writer.GetSpan(customSize_{member.FieldId});");
-            _sb.AppendIndentedLine($"{objectName}.{member.FillMethodName}(customBuffer_{member.FieldId});");
-            _sb.AppendIndentedLine($"writer.Advance(customSize_{member.FieldId});");
+                _sb.AppendIndentedLine($"var size = obj.{member.SizeMethodName}();");
+                _sb.AppendIndentedLine("if (size == 0) return;");
 
-            _sb.EndBlock();
+                // Write tag (field ID + WireType.Len) + length prefix
+                TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
+                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)size);");
+
+                _sb.AppendIndentedLine("if (size <= 512)");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine("global::System.Span<byte> span = stackalloc byte[size];");
+                _sb.AppendIndentedLine($"obj.{member.FillMethodName}(span);");
+                _sb.AppendIndentedLine("writer.WriteBytes(span);");
+                _sb.EndBlock();
+                _sb.AppendIndentedLine("else");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine("var rented = global::System.Buffers.ArrayPool<byte>.Shared.Rent(size);");
+                _sb.AppendIndentedLine("try");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine("var span = rented.AsSpan(0, size);");
+                _sb.AppendIndentedLine($"obj.{member.FillMethodName}(span);");
+                _sb.AppendIndentedLine("writer.WriteBytes(span);");
+                _sb.EndBlock();
+                _sb.AppendIndentedLine("finally");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine("global::System.Buffers.ArrayPool<byte>.Shared.Return(rented);");
+                _sb.EndBlock();
+                _sb.EndBlock();
+
+                _sb.EndBlock();
+                _sb.AppendNewLine();
+            }
         }
 
         #endregion
