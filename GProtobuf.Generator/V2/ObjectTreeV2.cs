@@ -843,6 +843,9 @@ namespace GProtobuf.Generator.V2
             sb.AppendIndentedLine("public static class Serializers");
             sb.StartNewBlock();
 
+            // Emit shared helper methods (once per Serializers class)
+            GenerateSerializerHelpers(sb);
+
             foreach (var type in types)
             {
                 // Skip entry-point methods for types with SkipEntryPoints = true
@@ -855,46 +858,26 @@ namespace GProtobuf.Generator.V2
 
                 if (_options.GenerateStreamWriter)
                 {
-                    // Stream serializer
-                    sb.AppendIndentedLine($"public static void Serialize{className}(Stream stream, global::{type.FullName} obj)");
-                    sb.StartNewBlock();
-                    sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
-                    sb.AppendIndentedLine($"StreamWriters.Write{className}(ref writer, obj);");
-                    sb.AppendIndentedLine("writer.Flush();");
-                    sb.EndBlock();
+                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}(Stream stream, global::{type.FullName} obj)");
+                    sb.AppendIndentedLine($"    => SerializeStream(stream, obj, &StreamWriters.Write{className});");
                     sb.AppendNewLine();
                 }
 
                 if (_options.GenerateBufferWriter)
                 {
-                    // IBufferWriter serializer
-                    sb.AppendIndentedLine($"public static void Serialize{className}(IBufferWriter<byte> buffer, global::{type.FullName} obj)");
-                    sb.StartNewBlock();
-                    sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
-                    sb.AppendIndentedLine($"BufferWriters.Write{className}(ref writer, obj);");
-                    sb.AppendIndentedLine("writer.Flush();");
-                    sb.EndBlock();
+                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}(IBufferWriter<byte> buffer, global::{type.FullName} obj)");
+                    sb.AppendIndentedLine($"    => SerializeBuffer(buffer, obj, &BufferWriters.Write{className});");
                     sb.AppendNewLine();
                 }
 
                 if (_options.GenerateOnePassStreamWriter)
                 {
-                    // OnePassStreamWriter serializer (one-pass approach using memory pooling)
-                    sb.AppendIndentedLine($"public static void Serialize{className}OnePass(Stream stream, global::{type.FullName} obj)");
-                    sb.StartNewBlock();
-                    sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256]);");
-                    sb.AppendIndentedLine($"OnePassStreamWriters.Write{className}(ref writer, obj);");
-                    sb.AppendIndentedLine("writer.Flush();");
-                    sb.EndBlock();
+                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}OnePass(Stream stream, global::{type.FullName} obj)");
+                    sb.AppendIndentedLine($"    => SerializeOnePass(stream, obj, &OnePassStreamWriters.Write{className});");
                     sb.AppendNewLine();
 
-                    // OnePassStreamWriter serializer with explicit MemoryStreamPool
-                    sb.AppendIndentedLine($"public static void Serialize{className}OnePass(Stream stream, global::{type.FullName} obj, global::GProtobuf.Core.MemoryStreamPool pool)");
-                    sb.StartNewBlock();
-                    sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], pool);");
-                    sb.AppendIndentedLine($"OnePassStreamWriters.Write{className}(ref writer, obj);");
-                    sb.AppendIndentedLine("writer.Flush();");
-                    sb.EndBlock();
+                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}OnePass(Stream stream, global::{type.FullName} obj, global::GProtobuf.Core.MemoryStreamPool pool)");
+                    sb.AppendIndentedLine($"    => SerializeOnePassWithPool(stream, obj, pool, &OnePassStreamWriters.Write{className});");
                     sb.AppendNewLine();
                 }
 
@@ -1061,6 +1044,55 @@ namespace GProtobuf.Generator.V2
 
             sb.EndBlock();
             sb.AppendNewLine();
+        }
+
+        private void GenerateSerializerHelpers(StringBuilderWithIndent sb)
+        {
+            if (_options.GenerateStreamWriter)
+            {
+                sb.AppendIndentedLine("private static unsafe void SerializeStream<T>(Stream stream, T obj,");
+                sb.AppendIndentedLine("    delegate*<ref global::GProtobuf.Core.StreamWriter, T, void> write)");
+                sb.StartNewBlock();
+                sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
+                sb.AppendIndentedLine("write(ref writer, obj);");
+                sb.AppendIndentedLine("writer.Flush();");
+                sb.EndBlock();
+                sb.AppendNewLine();
+            }
+
+            if (_options.GenerateBufferWriter)
+            {
+                sb.AppendIndentedLine("private static unsafe void SerializeBuffer<T>(IBufferWriter<byte> buffer, T obj,");
+                sb.AppendIndentedLine("    delegate*<ref global::GProtobuf.Core.BufferWriter, T, void> write)");
+                sb.StartNewBlock();
+                sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
+                sb.AppendIndentedLine("write(ref writer, obj);");
+                sb.AppendIndentedLine("writer.Flush();");
+                sb.EndBlock();
+                sb.AppendNewLine();
+            }
+
+            if (_options.GenerateOnePassStreamWriter)
+            {
+                sb.AppendIndentedLine("private static unsafe void SerializeOnePass<T>(Stream stream, T obj,");
+                sb.AppendIndentedLine("    delegate*<ref global::GProtobuf.Core.OnePassStreamWriter, T, void> write)");
+                sb.StartNewBlock();
+                sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256]);");
+                sb.AppendIndentedLine("write(ref writer, obj);");
+                sb.AppendIndentedLine("writer.Flush();");
+                sb.EndBlock();
+                sb.AppendNewLine();
+
+                sb.AppendIndentedLine("private static unsafe void SerializeOnePassWithPool<T>(Stream stream, T obj,");
+                sb.AppendIndentedLine("    global::GProtobuf.Core.MemoryStreamPool pool,");
+                sb.AppendIndentedLine("    delegate*<ref global::GProtobuf.Core.OnePassStreamWriter, T, void> write)");
+                sb.StartNewBlock();
+                sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], pool);");
+                sb.AppendIndentedLine("write(ref writer, obj);");
+                sb.AppendIndentedLine("writer.Flush();");
+                sb.EndBlock();
+                sb.AppendNewLine();
+            }
         }
 
         #endregion
