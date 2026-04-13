@@ -887,6 +887,15 @@ namespace GProtobuf.Generator.V2
                     sb.AppendIndentedLine("writer.Flush();");
                     sb.EndBlock();
                     sb.AppendNewLine();
+
+                    // OnePassStreamWriter serializer with explicit MemoryStreamPool
+                    sb.AppendIndentedLine($"public static void Serialize{className}OnePass(Stream stream, global::{type.FullName} obj, global::GProtobuf.Core.MemoryStreamPool pool)");
+                    sb.StartNewBlock();
+                    sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], pool);");
+                    sb.AppendIndentedLine($"OnePassStreamWriters.Write{className}(ref writer, obj);");
+                    sb.AppendIndentedLine("writer.Flush();");
+                    sb.EndBlock();
+                    sb.AppendNewLine();
                 }
 
                 if (_options.GenerateStackBufferWriter)

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace GProtobuf.Core
@@ -28,19 +29,32 @@ namespace GProtobuf.Core
         private NestingFrame _element;
     }
 
-    internal sealed class MemoryStreamPool
+    public sealed class MemoryStreamPool
     {
-        public static readonly MemoryStreamPool Shared = new();
+        public static readonly MemoryStreamPool Shared = new(maximumRetained: 8);
 
-        [ThreadStatic]
-        private static Stack<MemoryStream> t_pool;
+        private MemoryStream _firstItem;
+        private readonly Slot[] _items;
 
-        private static Stack<MemoryStream> Pool => t_pool ??= new Stack<MemoryStream>();
+        public MemoryStreamPool(uint maximumRetained = 8)
+        {
+            _items = new Slot[maximumRetained - 1];
+        }
 
         public MemoryStream Get()
         {
-            if (Pool.TryPop(out var stream))
-                return stream;
+            var item = _firstItem;
+            if (item != null && Interlocked.CompareExchange(ref _firstItem, null, item) == item)
+                return item;
+
+            var items = _items;
+            for (int i = 0; i < items.Length; i++)
+            {
+                item = items[i].Element;
+                if (item != null && Interlocked.CompareExchange(ref items[i].Element, null, item) == item)
+                    return item;
+            }
+
             return new MemoryStream();
         }
 
@@ -48,7 +62,22 @@ namespace GProtobuf.Core
         {
             stream.Position = 0;
             stream.SetLength(0);
-            Pool.Push(stream);
+
+            if (Interlocked.CompareExchange(ref _firstItem, stream, null) == null)
+                return;
+
+            var items = _items;
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (Interlocked.CompareExchange(ref items[i].Element, stream, null) == null)
+                    return;
+            }
+            // Pool full — MemoryStream will be GC'd
+        }
+
+        private struct Slot
+        {
+            public MemoryStream Element;
         }
     }
 
@@ -62,6 +91,7 @@ namespace GProtobuf.Core
         private Span<byte> buffer;
         private NestingStack nestingStack;
         private int nestingDepth;
+        private readonly MemoryStreamPool _pool;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref byte FirstRef() => ref MemoryMarshal.GetReference(buffer);
@@ -70,8 +100,12 @@ namespace GProtobuf.Core
         private ref byte RefAt(int pos) => ref Unsafe.Add(ref FirstRef(), pos);
 
         public OnePassStreamWriter(Stream stream, scoped Span<byte> buffer)
+            : this(stream, buffer, MemoryStreamPool.Shared) { }
+
+        public OnePassStreamWriter(Stream stream, scoped Span<byte> buffer, MemoryStreamPool pool)
         {
             Stream = stream;
+            _pool = pool;
             bufferPosition = 0;
             unsafe
             {
@@ -625,7 +659,7 @@ namespace GProtobuf.Core
         {
             Flush();
             nestingStack[nestingDepth++] = new NestingFrame(Stream);
-            Stream = MemoryStreamPool.Shared.Get();
+            Stream = _pool.Get();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
@@ -657,7 +691,7 @@ namespace GProtobuf.Core
             childStream.Position = 0;
             childStream.CopyTo(Stream);
 
-            MemoryStreamPool.Shared.Return((MemoryStream)childStream);
+            _pool.Return((MemoryStream)childStream);
         }
 
         #endregion
