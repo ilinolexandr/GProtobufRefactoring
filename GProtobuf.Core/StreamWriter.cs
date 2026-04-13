@@ -727,48 +727,28 @@ namespace GProtobuf.Core
         private byte[] _largeBuffer;
 
         /// <summary>
-        /// Gets a span of the specified size for direct writing.
-        /// Used by custom buffer serialization to allow user code to fill the buffer directly.
+        /// Caller MUST call <see cref="Advance(int)"/> after writing to the returned span.
         /// </summary>
-        /// <param name="size">Number of bytes needed.</param>
-        /// <returns>A span of the requested size for writing.</returns>
-        /// <remarks>
-        /// The caller MUST call <see cref="Advance(int)"/> after writing to the span.
-        /// For sizes larger than the internal buffer, allocates a temporary buffer.
-        /// </remarks>
         public Span<byte> GetSpan(int size)
         {
-            // If size fits in remaining buffer space, use it
             if (bufferPosition + size <= buffer.Length)
-            {
                 return buffer.Slice(bufferPosition, size);
-            }
 
-            // Flush current buffer and check again
             Flush();
 
-            // If size fits in the buffer now, use it
             if (size <= buffer.Length)
-            {
                 return buffer.Slice(0, size);
-            }
 
-            // For very large sizes, allocate a temporary buffer
-            _largeBuffer = new byte[size];
-            return _largeBuffer.AsSpan();
+            _largeBuffer = ArrayPool<byte>.Shared.Rent(size);
+            return _largeBuffer.AsSpan(0, size);
         }
 
-        /// <summary>
-        /// Advances the buffer position by the specified number of bytes.
-        /// Used after writing to a span obtained from <see cref="GetSpan(int)"/>.
-        /// </summary>
-        /// <param name="count">Number of bytes written.</param>
         public void Advance(int count)
         {
-            // If we used a large buffer, write it to the stream
             if (_largeBuffer != null)
             {
                 Stream.Write(_largeBuffer.AsSpan(0, count));
+                ArrayPool<byte>.Shared.Return(_largeBuffer);
                 _largeBuffer = null;
                 return;
             }
