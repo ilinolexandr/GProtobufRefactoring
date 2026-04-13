@@ -1207,7 +1207,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.Type,
                         wireTypeVar,
                         readerVar,
-                        useStreamLimits: true);
+                        useStreamLimits: true,
+                        fieldId: member.FieldId);
                 }
                 else
                 {
@@ -1249,7 +1250,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     member.CollectionKind,
                     member.Type,
                     readerVar,
-                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry));
+                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry),
+                    fieldId: member.FieldId);
             }
         }
 
@@ -2441,7 +2443,10 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.AppendIndentedLine("else");
                 _sb.StartNewBlock();
 
-                // Non-packed - single element
+                // Non-packed - read consecutive elements with TryPeekSameField
+                var unpackedWireType = isEnumCollection ? "global::GProtobuf.Core.WireType.VarInt" : GetGlobalWireTypeString(normalizedElementType, member.DataFormat);
+                _sb.AppendIndentedLine("do");
+                _sb.StartNewBlock();
                 if (isEnumCollection)
                 {
                     _sb.AppendIndentedLine($"{targetCollection}.Add((global::{member.CollectionElementType})reader.ReadVarInt32());");
@@ -2450,13 +2455,19 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 {
                     GenerateSingleElementRead(targetCollection, normalizedElementType, member.DataFormat);
                 }
+                _sb.EndBlock();
+                _sb.AppendIndentedLine($"while (reader.TryPeekSameField({member.FieldId}, {unpackedWireType}));");
 
                 _sb.EndBlock();
             }
             else
             {
-                // Non-packable types (string, bytes) - just read directly
+                // Non-packable types (string, bytes) - read consecutive elements with TryPeekSameField
+                _sb.AppendIndentedLine("do");
+                _sb.StartNewBlock();
                 GenerateSingleElementRead(targetCollection, normalizedElementType, member.DataFormat);
+                _sb.EndBlock();
+                _sb.AppendIndentedLine($"while (reader.TryPeekSameField({member.FieldId}, global::GProtobuf.Core.WireType.Len));");
             }
         }
 
@@ -2464,6 +2475,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Determines if an element type can be packed in protobuf wire format.
         /// Only numeric types and booleans can be packed. Strings, bytes, and messages cannot.
         /// </summary>
+        private static string GetGlobalWireTypeString(string normalizedElementType, DataFormat format)
+        {
+            var wireType = TypeMapping.GetWireTypeString(normalizedElementType, format);
+            return $"global::GProtobuf.Core.{wireType}";
+        }
+
         private static bool IsPackableElementType(string normalizedElementType)
         {
             return normalizedElementType switch
@@ -2668,6 +2685,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.EndBlock();
             }
 
+            // Determine wire type for TryPeekSameField peek
+            bool isProtoVarint = _registry.IsProtoVarint(TypeMapping.NormalizeTypeName(member.CollectionElementType));
+            var peekWireType = isProtoVarint ? "global::GProtobuf.Core.WireType.VarInt" : "global::GProtobuf.Core.WireType.Len";
+
+            // Wrap element read+add in do-while for consecutive same-field optimization
+            _sb.AppendIndentedLine("do");
+            _sb.StartNewBlock();
+
             // Handle special types (DateTime, Guid, TimeSpan, byte[]) that have predefined readers in GProtobuf.Core
             // These don't have generated ReadXxxContent methods
             if (normalizedElementType == "System.DateTime" || normalizedElementType == "System.TimeSpan" ||
@@ -2675,56 +2700,59 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 var readExpr = PrimitiveTypeCodeGenerator.GetCollectionAddExpression(normalizedElementType, "reader", "global::GProtobuf.Core.WireType.Len");
                 _sb.AppendIndentedLine($"{targetCollection}.Add({readExpr});");
-                return;
             }
-
-            // Handle ProtoVarint types - read as simple varint
-            if (_registry.IsProtoVarint(TypeMapping.NormalizeTypeName(member.CollectionElementType)))
+            else if (isProtoVarint)
             {
+                // Handle ProtoVarint types - read as simple varint
                 var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(member.CollectionElementType)) ?? Attributes.ProtoVarintType.UInt32;
                 var readMethod = Helpers.PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
                 var globalTypeName = TypeMapping.GetGlobalGenericTypeName(member.CollectionElementType);
                 _sb.AppendIndentedLine($"{targetCollection}.Add(new {globalTypeName}(reader.{readMethod}()));");
-                return;
             }
-
-            // Check if element type has a serialization proxy
-            var collProxy = GetProxyForType(member.CollectionElementType);
-            if (collProxy != null)
+            else
             {
-                // Proxy collection read via StreamReader: read proxy, convert → original
-                _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
-                _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
-                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(collProxy.ProxyNamespace, _currentNamespace);
-                _sb.AppendIndentedLine($"var proxyItem = {proxyNsPrefix}StreamReaders.Read{collProxy.ProxyClassName}Content(ref reader);");
-                _sb.AppendIndentedLine($"{targetCollection}.Add(proxyItem.{collProxy.ConvertMethodName}());");
-                if (collProxy.ReturnMethodName != null)
-                    _sb.AppendIndentedLine($"proxyItem.{collProxy.ReturnMethodName}();");
-                _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
-                return;
+                // Check if element type has a serialization proxy
+                var collProxy = GetProxyForType(member.CollectionElementType);
+                if (collProxy != null)
+                {
+                    // Proxy collection read via StreamReader: read proxy, convert → original
+                    _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
+                    _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
+                    var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(collProxy.ProxyNamespace, _currentNamespace);
+                    _sb.AppendIndentedLine($"var proxyItem = {proxyNsPrefix}StreamReaders.Read{collProxy.ProxyClassName}Content(ref reader);");
+                    _sb.AppendIndentedLine($"{targetCollection}.Add(proxyItem.{collProxy.ConvertMethodName}());");
+                    if (collProxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxyItem.{collProxy.ReturnMethodName}();");
+                    _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                }
+                else if (TupleHandler.IsTupleType(member.CollectionElementType))
+                {
+                    // Handle tuple types - use centralized virtual types in GProtobuf.Generated
+                    _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
+                    _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
+                    var tupleSafeName = VirtualTypeNameGenerator.GetSafeTypeName(member.CollectionElementType);
+                    _sb.AppendIndentedLine($"{targetCollection}.Add({VirtualTypesPrefix}.StreamReaders.Read{tupleSafeName}Content(ref reader));");
+                    _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                }
+                else
+                {
+                    // Read nested message using PushLimit for zero-allocation nested message reading
+                    _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
+                    _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
+
+                    var elementNs = _registry.GetNamespaceForType(member.CollectionElementType);
+                    var elementNsPrefix = GeneratorHelpers.GetNamespacePrefix(elementNs, _currentNamespace);
+
+                    // For derived types (with ProtoInclude parent), use Read{typeName} to handle ProtoInclude wrapper
+                    bool isDerivedType = _registry?.IsDerivedType(member.CollectionElementType) ?? false;
+                    var readMethodSuffix = isDerivedType ? "" : "Content";
+                    _sb.AppendIndentedLine($"{targetCollection}.Add({elementNsPrefix}StreamReaders.Read{elementClassName}{readMethodSuffix}(ref reader));");
+                    _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                }
             }
 
-            // Read nested message using PushLimit for zero-allocation nested message reading
-            _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
-            _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
-
-            // Handle tuple types - use centralized virtual types in GProtobuf.Generated
-            if (TupleHandler.IsTupleType(member.CollectionElementType))
-            {
-                var tupleSafeName = VirtualTypeNameGenerator.GetSafeTypeName(member.CollectionElementType);
-                _sb.AppendIndentedLine($"{targetCollection}.Add({VirtualTypesPrefix}.StreamReaders.Read{tupleSafeName}Content(ref reader));");
-                _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
-                return;
-            }
-
-            var elementNs = _registry.GetNamespaceForType(member.CollectionElementType);
-            var elementNsPrefix = GeneratorHelpers.GetNamespacePrefix(elementNs, _currentNamespace);
-
-            // For derived types (with ProtoInclude parent), use Read{typeName} to handle ProtoInclude wrapper
-            bool isDerivedType = _registry?.IsDerivedType(member.CollectionElementType) ?? false;
-            var readMethodSuffix = isDerivedType ? "" : "Content";
-            _sb.AppendIndentedLine($"{targetCollection}.Add({elementNsPrefix}StreamReaders.Read{elementClassName}{readMethodSuffix}(ref reader));");
-            _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+            _sb.EndBlock();
+            _sb.AppendIndentedLine($"while (reader.TryPeekSameField({member.FieldId}, {peekWireType}));");
         }
 
         private void GenerateTupleFieldReadBody(ProtoMemberAttribute member, string nsPrefix)
@@ -4481,6 +4509,10 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.AppendIndentedLine("else");
                 _sb.StartNewBlock();
 
+                // Non-packed - read consecutive elements with TryPeekSameField
+                var unpackedWireType = isEnumCollection ? "global::GProtobuf.Core.WireType.VarInt" : GetGlobalWireTypeString(normalizedElementType, member.DataFormat);
+                _sb.AppendIndentedLine("do");
+                _sb.StartNewBlock();
                 if (isEnumCollection)
                 {
                     _sb.AppendIndentedLine($"{targetCollection}.Add((global::{member.CollectionElementType})reader.ReadVarInt32());");
@@ -4489,12 +4521,19 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 {
                     GeneratePopulateSingleElementRead(targetCollection, normalizedElementType, member.DataFormat);
                 }
+                _sb.EndBlock();
+                _sb.AppendIndentedLine($"while (reader.TryPeekSameField({member.FieldId}, {unpackedWireType}));");
 
                 _sb.EndBlock();
             }
             else
             {
+                // Non-packable types (string, bytes) - read consecutive elements with TryPeekSameField
+                _sb.AppendIndentedLine("do");
+                _sb.StartNewBlock();
                 GeneratePopulateSingleElementRead(targetCollection, normalizedElementType, member.DataFormat);
+                _sb.EndBlock();
+                _sb.AppendIndentedLine($"while (reader.TryPeekSameField({member.FieldId}, global::GProtobuf.Core.WireType.Len));");
             }
         }
 
@@ -4666,63 +4705,81 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.EndBlock();
             }
 
+            // Determine wire type for TryPeekSameField peek
+            bool isProtoVarint = _registry.IsProtoVarint(TypeMapping.NormalizeTypeName(member.CollectionElementType));
+            var peekWireType = isProtoVarint ? "global::GProtobuf.Core.WireType.VarInt" : "global::GProtobuf.Core.WireType.Len";
+
+            // Wrap element read+add in do-while for consecutive same-field optimization
+            _sb.AppendIndentedLine("do");
+            _sb.StartNewBlock();
+
             switch (normalizedElementType)
             {
                 case "System.DateTime":
                     _sb.AppendIndentedLine($"{targetCollection}.Add(global::GProtobuf.Core.StreamReaders.ReadDateTime(ref reader, global::GProtobuf.Core.WireType.Len));");
-                    return;
+                    break;
                 case "System.TimeSpan":
                     _sb.AppendIndentedLine($"{targetCollection}.Add(global::GProtobuf.Core.StreamReaders.ReadTimeSpan(ref reader, global::GProtobuf.Core.WireType.Len));");
-                    return;
+                    break;
+                case "System.Guid":
+                    _sb.AppendIndentedLine($"{targetCollection}.Add(global::GProtobuf.Core.StreamReaders.ReadGuid(ref reader, global::GProtobuf.Core.WireType.Len));");
+                    break;
                 case "System.Byte[]":
                     _sb.AppendIndentedLine($"{targetCollection}.Add(global::GProtobuf.Core.StreamReaders.ReadByteArray(ref reader));");
-                    return;
+                    break;
+                default:
+                    if (isProtoVarint)
+                    {
+                        // Handle ProtoVarint types - read as simple varint
+                        var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(member.CollectionElementType)) ?? Attributes.ProtoVarintType.UInt32;
+                        var readMethod = Helpers.PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
+                        var globalTypeName = TypeMapping.GetGlobalGenericTypeName(member.CollectionElementType);
+                        _sb.AppendIndentedLine($"{targetCollection}.Add(new {globalTypeName}(reader.{readMethod}()));");
+                    }
+                    else
+                    {
+                        // Check if element type has a serialization proxy
+                        var popCollProxy = GetProxyForType(member.CollectionElementType);
+                        if (popCollProxy != null)
+                        {
+                            _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
+                            _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
+                            var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(popCollProxy.ProxyNamespace, _currentNamespace);
+                            _sb.AppendIndentedLine($"var proxyItem = {proxyNsPrefix}StreamReaders.Read{popCollProxy.ProxyClassName}Content(ref reader);");
+                            _sb.AppendIndentedLine($"{targetCollection}.Add(proxyItem.{popCollProxy.ConvertMethodName}());");
+                            if (popCollProxy.ReturnMethodName != null)
+                                _sb.AppendIndentedLine($"proxyItem.{popCollProxy.ReturnMethodName}();");
+                            _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                        }
+                        else if (TupleHandler.IsTupleType(member.CollectionElementType))
+                        {
+                            // Handle tuple types - use centralized virtual types in GProtobuf.Generated
+                            _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
+                            _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
+                            var tupleSafeName = VirtualTypeNameGenerator.GetSafeTypeName(member.CollectionElementType);
+                            _sb.AppendIndentedLine($"{targetCollection}.Add({VirtualTypesPrefix}.StreamReaders.Read{tupleSafeName}Content(ref reader));");
+                            _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                        }
+                        else
+                        {
+                            // Use PushLimit for zero-allocation nested message reading
+                            _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
+                            _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
+
+                            var elementNs = _registry.GetNamespaceForType(member.CollectionElementType);
+                            var elementNsPrefix = GeneratorHelpers.GetNamespacePrefix(elementNs, _currentNamespace);
+
+                            bool isDerivedType = _registry?.IsDerivedType(member.CollectionElementType) ?? false;
+                            var readMethodSuffix = isDerivedType ? "" : "Content";
+                            _sb.AppendIndentedLine($"{targetCollection}.Add({elementNsPrefix}StreamReaders.Read{elementClassName}{readMethodSuffix}(ref reader));");
+                            _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+                        }
+                    }
+                    break;
             }
 
-            // Handle ProtoVarint types - read as simple varint
-            if (_registry.IsProtoVarint(TypeMapping.NormalizeTypeName(member.CollectionElementType)))
-            {
-                var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(member.CollectionElementType)) ?? Attributes.ProtoVarintType.UInt32;
-                var readMethod = Helpers.PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
-                var globalTypeName = TypeMapping.GetGlobalGenericTypeName(member.CollectionElementType);
-                _sb.AppendIndentedLine($"{targetCollection}.Add(new {globalTypeName}(reader.{readMethod}()));");
-                return;
-            }
-
-            // Check if element type has a serialization proxy
-            var popCollProxy = GetProxyForType(member.CollectionElementType);
-            if (popCollProxy != null)
-            {
-                _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
-                _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
-                var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(popCollProxy.ProxyNamespace, _currentNamespace);
-                _sb.AppendIndentedLine($"var proxyItem = {proxyNsPrefix}StreamReaders.Read{popCollProxy.ProxyClassName}Content(ref reader);");
-                _sb.AppendIndentedLine($"{targetCollection}.Add(proxyItem.{popCollProxy.ConvertMethodName}());");
-                if (popCollProxy.ReturnMethodName != null)
-                    _sb.AppendIndentedLine($"proxyItem.{popCollProxy.ReturnMethodName}();");
-                _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
-                return;
-            }
-
-            // Use PushLimit for zero-allocation nested message reading
-            _sb.AppendIndentedLine("var itemLength = reader.ReadVarInt32();");
-            _sb.AppendIndentedLine("var itemOldLimit = reader.PushLimit(itemLength);");
-
-            if (TupleHandler.IsTupleType(member.CollectionElementType))
-            {
-                var tupleSafeName = VirtualTypeNameGenerator.GetSafeTypeName(member.CollectionElementType);
-                _sb.AppendIndentedLine($"{targetCollection}.Add({VirtualTypesPrefix}.StreamReaders.Read{tupleSafeName}Content(ref reader));");
-                _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
-                return;
-            }
-
-            var elementNs = _registry.GetNamespaceForType(member.CollectionElementType);
-            var elementNsPrefix = GeneratorHelpers.GetNamespacePrefix(elementNs, _currentNamespace);
-
-            bool isDerivedType = _registry?.IsDerivedType(member.CollectionElementType) ?? false;
-            var readMethodSuffix = isDerivedType ? "" : "Content";
-            _sb.AppendIndentedLine($"{targetCollection}.Add({elementNsPrefix}StreamReaders.Read{elementClassName}{readMethodSuffix}(ref reader));");
-            _sb.AppendIndentedLine("reader.PopLimit(itemOldLimit);");
+            _sb.EndBlock();
+            _sb.AppendIndentedLine($"while (reader.TryPeekSameField({member.FieldId}, {peekWireType}));");
         }
 
         #endregion

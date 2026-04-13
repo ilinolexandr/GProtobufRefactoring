@@ -325,7 +325,8 @@ namespace GProtobuf.Generator.V2.Handlers
             string collectionTypeName,
             string wireTypeVar = "wireType",
             string readerVar = "reader",
-            bool useStreamLimits = false)
+            bool useStreamLimits = false,
+            int fieldId = 0)
         {
             var normalized = TypeMapping.NormalizeTypeName(elementTypeName);
             var shortType = TypeMapping.GetShortTypeName(elementTypeName);
@@ -403,12 +404,18 @@ namespace GProtobuf.Generator.V2.Handlers
             sb.EndBlock();
             sb.AppendIndentedLine($"else if ({wireTypeVar} == {unpackedWireType})");
             sb.StartNewBlock();
-            sb.AppendIndentedLine("// Unpacked encoding (backward compatibility, single element)");
+            sb.AppendIndentedLine("// Unpacked encoding with TryPeekSameField optimization");
 
             // Initialize collection if needed (MERGE semantics)
             GenerateCollectionInitialization(sb, targetVar, shortType, collectionKind, collectionTypeName);
 
-            // Add single element
+            // Read consecutive elements with same field ID in tight loop
+            if (fieldId > 0)
+            {
+                sb.AppendIndentedLine("do");
+                sb.StartNewBlock();
+            }
+
             if (isListLike)
             {
                 sb.AppendIndentedLine($"{targetVar}.Add({elementReadExpr});");
@@ -416,6 +423,16 @@ namespace GProtobuf.Generator.V2.Handlers
             else
             {
                 sb.AppendIndentedLine($"tempList.Add({elementReadExpr});");
+            }
+
+            if (fieldId > 0)
+            {
+                sb.EndBlock();
+                sb.AppendIndentedLine($"while ({readerVar}.TryPeekSameField({fieldId}, {unpackedWireType}));");
+            }
+
+            if (!isListLike)
+            {
                 GenerateCollectionMerge(sb, targetVar, shortType, collectionKind, collectionTypeName);
             }
 

@@ -175,7 +175,8 @@ namespace GProtobuf.Generator.V2.Handlers
             CollectionKind collectionKind,
             string collectionTypeName,
             string readerVar = "reader",
-            bool useObjectArrayBuilder = false)
+            bool useObjectArrayBuilder = false,
+            int fieldId = 0)
         {
             var shortElementType = TypeMapping.GetGlobalTypeName(elementTypeName);
 
@@ -253,6 +254,17 @@ namespace GProtobuf.Generator.V2.Handlers
                 _sb.EndBlock();
             }
 
+            // Determine wire type for TryPeekSameField
+            bool isProtoVarint = IsProtoVarintType(elementTypeName, out var varintType, out var valueMember);
+            var peekWireType = isProtoVarint ? "global::GProtobuf.Core.WireType.VarInt" : "global::GProtobuf.Core.WireType.Len";
+
+            // Wrap element read+add in do-while for consecutive same-field optimization
+            if (fieldId > 0)
+            {
+                _sb.AppendIndentedLine("do");
+                _sb.StartNewBlock();
+            }
+
             // Check if element is a simple BCL type (DateTime, Guid, TimeSpan, etc.)
             bool isSimpleBclType = TypeMapping.IsSimpleType(elementTypeName);
 
@@ -272,7 +284,7 @@ namespace GProtobuf.Generator.V2.Handlers
                     _sb.AppendIndentedLine($"var item = default({shortElementType});");
                 }
             }
-            else if (IsProtoVarintType(elementTypeName, out var varintType, out var valueMember))
+            else if (isProtoVarint)
             {
                 // ProtoVarint type - read as simple varint and construct via constructor
                 var readMethod = PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
@@ -309,6 +321,12 @@ namespace GProtobuf.Generator.V2.Handlers
 
             // Add to collection
             _sb.AppendIndentedLine($"{actualTargetVar}.Add(item);");
+
+            if (fieldId > 0)
+            {
+                _sb.EndBlock();
+                _sb.AppendIndentedLine($"while ({readerVar}.TryPeekSameField({fieldId}, {peekWireType}));");
+            }
         }
 
         private string GenerateCollectionInitialization(string elementType, CollectionKind kind, string collectionTypeName)

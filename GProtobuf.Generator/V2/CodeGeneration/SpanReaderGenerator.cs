@@ -2964,7 +2964,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.CollectionKind,
                         member.Type,
                         "wireType",
-                        "reader");
+                        "reader",
+                        fieldId: member.FieldId);
                 }
                 else
                 {
@@ -3001,7 +3002,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     elementClassName,
                     member.CollectionKind,
                     member.Type,
-                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry));
+                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry),
+                    fieldId: member.FieldId);
             }
         }
 
