@@ -29,19 +29,79 @@ namespace GProtobuf.Core
         private NestingFrame _element;
     }
 
+    /// <summary>
+    /// Pool of <see cref="MemoryStream"/> instances.
+    /// <para>
+    /// NOT thread-safe. Intended to be rented from
+    /// <see cref="MemoryStreamPoolCache"/> for the duration of a single
+    /// serialization call, so <see cref="Rent"/>/<see cref="Return"/> can run without
+    /// atomic operations on every nested sub-message.
+    /// </para>
+    /// </summary>
     public sealed class MemoryStreamPool
     {
-        public static readonly MemoryStreamPool Shared = new(maximumRetained: 8);
+        private readonly MemoryStream[] _items;
+        private int _count;
 
-        private MemoryStream _firstItem;
+        public MemoryStreamPool(int capacity = 8)
+        {
+            if (capacity < 1) capacity = 1;
+            _items = new MemoryStream[capacity];
+        }
+
+        public MemoryStream Rent()
+        {
+            int c = _count;
+            if (c > 0)
+            {
+                int idx = c - 1;
+                var item = _items[idx];
+                _items[idx] = null;
+                _count = idx;
+                return item;
+            }
+
+            return new MemoryStream();
+        }
+
+        public void Return(MemoryStream stream)
+        {
+            stream.Position = 0;
+            stream.SetLength(0);
+
+            int c = _count;
+            var items = _items;
+            if ((uint)c < (uint)items.Length)
+            {
+                items[c] = stream;
+                _count = c + 1;
+            }
+            // else: inner pool full — let GC collect the excess stream.
+        }
+    }
+
+    /// <summary>
+    /// Thread-safe cache of <see cref="MemoryStreamPool"/> instances.
+    /// <para>
+    /// Contention (Interlocked CAS) occurs only on <see cref="Rent"/>/<see cref="Return"/>
+    /// — i.e. once per serialization call — while <see cref="MemoryStreamPool.Rent"/>/
+    /// <see cref="MemoryStreamPool.Return"/> inside that call remain atomic-free.
+    /// </para>
+    /// </summary>
+    public sealed class MemoryStreamPoolCache
+    {
+        public static readonly MemoryStreamPoolCache Shared = new(maximumRetained: 8);
+
+        private MemoryStreamPool _firstItem;
         private readonly Slot[] _items;
 
-        public MemoryStreamPool(uint maximumRetained = 8)
+        public MemoryStreamPoolCache(uint maximumRetained = 8)
         {
+            if (maximumRetained == 0) maximumRetained = 1;
             _items = new Slot[maximumRetained - 1];
         }
 
-        public MemoryStream Get()
+        public MemoryStreamPool Rent()
         {
             var item = _firstItem;
             if (item != null && Interlocked.CompareExchange(ref _firstItem, null, item) == item)
@@ -55,29 +115,28 @@ namespace GProtobuf.Core
                     return item;
             }
 
-            return new MemoryStream();
+            return new MemoryStreamPool();
         }
 
-        public void Return(MemoryStream stream)
+        public void Return(MemoryStreamPool pool)
         {
-            stream.Position = 0;
-            stream.SetLength(0);
+            if (pool == null) return;
 
-            if (Interlocked.CompareExchange(ref _firstItem, stream, null) == null)
+            if (Interlocked.CompareExchange(ref _firstItem, pool, null) == null)
                 return;
 
             var items = _items;
             for (int i = 0; i < items.Length; i++)
             {
-                if (Interlocked.CompareExchange(ref items[i].Element, stream, null) == null)
+                if (Interlocked.CompareExchange(ref items[i].Element, pool, null) == null)
                     return;
             }
-            // Pool full — MemoryStream will be GC'd
+            // Outer pool full — the inner pool (and its retained MemoryStreams) will be GC'd.
         }
 
         private struct Slot
         {
-            public MemoryStream Element;
+            public MemoryStreamPool Element;
         }
     }
 
@@ -98,9 +157,6 @@ namespace GProtobuf.Core
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref byte RefAt(int pos) => ref Unsafe.Add(ref FirstRef(), pos);
-
-        public OnePassStreamWriter(Stream stream, scoped Span<byte> buffer)
-            : this(stream, buffer, MemoryStreamPool.Shared) { }
 
         public OnePassStreamWriter(Stream stream, scoped Span<byte> buffer, MemoryStreamPool pool)
         {
@@ -659,7 +715,7 @@ namespace GProtobuf.Core
         {
             Flush();
             nestingStack[nestingDepth++] = new NestingFrame(Stream);
-            Stream = _pool.Get();
+            Stream = _pool.Rent();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
