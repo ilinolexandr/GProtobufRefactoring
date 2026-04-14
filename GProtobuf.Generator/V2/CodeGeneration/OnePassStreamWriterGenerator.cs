@@ -78,6 +78,17 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             var typesList = types.ToList();
 
+            // For large polymorphic hierarchies (>= DictionaryDispatchThreshold) emit
+            // FrozenDictionary + function-pointer dispatch in place of the isinst-cascade switch.
+            GenerateTypeDispatchTables(
+                typesList,
+                WriterType,
+                "writer",
+                (derivedType, derivedClassName, castVar, _) =>
+                {
+                    _sb.AppendIndentedLine($"Write{derivedClassName}Content(ref writer, {castVar});");
+                });
+
             foreach (var type in typesList)
             {
                 GenerateWriteMethod(type);
@@ -949,6 +960,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         /// <summary>
         /// Generates WriteContent method with type dispatch for base types with ProtoInclude.
+        /// For large hierarchies (>= DictionaryDispatchThreshold) uses FrozenDictionary + function
+        /// pointer dispatch; otherwise falls back to a compile-time switch (JIT pattern-match).
         /// </summary>
         private void GenerateWriteContentWithTypeDispatch(TypeDefinition type, string className)
         {
@@ -960,22 +973,35 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 return;
             }
 
-            _sb.AppendIndentedLine("switch (instance)");
-            _sb.StartNewBlock();
-
-            foreach (var derivedType in sortedDerived)
+            if (sortedDerived.Count >= DictionaryDispatchThreshold)
             {
-                var derivedClassName = TypeNameHelper.GetClassName(derivedType);
-                _sb.AppendIndentedLine($"case global::{derivedType} derived:");
-                _sb.IncreaseIndent();
-                _sb.AppendIndentedLine($"Write{derivedClassName}Content(ref writer, derived);");
-                _sb.AppendIndentedLine("return;");
-                _sb.DecreaseIndent();
+                GenerateFunctionPointerCall(
+                    className,
+                    type.FullName,
+                    WriterType,
+                    "writer",
+                    "instance",
+                    sortedDerived.Count);
+            }
+            else
+            {
+                _sb.AppendIndentedLine("switch (instance)");
+                _sb.StartNewBlock();
+
+                foreach (var derivedType in sortedDerived)
+                {
+                    var derivedClassName = TypeNameHelper.GetClassName(derivedType);
+                    _sb.AppendIndentedLine($"case global::{derivedType} derived:");
+                    _sb.IncreaseIndent();
+                    _sb.AppendIndentedLine($"Write{derivedClassName}Content(ref writer, derived);");
+                    _sb.AppendIndentedLine("return;");
+                    _sb.DecreaseIndent();
+                }
+
+                _sb.EndBlock();
             }
 
-            _sb.EndBlock();
-
-            // Default case - base type fields
+            // Default case - base type fields (reached when no derived type matched)
             WriteTypeFields(type, "instance");
         }
 

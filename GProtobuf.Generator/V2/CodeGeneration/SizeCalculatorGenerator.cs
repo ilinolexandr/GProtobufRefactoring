@@ -76,7 +76,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             // Generate dictionary-based type dispatch for large type hierarchies
             var typesList = types.ToList();
-            GenerateTypeDispatchDictionaries(typesList);
+            GenerateTypeDispatchTables(
+                typesList,
+                CalculatorType,
+                "calculator",
+                (derivedType, derivedClassName, castVar, _) =>
+                {
+                    _sb.AppendIndentedLine($"Calculate{derivedClassName}WrapperSize(ref calculator, {castVar});");
+                });
 
             foreach (var type in typesList)
             {
@@ -185,41 +192,6 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         }
 
         private const string CalculatorType = "global::GProtobuf.Core.WriteSizeCalculator";
-
-        /// <summary>
-        /// Generates function pointer dispatch tables for types with many derived classes.
-        /// This provides O(1) type lookup with direct function pointer call vs O(n) type pattern matching.
-        /// </summary>
-        private void GenerateTypeDispatchDictionaries(List<TypeDefinition> types)
-        {
-            var generatedDictionaries = new HashSet<string>();
-
-            foreach (var type in types)
-            {
-                if (type.ProtoIncludes != null && type.ProtoIncludes.Count > 0)
-                {
-                    var sortedDerived = GeneratorHelpers.GetSortedDerivedTypes(type.FullName, _registry);
-                    if (sortedDerived != null && sortedDerived.Count >= DictionaryDispatchThreshold)
-                    {
-                        var className = TypeNameHelper.GetClassName(type.FullName);
-                        if (!generatedDictionaries.Contains(className))
-                        {
-                            TryGenerateFunctionPointerDispatch(
-                                className,
-                                type.FullName,
-                                CalculatorType,
-                                "calculator",
-                                sortedDerived,
-                                (derivedType, derivedClassName, castVar) =>
-                                {
-                                    _sb.AppendIndentedLine($"Calculate{derivedClassName}WrapperSize(ref calculator, {castVar});");
-                                });
-                            generatedDictionaries.Add(className);
-                        }
-                    }
-                }
-            }
-        }
 
         #region CalculateContentSize Method
 

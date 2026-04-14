@@ -222,10 +222,41 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         protected const int DictionaryDispatchThreshold = 8;
 
         /// <summary>
-        /// Set of base types that need function pointer dispatch generation.
-        /// Populated during type dispatch generation, used to generate dispatch tables at class level.
+        /// Iterates the supplied types and, for each polymorphic base whose derived-type count meets
+        /// <see cref="DictionaryDispatchThreshold"/>, emits a FrozenDictionary + function-pointer
+        /// dispatch table via <see cref="TryGenerateFunctionPointerDispatch"/>. Shared by
+        /// StreamWriter, OnePassStreamWriter and SizeCalculator generators.
         /// </summary>
-        protected HashSet<string> _typesNeedingDictionaryDispatch = new HashSet<string>();
+        protected void GenerateTypeDispatchTables(
+            List<TypeDefinition> types,
+            string refParamType,
+            string refParamName,
+            Action<string, string, string, string> generateTargetCall)
+        {
+            var generated = new HashSet<string>();
+
+            foreach (var type in types)
+            {
+                if (type.ProtoIncludes == null || type.ProtoIncludes.Count == 0)
+                    continue;
+
+                var sortedDerived = GeneratorHelpers.GetSortedDerivedTypes(type.FullName, _registry);
+                if (sortedDerived == null || sortedDerived.Count < DictionaryDispatchThreshold)
+                    continue;
+
+                var className = TypeNameHelper.GetClassName(type.FullName);
+                if (!generated.Add(className))
+                    continue;
+
+                TryGenerateFunctionPointerDispatch(
+                    className,
+                    type.FullName,
+                    refParamType,
+                    refParamName,
+                    sortedDerived,
+                    generateTargetCall);
+            }
+        }
 
         /// <summary>
         /// Generates FrozenDictionary with function pointers and wrapper methods for a polymorphic base type.
@@ -236,7 +267,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         /// <param name="refParamType">The ref parameter type (e.g., "global::GProtobuf.Core.StreamWriter")</param>
         /// <param name="refParamName">The ref parameter name (e.g., "writer")</param>
         /// <param name="derivedTypes">List of derived types (sorted by depth, most derived first)</param>
-        /// <param name="generateTargetCall">Action to generate the target method call inside wrapper (derivedType, derivedClassName, castVar)</param>
+        /// <param name="generateTargetCall">Action to generate the target method call inside wrapper (derivedType, derivedClassName, castVar, baseClassName)</param>
         /// <returns>True if function pointer dispatch was generated and should be used</returns>
         protected bool TryGenerateFunctionPointerDispatch(
             string className,
@@ -244,7 +275,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
             string refParamType,
             string refParamName,
             List<string> derivedTypes,
-            Action<string, string, string> generateTargetCall)
+            Action<string, string, string, string> generateTargetCall)
         {
             if (derivedTypes == null || derivedTypes.Count < DictionaryDispatchThreshold)
                 return false;
@@ -259,7 +290,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
                 _sb.AppendIndentedLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
                 _sb.AppendIndentedLine($"private static void {className}Dispatch_{derivedClassName}(ref {refParamType} {refParamName}, global::{fullTypeName} instance)");
                 _sb.StartNewBlock();
-                generateTargetCall(derivedType, derivedClassName, $"(global::{derivedType})instance");
+                generateTargetCall(derivedType, derivedClassName, $"(global::{derivedType})instance", className);
                 _sb.EndBlock();
                 _sb.AppendNewLine();
             }
@@ -268,11 +299,21 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
             _sb.AppendIndentedLine($"private static System.Collections.Frozen.FrozenDictionary<nint, nint> _{className}Dispatch;");
             _sb.AppendNewLine();
 
-            // Generate lazy initializer
+            // Fast-path accessor: returns cached FrozenDictionary if already published.
+            // Split from the initializer so the JIT inlines the hot null-check path.
+            _sb.AppendIndentedLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
             _sb.AppendIndentedLine($"private static System.Collections.Frozen.FrozenDictionary<nint, nint> Get{className}Dispatch()");
             _sb.StartNewBlock();
-            _sb.AppendIndentedLine($"if (_{className}Dispatch != null) return _{className}Dispatch;");
+            _sb.AppendIndentedLine($"return _{className}Dispatch ?? Initialize{className}Dispatch();");
+            _sb.EndBlock();
             _sb.AppendNewLine();
+
+            // Cold-path initializer: builds the dictionary and publishes it atomically via
+            // Interlocked.CompareExchange so concurrent first-callers all observe the same
+            // instance instead of racing to build (and discard) their own FrozenDictionary.
+            _sb.AppendIndentedLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]");
+            _sb.AppendIndentedLine($"private static System.Collections.Frozen.FrozenDictionary<nint, nint> Initialize{className}Dispatch()");
+            _sb.StartNewBlock();
             _sb.AppendIndentedLine($"var dict = new System.Collections.Generic.Dictionary<nint, nint>({derivedTypes.Count});");
             _sb.AppendIndentedLine("unsafe");
             _sb.StartNewBlock();
@@ -284,15 +325,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
             }
 
             _sb.EndBlock(); // unsafe
-            _sb.AppendIndentedLine($"_{className}Dispatch = System.Collections.Frozen.FrozenDictionary.ToFrozenDictionary(dict);");
-            _sb.AppendIndentedLine($"return _{className}Dispatch;");
+            _sb.AppendIndentedLine("var frozen = System.Collections.Frozen.FrozenDictionary.ToFrozenDictionary(dict);");
+            _sb.AppendIndentedLine($"return System.Threading.Interlocked.CompareExchange(ref _{className}Dispatch, frozen, null) ?? frozen;");
             _sb.EndBlock();
             _sb.AppendNewLine();
 
             _sb.AppendIndentedLine("#endregion");
             _sb.AppendNewLine();
 
-            _typesNeedingDictionaryDispatch.Add(fullTypeName);
             return true;
         }
 

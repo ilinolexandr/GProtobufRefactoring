@@ -89,7 +89,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             // Generate dictionary-based type dispatch for large type hierarchies
             var typesList = types.ToList();
-            GenerateTypeDispatchDictionaries(typesList);
+            GenerateTypeDispatchTables(
+                typesList,
+                _writerType,
+                "writer",
+                (derivedType, derivedClassName, castVar, baseClassName) =>
+                {
+                    _sb.AppendIndentedLine($"Write{derivedClassName}_As{baseClassName}(ref writer, {castVar});");
+                });
 
             foreach (var type in typesList)
             {
@@ -191,49 +198,6 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        /// <summary>
-        /// Generates function pointer dispatch tables for types with many derived classes.
-        /// This provides O(1) type lookup with direct function pointer call vs O(n) type pattern matching.
-        /// </summary>
-        private void GenerateTypeDispatchDictionaries(List<TypeDefinition> types)
-        {
-            var generatedDictionaries = new HashSet<string>();
-
-            foreach (var type in types)
-            {
-                if (type.ProtoIncludes != null && type.ProtoIncludes.Count > 0)
-                {
-                    var allDerivedTypes = _registry.GetAllDerivedTypes(type.FullName);
-                    if (allDerivedTypes != null && allDerivedTypes.Count >= DictionaryDispatchThreshold)
-                    {
-                        // Sort by depth (most derived first)
-                        var sortedDerived = allDerivedTypes
-                            .OrderByDescending(d =>
-                            {
-                                var chain = _registry.GetInheritanceChain(d);
-                                return chain?.Count ?? 0;
-                            })
-                            .ToList();
-
-                        var className = TypeNameHelper.GetClassName(type.FullName);
-                        if (!generatedDictionaries.Contains(className))
-                        {
-                            TryGenerateFunctionPointerDispatch(
-                                className,
-                                type.FullName,
-                                _writerType,
-                                "writer",
-                                sortedDerived,
-                                (derivedType, derivedClassName, castVar) =>
-                                {
-                                    _sb.AppendIndentedLine($"Write{derivedClassName}_As{className}(ref writer, {castVar});");
-                                });
-                            generatedDictionaries.Add(className);
-                        }
-                    }
-                }
-            }
-        }
 
         #region Write Method
 
