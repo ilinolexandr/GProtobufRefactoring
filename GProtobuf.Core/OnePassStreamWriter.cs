@@ -30,114 +30,30 @@ namespace GProtobuf.Core
     }
 
     /// <summary>
-    /// Pool of <see cref="MemoryStream"/> instances.
+    /// RAII handle that rents a <see cref="BufferChainPool"/> from a
+    /// <see cref="BufferChainPoolCache"/> and returns it on <see cref="Dispose"/>.
     /// <para>
-    /// NOT thread-safe. Intended to be rented from
-    /// <see cref="MemoryStreamPoolCache"/> for the duration of a single
-    /// serialization call, so <see cref="Rent"/>/<see cref="Return"/> can run without
-    /// atomic operations on every nested sub-message.
+    /// Intended for <c>using var</c> around a <see cref="OnePassStreamWriter"/>
+    /// serialization call so hand-written callsites don't repeat the
+    /// rent/try/finally/return boilerplate.
     /// </para>
     /// </summary>
-    public sealed class MemoryStreamPool
+    public readonly ref struct OnePassScope
     {
-        private readonly MemoryStream[] _items;
-        private int _count;
+        private readonly BufferChainPoolCache _cache;
 
-        public MemoryStreamPool(int capacity = 8)
+        /// <summary>
+        /// The rented inner pool. Pass to the <see cref="OnePassStreamWriter"/> constructor.
+        /// </summary>
+        public readonly BufferChainPool Pool;
+
+        public OnePassScope(BufferChainPoolCache cache)
         {
-            if (capacity < 1) capacity = 1;
-            _items = new MemoryStream[capacity];
+            _cache = cache;
+            Pool = cache.Rent();
         }
 
-        public MemoryStream Rent()
-        {
-            int c = _count;
-            if (c > 0)
-            {
-                int idx = c - 1;
-                var item = _items[idx];
-                _items[idx] = null;
-                _count = idx;
-                return item;
-            }
-
-            return new MemoryStream();
-        }
-
-        public void Return(MemoryStream stream)
-        {
-            stream.Position = 0;
-            stream.SetLength(0);
-
-            int c = _count;
-            var items = _items;
-            if ((uint)c < (uint)items.Length)
-            {
-                items[c] = stream;
-                _count = c + 1;
-            }
-            // else: inner pool full — let GC collect the excess stream.
-        }
-    }
-
-    /// <summary>
-    /// Thread-safe cache of <see cref="MemoryStreamPool"/> instances.
-    /// <para>
-    /// Contention (Interlocked CAS) occurs only on <see cref="Rent"/>/<see cref="Return"/>
-    /// — i.e. once per serialization call — while <see cref="MemoryStreamPool.Rent"/>/
-    /// <see cref="MemoryStreamPool.Return"/> inside that call remain atomic-free.
-    /// </para>
-    /// </summary>
-    public sealed class MemoryStreamPoolCache
-    {
-        public static readonly MemoryStreamPoolCache Shared = new(maximumRetained: 8);
-
-        private MemoryStreamPool _firstItem;
-        private readonly Slot[] _items;
-
-        public MemoryStreamPoolCache(uint maximumRetained = 8)
-        {
-            if (maximumRetained == 0) maximumRetained = 1;
-            _items = new Slot[maximumRetained - 1];
-        }
-
-        public MemoryStreamPool Rent()
-        {
-            var item = _firstItem;
-            if (item != null && Interlocked.CompareExchange(ref _firstItem, null, item) == item)
-                return item;
-
-            var items = _items;
-            for (int i = 0; i < items.Length; i++)
-            {
-                item = items[i].Element;
-                if (item != null && Interlocked.CompareExchange(ref items[i].Element, null, item) == item)
-                    return item;
-            }
-
-            return new MemoryStreamPool();
-        }
-
-        public void Return(MemoryStreamPool pool)
-        {
-            if (pool == null) return;
-
-            if (Interlocked.CompareExchange(ref _firstItem, pool, null) == null)
-                return;
-
-            var items = _items;
-            for (int i = 0; i < items.Length; i++)
-            {
-                if (Interlocked.CompareExchange(ref items[i].Element, pool, null) == null)
-                    return;
-            }
-            // Outer pool full — the inner pool (and its retained MemoryStreams) will be GC'd.
-        }
-
-        private struct Slot
-        {
-            public MemoryStreamPool Element;
-        }
+        public void Dispose() => _cache.Return(Pool);
     }
 
     [SkipLocalsInit]
@@ -150,7 +66,7 @@ namespace GProtobuf.Core
         private Span<byte> buffer;
         private NestingStack nestingStack;
         private int nestingDepth;
-        private readonly MemoryStreamPool _pool;
+        private readonly BufferChainPool _pool;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref byte FirstRef() => ref MemoryMarshal.GetReference(buffer);
@@ -158,7 +74,7 @@ namespace GProtobuf.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref byte RefAt(int pos) => ref Unsafe.Add(ref FirstRef(), pos);
 
-        public OnePassStreamWriter(Stream stream, scoped Span<byte> buffer, MemoryStreamPool pool)
+        public OnePassStreamWriter(Stream stream, scoped Span<byte> buffer, BufferChainPool pool)
         {
             Stream = stream;
             _pool = pool;
@@ -747,7 +663,7 @@ namespace GProtobuf.Core
             childStream.Position = 0;
             childStream.CopyTo(Stream);
 
-            _pool.Return((MemoryStream)childStream);
+            _pool.Return((BufferChainStream)childStream);
         }
 
         #endregion

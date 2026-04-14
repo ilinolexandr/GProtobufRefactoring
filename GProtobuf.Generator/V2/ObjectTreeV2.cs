@@ -876,7 +876,7 @@ namespace GProtobuf.Generator.V2
                     sb.AppendIndentedLine($"    => SerializeOnePass(stream, obj, &OnePassStreamWriters.Write{className});");
                     sb.AppendNewLine();
 
-                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}OnePass(Stream stream, global::{type.FullName} obj, global::GProtobuf.Core.MemoryStreamPoolCache pool)");
+                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}OnePass(Stream stream, global::{type.FullName} obj, global::GProtobuf.Core.BufferChainPoolCache pool)");
                     sb.AppendIndentedLine($"    => SerializeOnePassWithPool(stream, obj, pool, &OnePassStreamWriters.Write{className});");
                     sb.AppendNewLine();
                 }
@@ -1076,24 +1076,17 @@ namespace GProtobuf.Generator.V2
             {
                 sb.AppendIndentedLine("private static unsafe void SerializeOnePass<T>(Stream stream, T obj,");
                 sb.AppendIndentedLine("    delegate*<ref global::GProtobuf.Core.OnePassStreamWriter, T, void> write)");
-                sb.AppendIndentedLine("    => SerializeOnePassWithPool(stream, obj, global::GProtobuf.Core.MemoryStreamPoolCache.Shared, write);");
+                sb.AppendIndentedLine("    => SerializeOnePassWithPool(stream, obj, global::GProtobuf.Core.BufferChainPoolCache.Shared, write);");
                 sb.AppendNewLine();
 
                 sb.AppendIndentedLine("private static unsafe void SerializeOnePassWithPool<T>(Stream stream, T obj,");
-                sb.AppendIndentedLine("    global::GProtobuf.Core.MemoryStreamPoolCache outerPool,");
+                sb.AppendIndentedLine("    global::GProtobuf.Core.BufferChainPoolCache outerPool,");
                 sb.AppendIndentedLine("    delegate*<ref global::GProtobuf.Core.OnePassStreamWriter, T, void> write)");
                 sb.StartNewBlock();
-                sb.AppendIndentedLine("var innerPool = outerPool.Rent();");
-                sb.AppendIndentedLine("try");
-                sb.StartNewBlock();
-                sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], innerPool);");
+                sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(outerPool);");
+                sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], scope.Pool);");
                 sb.AppendIndentedLine("write(ref writer, obj);");
                 sb.AppendIndentedLine("writer.Flush();");
-                sb.EndBlock();
-                sb.AppendIndentedLine("finally");
-                sb.StartNewBlock();
-                sb.AppendIndentedLine("outerPool.Return(innerPool);");
-                sb.EndBlock();
                 sb.EndBlock();
                 sb.AppendNewLine();
             }
