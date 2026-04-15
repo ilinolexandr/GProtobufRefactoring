@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -302,14 +303,30 @@ namespace GProtobuf.Core
 
             // UTF-8 path
             int maxBytes = value.Length * 4;
-            Span<byte> tempBuffer = maxBytes <= 256
-                ? stackalloc byte[maxBytes]
-                : new byte[maxBytes]; // Rare fallback for very long strings
-
-            int bytesWritten = Encoding.UTF8.GetBytes(value, tempBuffer);
-            WriteVarUInt32((uint)bytesWritten);
-            tempBuffer.Slice(0, bytesWritten).CopyTo(_buffer.Slice(_position));
-            _position += bytesWritten;
+            if (maxBytes <= 256)
+            {
+                Span<byte> tempBuffer = stackalloc byte[maxBytes];
+                int bytesWritten = Encoding.UTF8.GetBytes(value, tempBuffer);
+                WriteVarUInt32((uint)bytesWritten);
+                tempBuffer.Slice(0, bytesWritten).CopyTo(_buffer.Slice(_position));
+                _position += bytesWritten;
+            }
+            else
+            {
+                byte[] rentedBuffer = ArrayPool<byte>.Shared.Rent(maxBytes);
+                try
+                {
+                    Span<byte> tempBuffer = rentedBuffer.AsSpan(0, maxBytes);
+                    int bytesWritten = Encoding.UTF8.GetBytes(value, tempBuffer);
+                    WriteVarUInt32((uint)bytesWritten);
+                    tempBuffer.Slice(0, bytesWritten).CopyTo(_buffer.Slice(_position));
+                    _position += bytesWritten;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(rentedBuffer);
+                }
+            }
         }
 
         /// <summary>

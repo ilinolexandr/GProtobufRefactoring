@@ -17,9 +17,9 @@ namespace GProtobuf.Core
     /// backing storage instead of allocating fresh Gen2-bound <c>byte[]</c>s.
     /// </para>
     /// </summary>
-    internal sealed class BufferChain
+    public sealed class BufferChain
     {
-        internal const int SegmentSize = 8 * 1024;
+        public const int SegmentSize = 8 * 1024;
 
         private byte[][] _segments = new byte[4][];
         private int _segmentCount;
@@ -117,7 +117,7 @@ namespace GProtobuf.Core
     /// <see cref="CopyTo(Stream)"/>, plus the single seek operation the writer
     /// uses (<c>Position = 0</c> before copying the buffered content).
     /// </summary>
-    internal sealed class BufferChainStream : Stream
+    public sealed class BufferChainStream : Stream
     {
         private readonly BufferChain _chain = new();
 

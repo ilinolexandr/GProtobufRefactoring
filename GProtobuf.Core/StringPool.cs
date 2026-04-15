@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -142,13 +143,30 @@ namespace GProtobuf.Core
 
             // Get UTF-8 bytes for hashing
             int maxByteCount = Encoding.UTF8.GetMaxByteCount(value.Length);
-            Span<byte> utf8 = maxByteCount <= 256
-                ? stackalloc byte[maxByteCount]
-                : new byte[maxByteCount];
+            if (maxByteCount <= 256)
+            {
+                Span<byte> utf8 = stackalloc byte[maxByteCount];
+                int byteCount = Encoding.UTF8.GetBytes(value, utf8);
+                return InternOrReturn(value, utf8.Slice(0, byteCount));
+            }
+            else
+            {
+                byte[] rentedBuffer = ArrayPool<byte>.Shared.Rent(maxByteCount);
+                try
+                {
+                    Span<byte> utf8 = rentedBuffer.AsSpan(0, maxByteCount);
+                    int byteCount = Encoding.UTF8.GetBytes(value, utf8);
+                    return InternOrReturn(value, utf8.Slice(0, byteCount));
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(rentedBuffer);
+                }
+            }
+        }
 
-            int byteCount = Encoding.UTF8.GetBytes(value, utf8);
-            utf8 = utf8.Slice(0, byteCount);
-
+        private string InternOrReturn(string value, ReadOnlySpan<byte> utf8)
+        {
             uint hash = ComputeHash(utf8);
 
             // Try to get from cache
