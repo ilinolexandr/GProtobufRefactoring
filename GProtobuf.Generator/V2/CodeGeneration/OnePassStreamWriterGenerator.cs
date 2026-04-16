@@ -156,6 +156,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine($"public static void {methodName}(ref {WriterType} writer, {keyTypeName} key, {valueTypeName} value)");
             _sb.StartNewBlock();
 
+            if (IsInlinePrimitiveEligible(virtualType))
+            {
+                GenerateInlinePrimitiveMapEntryBody(virtualType);
+                _sb.EndBlock();
+                _sb.AppendNewLine();
+                return;
+            }
+
             // Write key (field 1)
             GenerateMapKeyWrite(virtualType, "key");
 
@@ -164,6 +172,258 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             _sb.EndBlock();
             _sb.AppendNewLine();
+        }
+
+        /// <summary>
+        /// True when the map entry can be written with inline size calculation
+        /// (no WriteSizeCalculator, no BufferChainPool rent). Key and value must each
+        /// be either a non-nullable primitive/enum or string/byte[]. Dictionary&lt;K,V&gt;
+        /// forbids null keys, so the key branch writes unconditionally; the value branch
+        /// null-checks string/byte[] to match WriteStringField/WriteBytesField semantics.
+        /// </summary>
+        private static bool IsInlinePrimitiveEligible(VirtualMapEntryInfo info)
+        {
+            if (TypeHelper.IsNullableType(info.KeyType))
+                return false;
+            bool keyPrim = TypeMapping.CanUseInlineSizeCalculation(info.KeyType, info.KeyIsEnum);
+            bool keyRef = !keyPrim && IsInlineEligibleReferenceValue(info.KeyType);
+            if (!keyPrim && !keyRef)
+                return false;
+
+            if (IsInlineEligibleReferenceValue(info.ValueType))
+                return true;
+
+            if (TypeHelper.IsNullableType(info.ValueType))
+                return false;
+
+            return TypeMapping.CanUseInlineSizeCalculation(info.ValueType, info.ValueIsEnum);
+        }
+
+        /// <summary>
+        /// Reference-typed value types whose size is cheap to measure inline
+        /// (UTF-8 byte count for string, .Length for byte[]).
+        /// </summary>
+        private static bool IsInlineEligibleReferenceValue(string typeName)
+        {
+            var normalized = TypeMapping.NormalizeTypeName(typeName);
+            return normalized == "System.String" || normalized == "System.Byte[]";
+        }
+
+        /// <summary>
+        /// Emits a per-entry tag+body for a virtual map entry type. When the entry
+        /// writes its own length prefix inline, outer BeginSubMessage/EndSubMessage
+        /// must be skipped to avoid a double length prefix (corrupt wire output).
+        /// </summary>
+        private void EmitMapEntryCall(int fieldId, VirtualMapEntryInfo entryInfo, string keyExpr, string valueExpr)
+        {
+            TagCodeHelper.WriteTag(_sb, fieldId, WireType.Len);
+            bool inline = IsInlinePrimitiveEligible(entryInfo);
+            if (!inline) _sb.AppendIndentedLine("writer.BeginSubMessage();");
+            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{entryInfo.TypeName}(ref writer, {keyExpr}, {valueExpr});");
+            if (!inline) _sb.AppendIndentedLine("writer.EndSubMessage();");
+        }
+
+        /// <summary>
+        /// Emits length-prefixed map entry body with unconditional key/value writes.
+        /// Eliminates BufferChainPool rent + double-copy that BeginSubMessage/EndSubMessage
+        /// incurs, and aligns wire output with TwoPass for key=0/value=0 entries.
+        /// Dispatches across the four {prim|ref} × {prim|ref} combinations; ref-typed keys
+        /// (string, byte[]) are non-null per Dictionary&lt;K,V&gt; API, while ref-typed values
+        /// get a null-check branch matching WriteStringField/WriteBytesField semantics.
+        /// </summary>
+        private void GenerateInlinePrimitiveMapEntryBody(VirtualMapEntryInfo info)
+        {
+            var keyWireType = info.KeyIsEnum ? WireType.VarInt : TypeMapping.GetWireType(info.KeyType, DataFormat.Default);
+            var valueWireType = info.ValueIsEnum ? WireType.VarInt : TypeMapping.GetWireType(info.ValueType, DataFormat.Default);
+            var (keyTagLiteral, keyTagBytes) = TypeMapping.PrecomputeTagBytes(1, keyWireType);
+            var (valueTagLiteral, valueTagBytes) = TypeMapping.PrecomputeTagBytes(2, valueWireType);
+
+            bool keyIsRef = !info.KeyIsEnum && IsInlineEligibleReferenceValue(info.KeyType);
+            bool valueIsRef = IsInlineEligibleReferenceValue(info.ValueType);
+
+            if (keyIsRef)
+            {
+                GenerateInlineRefKeyEntryBody(info, keyTagLiteral, keyTagBytes, valueTagLiteral, valueTagBytes, valueIsRef);
+                return;
+            }
+
+            if (valueIsRef)
+            {
+                GenerateInlineReferenceValueEntryBody(info, keyTagLiteral, keyTagBytes, valueTagLiteral, valueTagBytes);
+                return;
+            }
+
+            int keyFixedSize = TypeMapping.GetFixedWireSize(info.KeyType);
+            int valueFixedSize = TypeMapping.GetFixedWireSize(info.ValueType);
+
+            if (keyFixedSize > 0 && valueFixedSize > 0 && !info.KeyIsEnum && !info.ValueIsEnum)
+            {
+                int totalFixedSize = keyTagBytes + keyFixedSize + valueTagBytes + valueFixedSize;
+                _sb.AppendIndentedLine($"const int entrySize = {totalFixedSize};");
+                _sb.AppendIndentedLine("writer.WriteVarUInt32(entrySize);");
+            }
+            else
+            {
+                var keySizeExpr = TypeMapping.GetInlineSizeExpression(info.KeyType, "key", DataFormat.Default, info.KeyIsEnum);
+                var valueSizeExpr = TypeMapping.GetInlineSizeExpression(info.ValueType, "value", DataFormat.Default, info.ValueIsEnum);
+                _sb.AppendIndentedLine($"int entrySize = {keyTagBytes} + {keySizeExpr} + {valueTagBytes} + {valueSizeExpr};");
+                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)entrySize);");
+            }
+
+            EmitInlineTagWrite(keyTagLiteral, keyTagBytes);
+            EmitInlineValueWrite("key", info.KeyType, info.KeyIsEnum);
+
+            EmitInlineTagWrite(valueTagLiteral, valueTagBytes);
+            EmitInlineValueWrite("value", info.ValueType, info.ValueIsEnum);
+        }
+
+        /// <summary>
+        /// Inline emission for map entries with a reference-typed value (string or byte[]).
+        /// null-value branch emits only the key (matches WriteStringField/WriteBytesField behavior);
+        /// non-null branch pre-measures the payload length once, then writes key + length-prefixed value.
+        /// </summary>
+        private void GenerateInlineReferenceValueEntryBody(
+            VirtualMapEntryInfo info,
+            string keyTagLiteral, int keyTagBytes,
+            string valueTagLiteral, int valueTagBytes)
+        {
+            var keySizeExpr = TypeMapping.GetInlineSizeExpression(info.KeyType, "key", DataFormat.Default, info.KeyIsEnum);
+            bool isString = TypeMapping.NormalizeTypeName(info.ValueType) == "System.String";
+
+            _sb.AppendIndentedLine("if (value == null)");
+            _sb.StartNewBlock();
+            _sb.AppendIndentedLine($"int entrySize = {keyTagBytes} + {keySizeExpr};");
+            _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)entrySize);");
+            EmitInlineTagWrite(keyTagLiteral, keyTagBytes);
+            EmitInlineValueWrite("key", info.KeyType, info.KeyIsEnum);
+            _sb.EndBlock();
+            _sb.AppendIndentedLine("else");
+            _sb.StartNewBlock();
+            if (isString)
+                _sb.AppendIndentedLine("int valLen = global::System.Text.Encoding.UTF8.GetByteCount(value);");
+            else
+                _sb.AppendIndentedLine("int valLen = value.Length;");
+            _sb.AppendIndentedLine($"int entrySize = {keyTagBytes} + {keySizeExpr} + {valueTagBytes} + global::GProtobuf.Core.WireFormatHelpers.GetVarintSize((uint)valLen) + valLen;");
+            _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)entrySize);");
+            EmitInlineTagWrite(keyTagLiteral, keyTagBytes);
+            EmitInlineValueWrite("key", info.KeyType, info.KeyIsEnum);
+            EmitInlineTagWrite(valueTagLiteral, valueTagBytes);
+            if (isString)
+            {
+                _sb.AppendIndentedLine("writer.WriteString(value);");
+            }
+            else
+            {
+                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)valLen);");
+                _sb.AppendIndentedLine("writer.WriteBytes(value);");
+            }
+            _sb.EndBlock();
+        }
+
+        /// <summary>
+        /// Inline emission when KEY is reference-typed (string or byte[]). Dictionary&lt;K,V&gt;
+        /// forbids null keys, so the key branch writes unconditionally. Value handling splits
+        /// on primitive vs reference: reference values get a null-check branch, primitive
+        /// values go through the standard inline size/write path.
+        /// </summary>
+        private void GenerateInlineRefKeyEntryBody(
+            VirtualMapEntryInfo info,
+            string keyTagLiteral, int keyTagBytes,
+            string valueTagLiteral, int valueTagBytes,
+            bool valueIsRef)
+        {
+            bool keyIsString = TypeMapping.NormalizeTypeName(info.KeyType) == "System.String";
+
+            if (keyIsString)
+                _sb.AppendIndentedLine("int keyLen = global::System.Text.Encoding.UTF8.GetByteCount(key);");
+            else
+                _sb.AppendIndentedLine("int keyLen = key.Length;");
+
+            string keySizeExpr = "global::GProtobuf.Core.WireFormatHelpers.GetVarintSize((uint)keyLen) + keyLen";
+
+            if (valueIsRef)
+            {
+                bool valueIsString = TypeMapping.NormalizeTypeName(info.ValueType) == "System.String";
+
+                _sb.AppendIndentedLine("if (value == null)");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine($"int entrySize = {keyTagBytes} + {keySizeExpr};");
+                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)entrySize);");
+                EmitInlineTagWrite(keyTagLiteral, keyTagBytes);
+                EmitInlineRefKeyWrite(keyIsString);
+                _sb.EndBlock();
+                _sb.AppendIndentedLine("else");
+                _sb.StartNewBlock();
+                if (valueIsString)
+                    _sb.AppendIndentedLine("int valLen = global::System.Text.Encoding.UTF8.GetByteCount(value);");
+                else
+                    _sb.AppendIndentedLine("int valLen = value.Length;");
+                _sb.AppendIndentedLine($"int entrySize = {keyTagBytes} + {keySizeExpr} + {valueTagBytes} + global::GProtobuf.Core.WireFormatHelpers.GetVarintSize((uint)valLen) + valLen;");
+                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)entrySize);");
+                EmitInlineTagWrite(keyTagLiteral, keyTagBytes);
+                EmitInlineRefKeyWrite(keyIsString);
+                EmitInlineTagWrite(valueTagLiteral, valueTagBytes);
+                if (valueIsString)
+                {
+                    _sb.AppendIndentedLine("writer.WriteString(value);");
+                }
+                else
+                {
+                    _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)valLen);");
+                    _sb.AppendIndentedLine("writer.WriteBytes(value);");
+                }
+                _sb.EndBlock();
+                return;
+            }
+
+            int valueFixedSize = TypeMapping.GetFixedWireSize(info.ValueType);
+            string valueSizeExpr = (valueFixedSize > 0 && !info.ValueIsEnum)
+                ? valueFixedSize.ToString()
+                : TypeMapping.GetInlineSizeExpression(info.ValueType, "value", DataFormat.Default, info.ValueIsEnum);
+            _sb.AppendIndentedLine($"int entrySize = {keyTagBytes} + {keySizeExpr} + {valueTagBytes} + {valueSizeExpr};");
+            _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)entrySize);");
+            EmitInlineTagWrite(keyTagLiteral, keyTagBytes);
+            EmitInlineRefKeyWrite(keyIsString);
+            EmitInlineTagWrite(valueTagLiteral, valueTagBytes);
+            EmitInlineValueWrite("value", info.ValueType, info.ValueIsEnum);
+        }
+
+        /// <summary>
+        /// Emits the wire bytes for a ref-typed key (length-prefix + payload). For string keys
+        /// WriteString computes its own length prefix via ASCII fast path or UTF-8 re-encode;
+        /// for byte[] keys we reuse the pre-computed keyLen to avoid a second .Length access.
+        /// </summary>
+        private void EmitInlineRefKeyWrite(bool keyIsString)
+        {
+            if (keyIsString)
+            {
+                _sb.AppendIndentedLine("writer.WriteString(key);");
+            }
+            else
+            {
+                _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)keyLen);");
+                _sb.AppendIndentedLine("writer.WriteBytes(key);");
+            }
+        }
+
+        private void EmitInlineTagWrite(string tagLiteral, int tagBytes)
+        {
+            if (tagBytes == 1)
+                _sb.AppendIndentedLine($"writer.WriteSingleByte({tagLiteral});");
+            else
+                _sb.AppendIndentedLine($"writer.WriteTwoBytes({tagLiteral});");
+        }
+
+        private void EmitInlineValueWrite(string sourceVar, string typeName, bool isEnum)
+        {
+            if (isEnum)
+            {
+                _sb.AppendIndentedLine($"writer.WriteVarInt32((int){sourceVar});");
+                return;
+            }
+
+            var writeExpr = TypeMapping.GetElementWriteExpression(typeName, sourceVar, DataFormat.Default, "writer");
+            _sb.AppendIndentedLine($"{writeExpr};");
         }
 
         private void GenerateMapKeyWrite(VirtualMapEntryInfo virtualType, string sourceVar)
@@ -272,10 +532,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.StartNewBlock();
             _sb.AppendIndentedLine($"foreach (var keyKvp in {sourceVar})");
             _sb.StartNewBlock();
-            TagCodeHelper.WriteTag(_sb, 1, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
-            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{nestedEntryInfo.TypeName}(ref writer, keyKvp.Key, keyKvp.Value);");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
+            EmitMapEntryCall(1, nestedEntryInfo, "keyKvp.Key", "keyKvp.Value");
             _sb.EndBlock();
             _sb.EndBlock();
         }
@@ -453,11 +710,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine($"foreach (var kvp in {sourceVar})");
             _sb.StartNewBlock();
 
-            // Each nested dictionary entry is written as repeated field 2 with BeginSubMessage/EndSubMessage
-            TagCodeHelper.WriteTag(_sb, 2, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
-            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{nestedEntryInfo.TypeName}(ref writer, kvp.Key, kvp.Value);");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
+            // Each nested dictionary entry is written as repeated field 2
+            EmitMapEntryCall(2, nestedEntryInfo, "kvp.Key", "kvp.Value");
 
             _sb.EndBlock();
             _sb.EndBlock();
@@ -627,9 +881,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 return;
             }
 
-            // Custom type elements (ProtoContract classes)
+            // Custom type elements (ProtoContract classes) — pre-calc length instead of
+            // BeginSubMessage/EndSubMessage to avoid rent+CopyTo per element.
+            // Mirrors the StreamWriter (TwoPass) pattern at the per-element level.
             var elementClassName = TypeNameHelper.GetClassName(elementType);
             var writersClass = GetWritersClass(elementType);
+            var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(elementType, _registry);
             var elementTypeDef = _registry.GetByFullName(TypeMapping.NormalizeTypeName(elementType));
             var elementWriteMethod = (elementTypeDef == null || CanSkipWriteContentMethod(elementTypeDef))
                 ? $"Write{elementClassName}"
@@ -637,9 +894,10 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine($"if ({itemVar} != null)");
             _sb.StartNewBlock();
             TagCodeHelper.WriteTag(_sb, fieldId, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
+            _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+            _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{elementClassName}ContentSize(ref itemCalc, {itemVar});");
+            _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)itemCalc.Length);");
             _sb.AppendIndentedLine($"{writersClass}.{elementWriteMethod}(ref writer, {itemVar});");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
             _sb.EndBlock();
         }
 
@@ -802,10 +1060,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.StartNewBlock();
             _sb.AppendIndentedLine($"foreach (var dictKvp in {itemAccess})");
             _sb.StartNewBlock();
-            TagCodeHelper.WriteTag(_sb, fieldId, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
-            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{nestedEntryInfo.TypeName}(ref writer, dictKvp.Key, dictKvp.Value);");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
+            EmitMapEntryCall(fieldId, nestedEntryInfo, "dictKvp.Key", "dictKvp.Value");
             _sb.EndBlock();
             _sb.EndBlock();
         }
@@ -1231,14 +1486,6 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateMapFieldWrite(ProtoMemberInfo member, string sourceVar)
         {
-            _sb.AppendIndentedLine($"if ({sourceVar} != null)");
-            _sb.StartNewBlock();
-            _sb.AppendIndentedLine($"foreach (var kvp in {sourceVar})");
-            _sb.StartNewBlock();
-
-            TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
-
             // Register virtual map entry type
             var virtualType = _virtualMapRegistry.RegisterMapEntry(
                 member.MapKeyType,
@@ -1248,8 +1495,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 member.MapKeyEnumUnderlyingType,
                 member.MapValueEnumUnderlyingType);
 
-            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{virtualType.TypeName}(ref writer, kvp.Key, kvp.Value);");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
+            _sb.AppendIndentedLine($"if ({sourceVar} != null)");
+            _sb.StartNewBlock();
+            _sb.AppendIndentedLine($"foreach (var kvp in {sourceVar})");
+            _sb.StartNewBlock();
+
+            EmitMapEntryCall(member.FieldId, virtualType, "kvp.Key", "kvp.Value");
 
             _sb.EndBlock();
             _sb.EndBlock();
@@ -1420,13 +1671,17 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.StartNewBlock();
             }
 
+            // Pre-calc element size instead of BeginSubMessage/EndSubMessage:
+            // avoids per-element BufferChainPool rent + child→parent CopyTo.
             TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
+            var collSizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(member.CollectionElementType, _registry);
+            _sb.AppendIndentedLine("var itemCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
+            _sb.AppendIndentedLine($"{collSizeCalcClass}.Calculate{elementClassName}ContentSize(ref itemCalc, item);");
+            _sb.AppendIndentedLine("writer.WriteVarUInt32((uint)itemCalc.Length);");
             var collWriteMethod = (elementTypeDef == null || CanSkipWriteContentMethod(elementTypeDef))
                 ? $"Write{elementClassName}"
                 : $"Write{elementClassName}Content";
             _sb.AppendIndentedLine($"{writersClass}.{collWriteMethod}(ref writer, item);");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
 
             if (!elementIsStruct)
             {
@@ -1509,7 +1764,6 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
 
             TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
 
             string valueArg = isNonNullableStruct ? sourceVar : "complexValue";
             if (isNullableValueType)
@@ -1522,8 +1776,17 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             var complexWriteMethod = (typeDef == null || CanSkipWriteContentMethod(typeDef))
                 ? $"Write{typeName}"
                 : $"Write{typeName}Content";
+
+            // Pre-calc sub-message size instead of BeginSubMessage/EndSubMessage:
+            // avoids BufferChainPool rent + child→parent CopyTo.
+            // Field-id-suffixed calc var avoids CS0136 when struct fields (no
+            // wrapping scope) or sibling complex fields share the method scope.
+            var sizeCalcClass = NamespaceHelper.GetSizeCalculatorsClass(actualType, _registry);
+            var complexCalcVar = $"complexCalc_{member.FieldId}";
+            _sb.AppendIndentedLine($"var {complexCalcVar} = new global::GProtobuf.Core.WriteSizeCalculator();");
+            _sb.AppendIndentedLine($"{sizeCalcClass}.Calculate{typeName}ContentSize(ref {complexCalcVar}, {valueArg});");
+            _sb.AppendIndentedLine($"writer.WriteVarUInt32((uint){complexCalcVar}.Length);");
             _sb.AppendIndentedLine($"{nsPrefix}{ClassName}.{complexWriteMethod}(ref writer, {valueArg});");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
 
             if (!isNonNullableStruct)
             {

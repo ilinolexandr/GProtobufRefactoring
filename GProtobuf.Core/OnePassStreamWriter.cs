@@ -95,7 +95,7 @@ namespace GProtobuf.Core
             WriteVarUInt32(tag);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteVarUInt32(uint value)
         {
             int pos = bufferPosition;
@@ -105,6 +105,30 @@ namespace GProtobuf.Core
             {
                 ref byte p = ref RefAt(pos);
 
+                // Unrolled fast path for 1-3 byte varints (>90% of values).
+                if (value < 0x80u)
+                {
+                    Unsafe.WriteUnaligned(ref p, (byte)value);
+                    bufferPosition = pos + 1;
+                    return;
+                }
+                if (value < 0x4000u)
+                {
+                    Unsafe.WriteUnaligned(ref p, (byte)(value | 0x80u));
+                    Unsafe.WriteUnaligned(ref Unsafe.Add(ref p, 1), (byte)(value >> 7));
+                    bufferPosition = pos + 2;
+                    return;
+                }
+                if (value < 0x200000u)
+                {
+                    Unsafe.WriteUnaligned(ref p, (byte)(value | 0x80u));
+                    Unsafe.WriteUnaligned(ref Unsafe.Add(ref p, 1), (byte)((value >> 7) | 0x80u));
+                    Unsafe.WriteUnaligned(ref Unsafe.Add(ref p, 2), (byte)(value >> 14));
+                    bufferPosition = pos + 3;
+                    return;
+                }
+
+                // Generic 4-5 byte fallback
                 while (value > 0x7Fu)
                 {
                     Unsafe.WriteUnaligned(ref p, (byte)((value & 0x7Fu) | 0x80u));
@@ -120,14 +144,19 @@ namespace GProtobuf.Core
             }
             else
             {
-                // fallback
-                while (value > 0x7Fu)
-                {
-                    WriteSingleByte((byte)((value & 0x7Fu) | 0x80u));
-                    value >>= 7;
-                }
-                WriteSingleByte((byte)value);
+                WriteVarUInt32Slow(value);
             }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void WriteVarUInt32Slow(uint value)
+        {
+            while (value > 0x7Fu)
+            {
+                WriteSingleByte((byte)((value & 0x7Fu) | 0x80u));
+                value >>= 7;
+            }
+            WriteSingleByte((byte)value);
         }
 
         public void WriteFixedSizeInt32(int intValue)
@@ -157,12 +186,25 @@ namespace GProtobuf.Core
 
         public void WriteBoolTrue()
         {
-            WriteSingleByte(1);
+            if ((uint)bufferPosition >= (uint)buffer.Length)
+                Flush();
+
+            Unsafe.WriteUnaligned(ref RefAt(bufferPosition), (byte)1);
+            bufferPosition++;
         }
 
         public void WriteByte(byte value)
         {
-            WriteVarUInt32(value); // Use optimized version for unsigned
+            int pos = bufferPosition;
+            if (buffer.Length - pos < 2)
+            {
+                Flush();
+                pos = 0;
+            }
+
+            uint hi = (uint)value >> 7;
+            Unsafe.WriteUnaligned(ref RefAt(pos), (ushort)(((uint)value & 0x7Fu) | (hi * 0x180u)));
+            bufferPosition = pos + 1 + (int)hi;
         }
 
         public void WriteSByte(sbyte value, bool zigZag = false)
@@ -183,7 +225,27 @@ namespace GProtobuf.Core
 
         public void WriteUInt16(ushort value)
         {
-            WriteVarUInt32(value); // Use optimized version for unsigned
+            int pos = bufferPosition;
+            if (buffer.Length - pos < 3)
+            {
+                Flush();
+                pos = 0;
+            }
+
+            uint v = value;
+            int sv = (int)v;
+
+            // Branchless: b1=1 if v>=0x80, b2=1 if v>=0x4000
+            uint b1 = (uint)((sv - 0x80) >> 31) + 1;
+            uint b2 = (uint)((sv - 0x4000) >> 31) + 1;
+
+            // Construct all 3 bytes, advance only by actual count
+            uint byte0 = (v & 0x7F) | (b1 << 7);
+            uint byte1 = ((v >> 7) & 0x7F) | (b2 << 7);
+            uint byte2 = v >> 14;
+
+            Unsafe.WriteUnaligned(ref RefAt(pos), (uint)(byte0 | (byte1 << 8) | (byte2 << 16)));
+            bufferPosition = pos + 1 + (int)b1 + (int)b2;
         }
 
         public void WriteUInt32(uint value)
@@ -216,12 +278,24 @@ namespace GProtobuf.Core
 
         public void WriteDouble(double value)
         {
-            WriteToBuffer(MemoryMarshal.Cast<double, byte>(MemoryMarshal.CreateReadOnlySpan(ref value, 1)));
+            int pos = bufferPosition;
+            int space = buffer.Length - pos;
+
+            if (space < 8)
+                this.Flush();
+            Unsafe.WriteUnaligned(ref RefAt(bufferPosition), value);
+            bufferPosition += 8;
         }
 
         public void WriteFloat(float value)
         {
-            WriteToBuffer(MemoryMarshal.Cast<float, byte>(MemoryMarshal.CreateReadOnlySpan(ref value, 1)));
+            int pos = bufferPosition;
+            int space = buffer.Length - pos;
+
+            if (space < 4)
+                this.Flush();
+            Unsafe.WriteUnaligned(ref RefAt(bufferPosition), value);
+            bufferPosition += 4;
         }
 
         public void WritePackedFixedSizeIntArray(int[] array)
@@ -243,6 +317,22 @@ namespace GProtobuf.Core
                 return;
             }
 
+            // ASCII fast path: mirror StreamWriter.WriteString. Avoids the
+            // stackalloc + UTF8.GetBytes + second copy pattern used below.
+            // Cap at <128 chars so the narrowed byte payload always fits
+            // inside a 256-byte stackalloc buffer after Flush().
+            if (value.Length < 128 && System.Text.Ascii.IsValid(value))
+            {
+                WriteVarUInt32((uint)value.Length);
+                EnsureBufferSpace(value.Length);
+                int pos = bufferPosition;
+                ref byte p = ref RefAt(pos);
+                for (int i = 0; i < value.Length; i++)
+                    Unsafe.WriteUnaligned(ref Unsafe.Add(ref p, i), (byte)value[i]);
+                bufferPosition = pos + value.Length;
+                return;
+            }
+
             if (value.Length < 256)
             {
                 Span<byte> tempBuffer = stackalloc byte[value.Length * 4];
@@ -252,7 +342,8 @@ namespace GProtobuf.Core
             }
             else
             {
-                var rentedBuffer = ArrayPool<byte>.Shared.Rent(value.Length * 4);
+                // Use ThreadLocal buffer pooling to eliminate ArrayPool lock contention
+                var rentedBuffer = ThreadLocalBuffers.RentUtf8Buffer(value.Length * 4);
                 try
                 {
                     var tempBuffer = rentedBuffer.AsSpan();
@@ -262,7 +353,7 @@ namespace GProtobuf.Core
                 }
                 finally
                 {
-                    ArrayPool<byte>.Shared.Return(rentedBuffer);
+                    ThreadLocalBuffers.ReturnUtf8Buffer(rentedBuffer);
                 }
             }
 
@@ -565,7 +656,7 @@ namespace GProtobuf.Core
             bufferPosition += data.Length;
         }
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteSingleByte(byte value)
         {
             if ((uint)bufferPosition >= (uint)buffer.Length)
@@ -575,6 +666,7 @@ namespace GProtobuf.Core
             bufferPosition++;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteTwoBytes(byte b0, byte b1)
         {
             if (buffer.Length - bufferPosition >= 2)
