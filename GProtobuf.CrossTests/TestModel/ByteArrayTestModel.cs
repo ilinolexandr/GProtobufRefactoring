@@ -1,9 +1,8 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class ByteArrayTestModel
+    public partial class ByteArrayTestModel
     {
         // Basic byte array test
         [ProtoMember(1)]

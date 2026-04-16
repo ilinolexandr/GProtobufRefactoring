@@ -1,9 +1,8 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class StringArraysTestModel
+    public partial class StringArraysTestModel
     {
         [ProtoMember(1)]
         public string[] BasicStringArray { get; set; }

@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
@@ -17,7 +17,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class DictTestClass
+    public partial class DictTestClass
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -60,7 +60,7 @@ namespace GProtobuf.CrossTests.TestModel
     #endregion
 
     [ProtoContract]
-    public class ComprehensiveDictionaryTestModel
+    public partial class ComprehensiveDictionaryTestModel
     {
         #region Primitive Keys with String Values
 

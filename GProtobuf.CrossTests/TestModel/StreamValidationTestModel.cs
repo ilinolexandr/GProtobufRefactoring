@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
@@ -11,7 +11,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Per protobuf spec, duplicate message fields should MERGE contents.
     /// </summary>
     [ProtoContract]
-    public class DuplicateFieldMergeModel
+    public partial class DuplicateFieldMergeModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -24,7 +24,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class NestedMergeMessage
+    public partial class NestedMergeMessage
     {
         [ProtoMember(1)]
         public int Field1 { get; set; }
@@ -43,7 +43,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Model with deeply nested structure for merge testing.
     /// </summary>
     [ProtoContract]
-    public class DeepNestedMergeModel
+    public partial class DeepNestedMergeModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -53,7 +53,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class Level1Merge
+    public partial class Level1Merge
     {
         [ProtoMember(1)]
         public string Name { get; set; }
@@ -63,7 +63,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class Level2Merge
+    public partial class Level2Merge
     {
         [ProtoMember(1)]
         public int Value { get; set; }
@@ -81,7 +81,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Packable types: int32, int64, uint32, uint64, sint32, sint64, bool, enum, fixed32, fixed64, sfixed32, sfixed64, float, double
     /// </summary>
     [ProtoContract]
-    public class AllPackableTypesModel
+    public partial class AllPackableTypesModel
     {
         [ProtoMember(1, IsPacked = true)]
         public List<int> PackedInt32 { get; set; }
@@ -124,7 +124,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Same model but explicitly non-packed for testing compatibility.
     /// </summary>
     [ProtoContract]
-    public class AllNonPackedTypesModel
+    public partial class AllNonPackedTypesModel
     {
         [ProtoMember(1, IsPacked = false)]
         public List<int> NonPackedInt32 { get; set; }
@@ -176,7 +176,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Model where GProtobuf expects packed but we'll send non-packed to test compatibility.
     /// </summary>
     [ProtoContract]
-    public class MixedPackingModel
+    public partial class MixedPackingModel
     {
         [ProtoMember(1)]
         public List<int> IntValues { get; set; }
@@ -197,7 +197,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Tests pre-initialization pattern.
     /// </summary>
     [ProtoContract]
-    public class MapWithCollectionValuesModel
+    public partial class MapWithCollectionValuesModel
     {
         [ProtoMember(1)]
         public Dictionary<string, HashSet<int>> StringToIntSet { get; set; }
@@ -213,7 +213,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Model for testing maps with empty collection values.
     /// </summary>
     [ProtoContract]
-    public class MapWithEmptyCollectionsModel
+    public partial class MapWithEmptyCollectionsModel
     {
         [ProtoMember(1)]
         public Dictionary<string, HashSet<int>> MapWithEmptySet { get; set; }
@@ -226,7 +226,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Model for testing maps with single-element collection values.
     /// </summary>
     [ProtoContract]
-    public class MapWithSingleElementCollectionsModel
+    public partial class MapWithSingleElementCollectionsModel
     {
         [ProtoMember(1)]
         public Dictionary<string, HashSet<int>> MapWithSingleSet { get; set; }
@@ -239,7 +239,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Model for testing nested maps with collection values.
     /// </summary>
     [ProtoContract]
-    public class NestedMapWithCollectionsModel
+    public partial class NestedMapWithCollectionsModel
     {
         [ProtoMember(1)]
         public Dictionary<string, Dictionary<int, List<string>>> NestedMapWithList { get; set; }
@@ -249,7 +249,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Complex model combining multiple maps with various collection values.
     /// </summary>
     [ProtoContract]
-    public class ComplexMapCollectionsModel
+    public partial class ComplexMapCollectionsModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -276,7 +276,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Per spec, duplicate repeated fields should APPEND, not replace.
     /// </summary>
     [ProtoContract]
-    public class DuplicateRepeatedFieldModel
+    public partial class DuplicateRepeatedFieldModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }

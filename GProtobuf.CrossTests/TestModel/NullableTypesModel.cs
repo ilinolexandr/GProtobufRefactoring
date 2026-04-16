@@ -1,9 +1,8 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class NullableTypesModel
+    public partial class NullableTypesModel
     {
         [ProtoMember(1)]
         public byte? NullableByteValue { get; set; }

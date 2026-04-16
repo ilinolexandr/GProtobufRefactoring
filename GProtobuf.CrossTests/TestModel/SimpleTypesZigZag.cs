@@ -1,9 +1,8 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class SimpleTypesZigZag
+    public partial class SimpleTypesZigZag
     {
         [ProtoMember(1, DataFormat = DataFormat.ZigZag)]
         public long LongValue { get; set; }

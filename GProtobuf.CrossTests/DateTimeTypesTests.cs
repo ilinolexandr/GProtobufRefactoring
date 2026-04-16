@@ -1,5 +1,5 @@
 using GProtobuf.CrossTests.TestModel;
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 using System.IO;

@@ -1,10 +1,10 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class PrimitiveCollectionsTestModel
+    public partial class PrimitiveCollectionsTestModel
     {
         // Basic List<T> types
         [ProtoMember(1)]

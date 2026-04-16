@@ -1,10 +1,10 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class HashSetTestModel
+    public partial class HashSetTestModel
     {
         [ProtoMember(1)]
         public HashSet<int> UniqueNumbers { get; set; }
@@ -29,7 +29,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class SimpleMessage
+    public partial class SimpleMessage
     {
         [ProtoMember(1)]
         public int Id { get; set; }

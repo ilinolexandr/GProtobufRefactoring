@@ -1,7 +1,7 @@
 using GProtobuf.CrossTests.TestModel;
 using GProtobuf.CrossTests.TestModel.Serialization;
 using GProtobuf.Tests;
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -1,11 +1,11 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class TupleMapTestModel
+    public partial class TupleMapTestModel
     {
         // Simple double Tuple
         [ProtoMember(1)]

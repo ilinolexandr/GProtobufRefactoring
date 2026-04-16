@@ -1,8 +1,7 @@
 using FluentAssertions;
 using GProtobuf.Tests;
 using GProtobuf.Tests.Serialization;
-using ProtoBuf;
-
+using GProtobuf;
 // Реєстрація proxy маппінгів (assembly-level атрибути мають стояти перед декларацією типів)
 [assembly: SerializationProxy(typeof(ExternalVector3), typeof(Vector3Proxy))]
 [assembly: SerializationProxy(typeof(ExternalColor), typeof(ColorProxy))]
@@ -14,7 +13,7 @@ namespace GProtobuf.Tests;
 // ==================== Зовнішні типи (імітація сторонніх бібліотек) ====================
 
 /// <summary>Зовнішній struct без [ProtoContract] — базовий тип для proxy</summary>
-public struct ExternalVector3
+public partial struct ExternalVector3
 {
     public float X;
     public float Y;
@@ -29,7 +28,7 @@ public struct ExternalVector3
 }
 
 /// <summary>Зовнішній class без [ProtoContract] — для тесту proxy на class</summary>
-public class ExternalColor
+public partial class ExternalColor
 {
     public byte R { get; set; }
     public byte G { get; set; }
@@ -54,7 +53,7 @@ public readonly struct ExternalReadonlyPoint
 
 /// <summary>Proxy для ExternalVector3 (struct → struct)</summary>
 [ProtoContract]
-public struct Vector3Proxy
+public partial struct Vector3Proxy
 {
     /// <summary>Counter для верифікації що [ProxyReturn] реально викликається</summary>
     public static int ReturnCallCount;
@@ -80,7 +79,7 @@ public struct Vector3Proxy
 
 /// <summary>Proxy для ExternalColor (class → class з null-handling)</summary>
 [ProtoContract]
-public class ColorProxy
+public partial class ColorProxy
 {
     [ProtoMember(1)] public int R { get; set; }
     [ProtoMember(2)] public int G { get; set; }
@@ -98,7 +97,7 @@ public class ColorProxy
 
 /// <summary>Proxy для ExternalReadonlyPoint (readonly struct → мутабельний struct)</summary>
 [ProtoContract]
-public struct ReadonlyPointProxy
+public partial struct ReadonlyPointProxy
 {
     [ProtoMember(1)] public double X { get; set; }
     [ProtoMember(2)] public double Y { get; set; }
@@ -125,7 +124,7 @@ public struct ExternalSize
 
 /// <summary>Proxy з 2-параметровим [ProxyWrap] (pooling pattern)</summary>
 [ProtoContract]
-public struct SizeProxy
+public partial struct SizeProxy
 {
     public static int CreateCallCount;
 
@@ -149,7 +148,7 @@ public struct SizeProxy
 
 /// <summary>Кейс 1: Одне struct proxy поле</summary>
 [ProtoContract]
-public class ProxyTestMessage
+public partial class ProxyTestMessage
 {
     [ProtoMember(1)]
     public ExternalVector3 Position { get; set; }
@@ -160,7 +159,7 @@ public class ProxyTestMessage
 
 /// <summary>Кейс 2: Колекція List з proxy</summary>
 [ProtoContract]
-public class ProxyCollectionTestMessage
+public partial class ProxyCollectionTestMessage
 {
     [ProtoMember(1)]
     public List<ExternalVector3>? Positions { get; set; }
@@ -168,7 +167,7 @@ public class ProxyCollectionTestMessage
 
 /// <summary>Кейс 3: Масив з proxy (окремий code path через tempList/ObjectArrayBuilder)</summary>
 [ProtoContract]
-public class ProxyArrayTestMessage
+public partial class ProxyArrayTestMessage
 {
     [ProtoMember(1)]
     public ExternalVector3[]? Points { get; set; }
@@ -176,7 +175,7 @@ public class ProxyArrayTestMessage
 
 /// <summary>Кейс 4: Nullable struct з proxy</summary>
 [ProtoContract]
-public class ProxyNullableTestMessage
+public partial class ProxyNullableTestMessage
 {
     [ProtoMember(1)]
     public ExternalVector3? MaybePosition { get; set; }
@@ -187,7 +186,7 @@ public class ProxyNullableTestMessage
 
 /// <summary>Кейс 5: Class proxy з null-handling</summary>
 [ProtoContract]
-public class ProxyClassTestMessage
+public partial class ProxyClassTestMessage
 {
     [ProtoMember(1)]
     public ExternalColor? Color { get; set; }
@@ -198,7 +197,7 @@ public class ProxyClassTestMessage
 
 /// <summary>Кейс 6: Кілька proxy полів різних типів</summary>
 [ProtoContract]
-public class ProxyMultiFieldTestMessage
+public partial class ProxyMultiFieldTestMessage
 {
     [ProtoMember(1)]
     public ExternalVector3 Position { get; set; }
@@ -212,7 +211,7 @@ public class ProxyMultiFieldTestMessage
 
 /// <summary>Кейс 7: Вкладений proxy — Container → Inner → ExternalVector3</summary>
 [ProtoContract]
-public class ProxyNestedInner
+public partial class ProxyNestedInner
 {
     [ProtoMember(1)]
     public ExternalVector3 Offset { get; set; }
@@ -222,7 +221,7 @@ public class ProxyNestedInner
 }
 
 [ProtoContract]
-public class ProxyNestedContainer
+public partial class ProxyNestedContainer
 {
     [ProtoMember(1)]
     public ProxyNestedInner? Inner { get; set; }
@@ -233,7 +232,7 @@ public class ProxyNestedContainer
 
 /// <summary>Кейс 10: Мікс — proxy + звичайний [ProtoContract] + примітив</summary>
 [ProtoContract]
-public class RegularSubMessage
+public partial class RegularSubMessage
 {
     [ProtoMember(1)]
     public int Value { get; set; }
@@ -243,7 +242,7 @@ public class RegularSubMessage
 }
 
 [ProtoContract]
-public class ProxyMixedTestMessage
+public partial class ProxyMixedTestMessage
 {
     [ProtoMember(1)]
     public ExternalVector3 Position { get; set; }
@@ -260,7 +259,7 @@ public class ProxyMixedTestMessage
 
 /// <summary>Кейс 14: Великий proxy з 10+ полями</summary>
 [ProtoContract]
-public class LargeProxyContainer
+public partial class LargeProxyContainer
 {
     [ProtoMember(1)] public ExternalVector3 P1 { get; set; }
     [ProtoMember(2)] public ExternalVector3 P2 { get; set; }
@@ -274,7 +273,7 @@ public class LargeProxyContainer
 
 /// <summary>Кейс 11: Dictionary з proxy value type (struct)</summary>
 [ProtoContract]
-public class ProxyDictStructTestMessage
+public partial class ProxyDictStructTestMessage
 {
     [ProtoMember(1)]
     public Dictionary<string, ExternalVector3>? Positions { get; set; }
@@ -282,7 +281,7 @@ public class ProxyDictStructTestMessage
 
 /// <summary>Кейс 11b: Dictionary з proxy value type (class)</summary>
 [ProtoContract]
-public class ProxyDictClassTestMessage
+public partial class ProxyDictClassTestMessage
 {
     [ProtoMember(1)]
     public Dictionary<int, ExternalColor>? Colors { get; set; }
@@ -290,7 +289,7 @@ public class ProxyDictClassTestMessage
 
 /// <summary>Кейс 15: Readonly struct proxy</summary>
 [ProtoContract]
-public class ProxyReadonlyStructTestMessage
+public partial class ProxyReadonlyStructTestMessage
 {
     [ProtoMember(1)]
     public ExternalReadonlyPoint Point { get; set; }
@@ -303,7 +302,7 @@ public class ProxyReadonlyStructTestMessage
 
 /// <summary>Edge Case: HashSet з proxy типом</summary>
 [ProtoContract]
-public class ProxyHashSetTestMessage
+public partial class ProxyHashSetTestMessage
 {
     [ProtoMember(1)]
     public HashSet<ExternalVector3>? Positions { get; set; }
@@ -312,14 +311,14 @@ public class ProxyHashSetTestMessage
 /// <summary>Edge Case: ProtoInclude ієрархія з proxy полем</summary>
 [ProtoContract]
 [ProtoInclude(10, typeof(DerivedWithProxy))]
-public class BaseWithProxy
+public partial class BaseWithProxy
 {
     [ProtoMember(1)]
     public string? Name { get; set; }
 }
 
 [ProtoContract]
-public class DerivedWithProxy : BaseWithProxy
+public partial class DerivedWithProxy : BaseWithProxy
 {
     [ProtoMember(1)]
     public ExternalVector3 Position { get; set; }
@@ -330,7 +329,7 @@ public class DerivedWithProxy : BaseWithProxy
 
 /// <summary>Edge Case P7: Dictionary з масивом proxy типів як value</summary>
 [ProtoContract]
-public class ProxyDictArrayValueTestMessage
+public partial class ProxyDictArrayValueTestMessage
 {
     [ProtoMember(1)]
     public Dictionary<string, ExternalVector3[]>? Data { get; set; }
@@ -338,7 +337,7 @@ public class ProxyDictArrayValueTestMessage
 
 /// <summary>Edge Case P7: Dictionary з List proxy типів як value</summary>
 [ProtoContract]
-public class ProxyDictListValueTestMessage
+public partial class ProxyDictListValueTestMessage
 {
     [ProtoMember(1)]
     public Dictionary<string, List<ExternalVector3>>? Items { get; set; }
@@ -346,7 +345,7 @@ public class ProxyDictListValueTestMessage
 
 /// <summary>Edge Case P7: Nested Dictionary з proxy типом як inner value</summary>
 [ProtoContract]
-public class ProxyNestedDictTestMessage
+public partial class ProxyNestedDictTestMessage
 {
     [ProtoMember(1)]
     public Dictionary<string, Dictionary<int, ExternalVector3>>? Data { get; set; }
@@ -354,7 +353,7 @@ public class ProxyNestedDictTestMessage
 
 /// <summary>Кейс P3: Proxy з 2-параметровим [ProxyWrap] (pooling)</summary>
 [ProtoContract]
-public class ProxyPoolingTestMessage
+public partial class ProxyPoolingTestMessage
 {
     [ProtoMember(1)]
     public ExternalSize Size { get; set; }
@@ -367,7 +366,7 @@ public class ProxyPoolingTestMessage
 
 // A4.2: Два proxy типи в одному Dictionary value
 [ProtoContract]
-public class ProxyTupleInDictTest
+public partial class ProxyTupleInDictTest
 {
     [ProtoMember(1)]
     public Dictionary<string, ExternalColor>? Colors { get; set; }
@@ -1016,7 +1015,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
 // Допоміжна модель для wire-compatibility тесту з protobuf-net
 // Замість ExternalVector3 використовується Vector3Proxy напряму
 [ProtoContract]
-public class ProxyTestMessagePnet
+public partial class ProxyTestMessagePnet
 {
     [ProtoMember(1)]
     public Vector3Proxy? Position { get; set; }
@@ -1027,7 +1026,7 @@ public class ProxyTestMessagePnet
 
 // Допоміжна модель для Dictionary wire-compatibility тесту з protobuf-net
 [ProtoContract]
-public class ProxyDictStructMessagePnet
+public partial class ProxyDictStructMessagePnet
 {
     [ProtoMember(1)]
     public Dictionary<string, Vector3Proxy>? Positions { get; set; }

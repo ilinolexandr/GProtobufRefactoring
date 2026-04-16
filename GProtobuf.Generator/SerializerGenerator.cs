@@ -54,7 +54,7 @@ public sealed class SerializerGenerator : IIncrementalGenerator
 
         // Pipeline 1: Types with [ProtoContract]
         var protoContractPipeline = context.SyntaxProvider.ForAttributeWithMetadataName(
-            fullyQualifiedMetadataName: "ProtoBuf.ProtoContractAttribute",
+            fullyQualifiedMetadataName: "GProtobuf.ProtoContractAttribute",
             predicate: static (node, _) => node is ClassDeclarationSyntax or StructDeclarationSyntax or EnumDeclarationSyntax,
             transform: static (syntaxContext, _) =>
             {
@@ -119,14 +119,14 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         // Pipeline 2: Types with [ProtoInclude] but WITHOUT [ProtoContract]
         // This matches protobuf-net behavior where base classes with ProtoInclude don't need ProtoContract
         var protoIncludePipeline = context.SyntaxProvider.ForAttributeWithMetadataName(
-            fullyQualifiedMetadataName: "ProtoBuf.ProtoIncludeAttribute",
+            fullyQualifiedMetadataName: "GProtobuf.ProtoIncludeAttribute",
             predicate: static (node, _) => node is ClassDeclarationSyntax or StructDeclarationSyntax,
             transform: (syntaxContext, _) =>
             {
                 var typeWithAttribute = (syntaxContext.TargetSymbol as INamedTypeSymbol)!;
 
                 // Skip if already has ProtoContract (will be handled by first pipeline)
-                if (typeWithAttribute.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "ProtoBuf.ProtoContractAttribute"))
+                if (typeWithAttribute.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "GProtobuf.ProtoContractAttribute"))
                 {
                     return ((string)null, (TypeDefinition)null)!;
                 }
@@ -289,7 +289,7 @@ public sealed class SerializerGenerator : IIncrementalGenerator
             .Select(static (compilation, ct) =>
             {
                 var result = new List<ProxyDefinition>();
-                var proxyAttrType = compilation.GetTypeByMetadataName("ProtoBuf.SerializationProxyAttribute");
+                var proxyAttrType = compilation.GetTypeByMetadataName("GProtobuf.SerializationProxyAttribute");
                 if (proxyAttrType == null)
                     return result.ToImmutableArray();
 
@@ -1422,7 +1422,7 @@ public sealed class SerializerGenerator : IIncrementalGenerator
     private static bool GetEnableRecursionGuard(INamedTypeSymbol typeSymbol)
     {
         var attr = typeSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "ProtoBuf.ProtoContractAttribute");
+            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "GProtobuf.ProtoContractAttribute");
 
         if (attr == null) return false;
 
@@ -1440,12 +1440,12 @@ public sealed class SerializerGenerator : IIncrementalGenerator
     private static bool GetSkipEntryPoints(INamedTypeSymbol typeSymbol)
     {
         // Check for standalone [SkipSerializationEntryPoints] attribute
-        if (typeSymbol.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "ProtoBuf.SkipSerializationEntryPointsAttribute"))
+        if (typeSymbol.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "GProtobuf.SkipSerializationEntryPointsAttribute"))
             return true;
 
         // Also check for [ProtoContract(SkipEntryPoints = true)] (for projects using our own attribute)
         var attr = typeSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "ProtoBuf.ProtoContractAttribute");
+            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "GProtobuf.ProtoContractAttribute");
 
         if (attr != null)
         {

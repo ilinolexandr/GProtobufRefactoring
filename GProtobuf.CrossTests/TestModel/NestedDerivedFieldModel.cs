@@ -1,5 +1,4 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.CrossTests.TestModel
 {
     /// <summary>
@@ -16,7 +15,7 @@ namespace GProtobuf.CrossTests.TestModel
     // Base class for action parameters
     [ProtoContract]
     [ProtoInclude(100, typeof(DerivedActionParams))]
-    public class ActionParamsBase
+    public partial class ActionParamsBase
     {
         [ProtoMember(1)]
         public string BaseName { get; set; }
@@ -27,7 +26,7 @@ namespace GProtobuf.CrossTests.TestModel
 
     // Derived class for action parameters
     [ProtoContract]
-    public class DerivedActionParams : ActionParamsBase
+    public partial class DerivedActionParams : ActionParamsBase
     {
         [ProtoMember(1)]
         public string DerivedName { get; set; }
@@ -38,7 +37,7 @@ namespace GProtobuf.CrossTests.TestModel
 
     // Container class with a field of derived type
     [ProtoContract]
-    public class TriggerContainer
+    public partial class TriggerContainer
     {
         [ProtoMember(1)]
         public string TriggerName { get; set; }
@@ -52,7 +51,7 @@ namespace GProtobuf.CrossTests.TestModel
 
     // Container with multiple derived type fields
     [ProtoContract]
-    public class MultiDerivedContainer
+    public partial class MultiDerivedContainer
     {
         [ProtoMember(1)]
         public string Name { get; set; }
@@ -67,14 +66,14 @@ namespace GProtobuf.CrossTests.TestModel
     // Nested container (derived type inside derived type)
     [ProtoContract]
     [ProtoInclude(100, typeof(DerivedTriggerContainer))]
-    public class BaseTriggerContainer
+    public partial class BaseTriggerContainer
     {
         [ProtoMember(1)]
         public string Name { get; set; }
     }
 
     [ProtoContract]
-    public class DerivedTriggerContainer : BaseTriggerContainer
+    public partial class DerivedTriggerContainer : BaseTriggerContainer
     {
         [ProtoMember(1)]
         public DerivedActionParams ActionParameters { get; set; }
@@ -82,7 +81,7 @@ namespace GProtobuf.CrossTests.TestModel
 
     // Deep nesting test
     [ProtoContract]
-    public class DeepNestingContainer
+    public partial class DeepNestingContainer
     {
         [ProtoMember(1)]
         public DerivedTriggerContainer Trigger { get; set; }
@@ -98,7 +97,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// </summary>
     [ProtoContract]
     [ProtoInclude(100, typeof(AggregationKeyExtended))]
-    public class AggregationKey
+    public partial class AggregationKey
     {
         [ProtoMember(1)]
         public int Function { get; set; }
@@ -126,7 +125,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Extended version - derived class
     /// </summary>
     [ProtoContract]
-    public class AggregationKeyExtended : AggregationKey
+    public partial class AggregationKeyExtended : AggregationKey
     {
         [ProtoMember(1)]
         public int Usage { get; set; }
@@ -140,7 +139,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Dictionary<uint, Dictionary<AggregationKey, HashSet<int>>>
     /// </summary>
     [ProtoContract]
-    public class AggregatedConnection
+    public partial class AggregatedConnection
     {
         [ProtoMember(1)]
         public System.Collections.Generic.Dictionary<uint, System.Collections.Generic.Dictionary<AggregationKey, System.Collections.Generic.HashSet<int>>> Connections { get; set; }
@@ -153,7 +152,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Simpler version - Dictionary with derived class as VALUE (not key)
     /// </summary>
     [ProtoContract]
-    public class MapWithDerivedValue
+    public partial class MapWithDerivedValue
     {
         [ProtoMember(1)]
         public System.Collections.Generic.Dictionary<int, DerivedActionParams> Items { get; set; }
@@ -163,7 +162,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Dictionary with derived class as KEY
     /// </summary>
     [ProtoContract]
-    public class MapWithDerivedKey
+    public partial class MapWithDerivedKey
     {
         [ProtoMember(1)]
         public System.Collections.Generic.Dictionary<AggregationKey, int> Items { get; set; }
@@ -173,7 +172,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Nested dictionary: outer value is another dictionary
     /// </summary>
     [ProtoContract]
-    public class NestedMapContainer
+    public partial class NestedMapContainer
     {
         [ProtoMember(1)]
         public System.Collections.Generic.Dictionary<uint, System.Collections.Generic.Dictionary<int, string>> NestedMap { get; set; }
@@ -183,7 +182,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Full IftttConnection-like structure
     /// </summary>
     [ProtoContract]
-    public class AgregateConnectionTestModel
+    public partial class AgregateConnectionTestModel
     {
         [ProtoMember(1)]
         public AggregatedConnection AggregatedConnections { get; set; }
@@ -200,7 +199,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Simple ConcurrentDictionary
     /// </summary>
     [ProtoContract]
-    public class ConcurrentMapSimple
+    public partial class ConcurrentMapSimple
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<int, string> Items { get; set; }
@@ -210,7 +209,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// ConcurrentDictionary with derived type as value
     /// </summary>
     [ProtoContract]
-    public class ConcurrentMapWithDerivedValue
+    public partial class ConcurrentMapWithDerivedValue
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<int, DerivedActionParams> Items { get; set; }
@@ -220,7 +219,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// ConcurrentDictionary with derived type as key
     /// </summary>
     [ProtoContract]
-    public class ConcurrentMapWithDerivedKey
+    public partial class ConcurrentMapWithDerivedKey
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<AggregationKey, int> Items { get; set; }
@@ -230,7 +229,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Nested ConcurrentDictionary - outer value is another ConcurrentDictionary
     /// </summary>
     [ProtoContract]
-    public class NestedConcurrentMap
+    public partial class NestedConcurrentMap
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<uint, System.Collections.Concurrent.ConcurrentDictionary<int, string>> NestedMap { get; set; }
@@ -240,7 +239,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Mixed: ConcurrentDictionary with Dictionary inside
     /// </summary>
     [ProtoContract]
-    public class ConcurrentMapWithDictionaryValue
+    public partial class ConcurrentMapWithDictionaryValue
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<uint, System.Collections.Generic.Dictionary<int, string>> Items { get; set; }
@@ -250,7 +249,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Mixed: Dictionary with ConcurrentDictionary inside
     /// </summary>
     [ProtoContract]
-    public class DictionaryWithConcurrentMapValue
+    public partial class DictionaryWithConcurrentMapValue
     {
         [ProtoMember(1)]
         public System.Collections.Generic.Dictionary<uint, System.Collections.Concurrent.ConcurrentDictionary<int, string>> Items { get; set; }
@@ -261,7 +260,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Similar to IftttAggregatedConnection but with ConcurrentDictionary
     /// </summary>
     [ProtoContract]
-    public class ConcurrentAggregatedConnection
+    public partial class ConcurrentAggregatedConnection
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<uint, System.Collections.Concurrent.ConcurrentDictionary<AggregationKey, System.Collections.Generic.HashSet<int>>> Connections { get; set; }
@@ -274,7 +273,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// ConcurrentDictionary with List value
     /// </summary>
     [ProtoContract]
-    public class ConcurrentMapWithListValue
+    public partial class ConcurrentMapWithListValue
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<int, System.Collections.Generic.List<DerivedActionParams>> Items { get; set; }
@@ -299,7 +298,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// 3-level nested: ConcurrentDictionary<uint, ConcurrentDictionary<int, ConcurrentDictionary<ConnectionStatus, HashSet&lt;int&gt;>>>
     /// </summary>
     [ProtoContract]
-    public class DeepNestedConcurrentMap
+    public partial class DeepNestedConcurrentMap
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<uint, System.Collections.Concurrent.ConcurrentDictionary<int, System.Collections.Concurrent.ConcurrentDictionary<ConnectionStatus, System.Collections.Generic.HashSet<int>>>> Data { get; set; }
@@ -309,7 +308,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// 3-level with enum key: ConcurrentDictionary<ConnectionStatus, ConcurrentDictionary<int, HashSet&lt;int&gt;>>
     /// </summary>
     [ProtoContract]
-    public class ConcurrentMapWithEnumKey
+    public partial class ConcurrentMapWithEnumKey
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<ConnectionStatus, System.Collections.Concurrent.ConcurrentDictionary<int, System.Collections.Generic.HashSet<int>>> Items { get; set; }
@@ -319,7 +318,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Mixed: ConcurrentDictionary<uint, ConcurrentDictionary<ConnectionStatus, List&lt;ConnectionStatus&gt;>>
     /// </summary>
     [ProtoContract]
-    public class ConcurrentMapWithEnumArray
+    public partial class ConcurrentMapWithEnumArray
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<uint, System.Collections.Concurrent.ConcurrentDictionary<ConnectionStatus, System.Collections.Generic.List<ConnectionStatus>>> Items { get; set; }
@@ -330,7 +329,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// ConcurrentDictionary<uint, ConcurrentDictionary<AggregationKey, ConcurrentDictionary<int, HashSet&lt;int&gt;>>>
     /// </summary>
     [ProtoContract]
-    public class DeepAggregatedConnection
+    public partial class DeepAggregatedConnection
     {
         [ProtoMember(1)]
         public System.Collections.Concurrent.ConcurrentDictionary<uint, System.Collections.Concurrent.ConcurrentDictionary<AggregationKey, System.Collections.Concurrent.ConcurrentDictionary<int, System.Collections.Generic.HashSet<int>>>> Connections { get; set; }

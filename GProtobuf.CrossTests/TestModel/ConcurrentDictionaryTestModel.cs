@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
@@ -9,7 +9,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Tests the StreamReader handling of ConcurrentDictionary types.
     /// </summary>
     [ProtoContract]
-    public class ConcurrentDictionaryTestModel
+    public partial class ConcurrentDictionaryTestModel
     {
         [ProtoMember(1)]
         public ConcurrentDictionary<int, string> IntStringConcurrentMap { get; set; }
@@ -31,7 +31,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model for ConcurrentDictionary with collection values.
     /// </summary>
     [ProtoContract]
-    public class ConcurrentDictionaryWithCollectionsModel
+    public partial class ConcurrentDictionaryWithCollectionsModel
     {
         [ProtoMember(1)]
         public ConcurrentDictionary<int, HashSet<int>> IntHashSetConcurrentMap { get; set; }
@@ -47,7 +47,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model for nested ConcurrentDictionary scenarios.
     /// </summary>
     [ProtoContract]
-    public class NestedConcurrentDictionaryModel
+    public partial class NestedConcurrentDictionaryModel
     {
         [ProtoMember(1)]
         public ConcurrentDictionary<int, ConcurrentDictionary<string, int>> NestedConcurrentMap { get; set; }
@@ -60,7 +60,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model for ConcurrentDictionary with enum keys.
     /// </summary>
     [ProtoContract]
-    public class ConcurrentDictionaryEnumKeyModel
+    public partial class ConcurrentDictionaryEnumKeyModel
     {
         [ProtoMember(1)]
         public ConcurrentDictionary<ConnectionStatus, string> EnumKeyMap { get; set; }
@@ -73,7 +73,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model combining various dictionary types.
     /// </summary>
     [ProtoContract]
-    public class MixedDictionaryTypesModel
+    public partial class MixedDictionaryTypesModel
     {
         [ProtoMember(1)]
         public Dictionary<int, string> StandardDictionary { get; set; }

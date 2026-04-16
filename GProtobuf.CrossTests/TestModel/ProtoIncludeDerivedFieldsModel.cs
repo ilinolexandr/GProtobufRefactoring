@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
@@ -13,7 +13,7 @@ namespace GProtobuf.CrossTests.TestModel
     [ProtoInclude(100, typeof(LinearInterpolationConversion))]
     [ProtoInclude(101, typeof(AnalogSwitchConversion))]
     [ProtoInclude(102, typeof(MultiValueConversion))]
-    public class ConversionBase
+    public partial class ConversionBase
     {
         [ProtoMember(1)]
         public List<int> SourceTypes { get; set; }
@@ -28,7 +28,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// This tests that derived fields are correctly sized in ProtoInclude wrapper.
     /// </summary>
     [ProtoContract]
-    public class LinearInterpolationConversion : ConversionBase
+    public partial class LinearInterpolationConversion : ConversionBase
     {
         [ProtoMember(3)]
         public double Value1OnInput { get; set; }
@@ -47,7 +47,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Another derived class with different own fields.
     /// </summary>
     [ProtoContract]
-    public class AnalogSwitchConversion : ConversionBase
+    public partial class AnalogSwitchConversion : ConversionBase
     {
         [ProtoMember(3)]
         public double Threshold { get; set; }
@@ -60,7 +60,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Derived class with collection own field.
     /// </summary>
     [ProtoContract]
-    public class MultiValueConversion : ConversionBase
+    public partial class MultiValueConversion : ConversionBase
     {
         [ProtoMember(3)]
         public List<double> Multipliers { get; set; }
@@ -74,7 +74,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Tests ProtoInclude wrapper size calculation fix.
     /// </summary>
     [ProtoContract]
-    public class ProtoIncludeDerivedFieldsModel
+    public partial class ProtoIncludeDerivedFieldsModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -102,7 +102,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// This is the most complex case - similar to LightDevice with ValueTypeConversions.
     /// </summary>
     [ProtoContract]
-    public class CombinedComplexModel
+    public partial class CombinedComplexModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -138,7 +138,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// When the DECLARED type is already the DERIVED type, no wrapper is needed.
     /// </summary>
     [ProtoContract]
-    public class DerivedTypeArrayModel
+    public partial class DerivedTypeArrayModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -165,7 +165,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Fix: StandaloneTypeGenerator uses IsDerivedType() to decide method variant
     /// </summary>
     [ProtoContract]
-    public class ReadonlyStructKeyDerivedArrayModel
+    public partial class ReadonlyStructKeyDerivedArrayModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }

@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+﻿using GProtobuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +9,7 @@ namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
     [ProtoInclude(5, typeof(B))]
-    public class A
+    public partial class A
     {
         [ProtoMember(1)]
         public string StringA { get; set; }
@@ -17,14 +17,14 @@ namespace GProtobuf.Tests.TestModel
 
     [ProtoContract]
     [ProtoInclude(10, typeof(C))]
-    public class B : A
+    public partial class B : A
     {
         [ProtoMember(1)]
         public string StringB { get; set; }
     }
 
     [ProtoContract]
-    public class C : B
+    public partial class C : B
     {
         [ProtoMember(1)]
         public string StringC { get; set; }

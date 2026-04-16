@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
@@ -24,7 +24,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// is encountered when reading nested map entries.
     /// </summary>
     [ProtoContract]
-    public class NestedMapWithFloatModel
+    public partial class NestedMapWithFloatModel
     {
         /// <summary>
         /// Simple map: int -> float

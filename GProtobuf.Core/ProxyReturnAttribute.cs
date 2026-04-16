@@ -1,6 +1,6 @@
 using System;
 
-namespace ProtoBuf
+namespace GProtobuf
 {
     /// <summary>
     /// Marks an optional instance method on a proxy type for cleanup/pooling after serialization or deserialization.

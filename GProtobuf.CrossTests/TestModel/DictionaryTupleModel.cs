@@ -1,11 +1,11 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class DictionaryTupleModel
+    public partial class DictionaryTupleModel
     {
         [ProtoMember(1)]
         public Tuple<double, double> DoubleTuple { get; set; }

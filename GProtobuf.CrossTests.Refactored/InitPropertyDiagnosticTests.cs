@@ -25,7 +25,7 @@ public sealed class InitPropertyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
 
             namespace TestNamespace;
 
@@ -52,7 +52,7 @@ public sealed class InitPropertyDiagnosticTests
         // generator should pick the constructor-injection path; no diagnostic expected.
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
 
             namespace TestNamespace;
 
@@ -85,7 +85,7 @@ public sealed class InitPropertyDiagnosticTests
         // do NOT match ProtoMembers (different name): both deserialization paths fail.
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
 
             namespace TestNamespace;
 
@@ -123,7 +123,7 @@ public sealed class InitPropertyDiagnosticTests
         // object-initializer path is always available — no diagnostic expected.
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
 
             namespace TestNamespace;
 
@@ -150,7 +150,7 @@ public sealed class InitPropertyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
 
             namespace TestNamespace;
 
@@ -182,7 +182,7 @@ public sealed class InitPropertyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
 
             namespace TestNamespace;
 

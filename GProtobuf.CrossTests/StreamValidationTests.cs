@@ -1,7 +1,7 @@
 using FluentAssertions;
 using GProtobuf.CrossTests.TestModel;
 using CrossTestModel = GProtobuf.CrossTests.TestModel;
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 using System.IO;

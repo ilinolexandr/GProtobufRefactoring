@@ -1,6 +1,6 @@
 using System.IO;
 using FluentAssertions;
-using ProtoBuf;
+using GProtobuf;
 using Xunit;
 using GProtobuf.CrossTests.TestModel;
 
@@ -89,7 +89,7 @@ namespace GProtobuf.CrossTests
 
             // Act - deserialize with protobuf-net
             ms.Position = 0;
-            var deserialized = Serializer.Deserialize<OuterClass>(ms);
+            var deserialized = ProtoBuf.Serializer.Deserialize<OuterClass>(ms);
 
             // Assert
             deserialized.OuterId.Should().Be(77);
@@ -115,7 +115,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, original);
+            ProtoBuf.Serializer.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             // Act - deserialize with GProtobuf
@@ -191,7 +191,7 @@ namespace GProtobuf.CrossTests
 
             // Deserialize with protobuf-net
             ms.Position = 0;
-            var deserialized = Serializer.Deserialize<Level1Class>(ms);
+            var deserialized = ProtoBuf.Serializer.Deserialize<Level1Class>(ms);
 
             // Assert
             deserialized.Level1Id.Should().Be(10);
@@ -271,7 +271,7 @@ namespace GProtobuf.CrossTests
             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeContainerClass(ms, original);
 
             ms.Position = 0;
-            var deserialized = Serializer.Deserialize<ContainerClass>(ms);
+            var deserialized = ProtoBuf.Serializer.Deserialize<ContainerClass>(ms);
 
             // Assert
             deserialized.ContainerId.Should().Be(777);

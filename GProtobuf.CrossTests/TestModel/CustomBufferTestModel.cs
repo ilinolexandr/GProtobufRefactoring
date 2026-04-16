@@ -1,8 +1,6 @@
 using System;
 using System.Text;
-using ProtoBuf;
-using ProtoBufferAttribute = GProtobuf.Core.ProtoBufferAttribute;
-using ProtoBufferOperation = GProtobuf.Core.ProtoBufferOperation;
+using GProtobuf;
 
 namespace GProtobuf.CrossTests.TestModel
 {
@@ -11,7 +9,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Custom buffer allows user-defined serialization logic for specific fields.
     /// </summary>
     [ProtoContract]
-    public class BasicCustomBufferModel
+    public partial class BasicCustomBufferModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -54,7 +52,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model with multiple custom buffer fields.
     /// </summary>
     [ProtoContract]
-    public class MultipleCustomBufferModel
+    public partial class MultipleCustomBufferModel
     {
         [ProtoMember(1)]
         public int Version { get; set; }
@@ -137,7 +135,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Demonstrates real-world use case: storing preprocessed binary data.
     /// </summary>
     [ProtoContract]
-    public class CompressedDataModel
+    public partial class CompressedDataModel
     {
         [ProtoMember(1)]
         public string Description { get; set; }
@@ -185,7 +183,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model with only custom buffer fields (no regular ProtoMember).
     /// </summary>
     [ProtoContract]
-    public class OnlyCustomBufferModel
+    public partial class OnlyCustomBufferModel
     {
         private byte[] _data1;
         private byte[] _data2;
@@ -239,7 +237,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model demonstrating custom buffer with empty/null data.
     /// </summary>
     [ProtoContract]
-    public class EmptyCustomBufferModel
+    public partial class EmptyCustomBufferModel
     {
         [ProtoMember(1)]
         public int Marker { get; set; }
@@ -273,7 +271,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model demonstrating custom buffer with large data.
     /// </summary>
     [ProtoContract]
-    public class LargeCustomBufferModel
+    public partial class LargeCustomBufferModel
     {
         [ProtoMember(1)]
         public string Tag { get; set; }
@@ -307,7 +305,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model demonstrating custom buffer with transformation (XOR "encryption").
     /// </summary>
     [ProtoContract]
-    public class TransformedBufferModel
+    public partial class TransformedBufferModel
     {
         [ProtoMember(1)]
         public int Key { get; set; }
@@ -359,7 +357,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model combining regular ProtoMembers with custom buffer in various positions.
     /// </summary>
     [ProtoContract]
-    public class InterleavedFieldsModel
+    public partial class InterleavedFieldsModel
     {
         [ProtoMember(1)]
         public int FirstField { get; set; }

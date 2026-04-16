@@ -1,4 +1,5 @@
-using ProtoBuf;
+using System;
+using GProtobuf;
 
 namespace GProtobuf.CrossTests.TestModel
 {
@@ -6,7 +7,7 @@ namespace GProtobuf.CrossTests.TestModel
     [ProtoInclude(100, typeof(ModelInh1))]
     [ProtoInclude(101, typeof(ModelInh2))]
     [ProtoInclude(102, typeof(ModelInh3))]
-    public class ModelBase
+    public partial class ModelBase
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -16,7 +17,7 @@ namespace GProtobuf.CrossTests.TestModel
 
     [ProtoContract]
     [ProtoInclude(100, typeof(Model15))]
-    public class ModelInh1 : ModelBase
+    public partial class ModelInh1 : ModelBase
     {
         [ProtoMember(1)]
         public string Description { get; set; }
@@ -26,7 +27,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class Model15 : ModelInh1
+    public partial class Model15 : ModelInh1
     {
         [ProtoMember(1)]
         public string Description15 { get; set; }
@@ -37,7 +38,7 @@ namespace GProtobuf.CrossTests.TestModel
 
 
     [ProtoContract]
-    public class ModelInh2 : ModelBase
+    public partial class ModelInh2 : ModelBase
     {
         [ProtoMember(1)]
         public string Description1 { get; set; }
@@ -48,7 +49,7 @@ namespace GProtobuf.CrossTests.TestModel
 
 
     [ProtoContract]
-    public class ModelInh3 : ModelBase
+    public partial class ModelInh3 : ModelBase
     {
         [ProtoMember(1)]
         public string Description2 { get; set; }

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using GProtobuf.Tests.TestModel;
-using ProtoBuf;
+using GProtobuf;
 using Xunit;
 
 namespace GProtobuf.CrossTests

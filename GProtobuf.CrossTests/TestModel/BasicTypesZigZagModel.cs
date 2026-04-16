@@ -1,9 +1,8 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class BasicTypesZigZagModel
+    public partial class BasicTypesZigZagModel
     {
         [ProtoMember(1)]
         public byte ByteValue { get; set; }

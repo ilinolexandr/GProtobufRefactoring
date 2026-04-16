@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class GuidMapTestModel
+    public partial class GuidMapTestModel
     {
         // Test Guid as key with various value types
         [ProtoMember(1)]

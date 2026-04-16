@@ -1,10 +1,9 @@
 using System;
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class ByteWrapperTypesModel
+    public partial class ByteWrapperTypesModel
     {
         [ProtoMember(1)]
         public ArraySegment<byte> SegmentField { get; set; }

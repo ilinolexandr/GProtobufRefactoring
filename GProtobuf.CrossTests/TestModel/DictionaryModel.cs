@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+﻿using GProtobuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,7 +21,7 @@ namespace GProtobuf.Tests.TestModel
     }
 
     [ProtoContract]
-    public class NestedDictionaryValue
+    public partial class NestedDictionaryValue
     {
         [ProtoMember(1)]
         public int Value { get; set; }
@@ -32,7 +32,7 @@ namespace GProtobuf.Tests.TestModel
 
 
     [ProtoContract]
-    public class DictionaryModel
+    public partial class DictionaryModel
     {
         [ProtoMember(1)]
         public Dictionary<int, string> Dictionary { get; set; }

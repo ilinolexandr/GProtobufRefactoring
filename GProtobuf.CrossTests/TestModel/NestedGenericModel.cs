@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
@@ -8,7 +8,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Simple custom type for testing nested generics.
     /// </summary>
     [ProtoContract]
-    public class DeviceActionType
+    public partial class DeviceActionType
     {
         [ProtoMember(1)]
         public int ActionId { get; set; }
@@ -37,7 +37,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Custom type for dictionary key testing.
     /// </summary>
     [ProtoContract]
-    public class DeviceValueType
+    public partial class DeviceValueType
     {
         [ProtoMember(1)]
         public int TypeId { get; set; }
@@ -61,7 +61,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Custom type for array value testing.
     /// </summary>
     [ProtoContract]
-    public class DeviceAggregation
+    public partial class DeviceAggregation
     {
         [ProtoMember(1)]
         public int AggId { get; set; }
@@ -85,7 +85,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Custom type for standalone array testing.
     /// </summary>
     [ProtoContract]
-    public class GenericCcu
+    public partial class GenericCcu
     {
         [ProtoMember(1)]
         public int CcuId { get; set; }

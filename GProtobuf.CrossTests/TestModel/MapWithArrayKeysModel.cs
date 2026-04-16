@@ -1,10 +1,10 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class MapWithArrayKeysModel
+    public partial class MapWithArrayKeysModel
     {
         [ProtoMember(1)]
         public Dictionary<int[], string> IntArrayStringMap { get; set; }
@@ -26,7 +26,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
     
     [ProtoContract]
-    public class CustomNested
+    public partial class CustomNested
     {
         [ProtoMember(1)]
         public int Id { get; set; }

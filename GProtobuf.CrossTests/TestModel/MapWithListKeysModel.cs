@@ -1,10 +1,10 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class MapWithListKeysModel
+    public partial class MapWithListKeysModel
     {
         [ProtoMember(1)]
         public Dictionary<List<int>, string> IntListStringMap { get; set; }

@@ -1,10 +1,10 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract] // BCL Guid format now supported in V2
-    public class GuidTypesModel
+    public partial class GuidTypesModel
     {
         [ProtoMember(1)]
         public Guid GuidValue { get; set; }

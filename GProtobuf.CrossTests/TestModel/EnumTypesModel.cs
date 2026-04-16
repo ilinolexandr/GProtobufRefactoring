@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 
 namespace GProtobuf.Tests.TestModel
 {
@@ -37,7 +37,7 @@ namespace GProtobuf.Tests.TestModel
     }
 
     [ProtoContract]
-    public class EnumTypesModel
+    public partial class EnumTypesModel
     {
         /// <summary>
         /// Basic enum field with default value = 0

@@ -1,6 +1,6 @@
 using System;
 
-namespace ProtoBuf
+namespace GProtobuf
 {
     /// <summary>
     /// Marks an instance method on a proxy type that converts the proxy back to the original type.

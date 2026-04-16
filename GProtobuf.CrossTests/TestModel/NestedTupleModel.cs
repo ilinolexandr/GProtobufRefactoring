@@ -1,11 +1,11 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class NestedTupleModel
+    public partial class NestedTupleModel
     {
         // Simple nested Tuple: Tuple<int, Tuple<string, bool>>
         [ProtoMember(1)]

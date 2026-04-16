@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 
 namespace GProtobuf.CrossTests.TestModel
@@ -17,7 +17,7 @@ namespace GProtobuf.CrossTests.TestModel
     ///   - Access via: tuple.Rest.Item2 (for Item9)
     /// </summary>
     [ProtoContract]
-    public class NinePlusElementTupleModel
+    public partial class NinePlusElementTupleModel
     {
         // 9 elements: Tuple<T1..T7, Tuple<T8, T9>>
         [ProtoMember(1)]

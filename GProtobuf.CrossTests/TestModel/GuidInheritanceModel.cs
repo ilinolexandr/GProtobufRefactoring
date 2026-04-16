@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 
 namespace GProtobuf.CrossTests.TestModel
@@ -10,7 +10,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// </summary>
     [ProtoContract]
     [ProtoInclude(101, typeof(DerivedWithGuid))]
-    public class BaseWithGuid
+    public partial class BaseWithGuid
     {
         [ProtoMember(1)]
         public Guid Id { get; set; }
@@ -20,7 +20,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class DerivedWithGuid : BaseWithGuid
+    public partial class DerivedWithGuid : BaseWithGuid
     {
         [ProtoMember(1)]
         public int Value { get; set; }
@@ -34,7 +34,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// (similar to DashboardModel with SectionModels).
     /// </summary>
     [ProtoContract]
-    public class ContainerWithGuidItems
+    public partial class ContainerWithGuidItems
     {
         [ProtoMember(1)]
         public BaseWithGuid[] Items { get; set; }

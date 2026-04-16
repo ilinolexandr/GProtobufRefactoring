@@ -1,9 +1,9 @@
-using ProtoBuf;
+using GProtobuf;
 
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class BasicTypesModel
+    public partial class BasicTypesModel
     {
         [ProtoMember(1)]
         public byte ByteValue { get; set; }

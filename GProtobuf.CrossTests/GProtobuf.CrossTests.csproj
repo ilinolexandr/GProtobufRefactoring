@@ -29,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GProtobuf.Core\GProtobuf.Core.csproj" />
     <ProjectReference Include="..\GProtobuf.Generator\GProtobuf.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\GProtobuf.CrossTests.OracleCompat\GProtobuf.CrossTests.OracleCompat.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

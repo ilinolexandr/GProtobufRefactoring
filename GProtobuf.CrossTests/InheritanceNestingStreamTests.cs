@@ -1,6 +1,6 @@
 using FluentAssertions;
 using GProtobuf.CrossTests.TestModel;
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

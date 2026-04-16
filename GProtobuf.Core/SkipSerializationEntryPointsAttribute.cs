@@ -1,13 +1,8 @@
 using System;
 
-namespace ProtoBuf
+namespace GProtobuf
 {
-    /// <summary>
-    /// When applied to a type, suppresses generation of public entry-point methods
-    /// (Deserialize, Serialize, Populate, Read, Write, Calculate) for this type.
-    /// Internal helper methods (OwnFields, Content, AsParent, WrapperSize) are still generated.
-    /// Use on derived types that are only accessed via base-type polymorphic dispatch.
-    /// </summary>
+    /// <summary>Alternative to [ProtoContract(SkipEntryPoints = true)]; suppresses public entry-point methods.</summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
     public sealed class SkipSerializationEntryPointsAttribute : Attribute { }
 }

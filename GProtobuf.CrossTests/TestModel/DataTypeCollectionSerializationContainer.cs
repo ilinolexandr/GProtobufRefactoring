@@ -1,8 +1,6 @@
 using System;
 using System.IO;
-using ProtoBuf;
-using ProtoBufferAttribute = GProtobuf.Core.ProtoBufferAttribute;
-using ProtoBufferOperation = GProtobuf.Core.ProtoBufferOperation;
+using GProtobuf;
 
 namespace GProtobuf.CrossTests.TestModel
 {
@@ -10,7 +8,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Nested object used as ProtoMember(1) in the container.
     /// </summary>
     [ProtoContract]
-    public class DataTypeGenericParam
+    public partial class DataTypeGenericParam
     {
         [ProtoMember(1)]
         public int TypeId { get; set; }
@@ -26,7 +24,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// - [ProtoBuffer(2)] = custom buffer backed by MemoryStream
     /// </summary>
     [ProtoContract]
-    public class DataTypeCollectionSerializationContainer
+    public partial class DataTypeCollectionSerializationContainer
     {
         private MemoryStream _sourceStream;
         private MemoryStream _receivedStream;

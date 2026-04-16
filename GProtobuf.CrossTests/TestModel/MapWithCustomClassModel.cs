@@ -1,11 +1,11 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class NestedItem
+    public partial class NestedItem
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -32,7 +32,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class MapWithCustomClassModel
+    public partial class MapWithCustomClassModel
     {
         [ProtoMember(1)]
         public Dictionary<string, NestedItem> StringNestedItemMap { get; set; }

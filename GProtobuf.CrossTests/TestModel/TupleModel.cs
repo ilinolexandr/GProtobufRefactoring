@@ -1,11 +1,11 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class TupleModel
+    public partial class TupleModel
     {
         [ProtoMember(1)]
         public Tuple<int, string> IntStringTuple { get; set; }

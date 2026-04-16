@@ -13,7 +13,7 @@ public sealed class ConstructorDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
 
             namespace TestNamespace;
 
@@ -51,7 +51,7 @@ public sealed class ConstructorDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
 
             namespace TestNamespace;
 

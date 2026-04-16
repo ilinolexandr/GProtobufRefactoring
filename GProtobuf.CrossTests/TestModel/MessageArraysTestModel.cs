@@ -1,9 +1,8 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class SimpleMessage
+    public partial class SimpleMessage
     {
         [ProtoMember(1)]
         public string Name { get; set; }
@@ -13,7 +12,7 @@ namespace GProtobuf.Tests.TestModel
     }
 
     [ProtoContract]
-    public class NestedMessage
+    public partial class NestedMessage
     {
         [ProtoMember(1)]
         public string Title { get; set; }
@@ -26,7 +25,7 @@ namespace GProtobuf.Tests.TestModel
     }
 
     [ProtoContract]
-    public class MessageArraysTestModel
+    public partial class MessageArraysTestModel
     {
         [ProtoMember(1)]
         public SimpleMessage[] SimpleMessages { get; set; }

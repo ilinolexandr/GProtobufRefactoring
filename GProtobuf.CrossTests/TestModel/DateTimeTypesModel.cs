@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
@@ -9,7 +9,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Tests Level200 compatibility with different DateTime scales (Seconds, Milliseconds, Ticks, MinMax).
     /// </summary>
     [ProtoContract]
-    public class DateTimeTypesModel
+    public partial class DateTimeTypesModel
     {
         /// <summary>
         /// DateTime with second precision (most common for APIs).

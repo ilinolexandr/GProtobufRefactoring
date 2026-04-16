@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
@@ -8,7 +8,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Tests the deferred-construction code path for the most common case.
     /// </summary>
     [ProtoContract]
-    public class InitOnlyPrimitivesModel
+    public partial class InitOnlyPrimitivesModel
     {
         [ProtoMember(1)]
         public int IntValue { get; init; }
@@ -34,7 +34,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Tests that the deferred path correctly handles both kinds when init is present.
     /// </summary>
     [ProtoContract]
-    public class MixedInitAndSetModel
+    public partial class MixedInitAndSetModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -54,7 +54,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Tests that complex types in init position go through the standard ReadContent path.
     /// </summary>
     [ProtoContract]
-    public class InitWithNestedModel
+    public partial class InitWithNestedModel
     {
         [ProtoMember(1)]
         public InitOnlyPrimitivesModel Inner { get; init; }
@@ -68,7 +68,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// initialization, even though the collection contents are mutable.
     /// </summary>
     [ProtoContract]
-    public class InitWithCollectionModel
+    public partial class InitWithCollectionModel
     {
         [ProtoMember(1)]
         public List<int> Items { get; init; }
@@ -83,7 +83,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// </summary>
     [ProtoContract]
     [ProtoInclude(100, typeof(BaseInitDerivedNormalChild))]
-    public class BaseInitDerivedNormalRoot
+    public partial class BaseInitDerivedNormalRoot
     {
         [ProtoMember(1)]
         public int BaseId { get; init; }
@@ -93,7 +93,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class BaseInitDerivedNormalChild : BaseInitDerivedNormalRoot
+    public partial class BaseInitDerivedNormalChild : BaseInitDerivedNormalRoot
     {
         [ProtoMember(1)]
         public string ChildLabel { get; set; }
@@ -108,7 +108,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// </summary>
     [ProtoContract]
     [ProtoInclude(100, typeof(BaseNormalDerivedInitChild))]
-    public class BaseNormalDerivedInitRoot
+    public partial class BaseNormalDerivedInitRoot
     {
         [ProtoMember(1)]
         public int BaseId { get; set; }
@@ -118,7 +118,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class BaseNormalDerivedInitChild : BaseNormalDerivedInitRoot
+    public partial class BaseNormalDerivedInitChild : BaseNormalDerivedInitRoot
     {
         [ProtoMember(1)]
         public string ChildLabel { get; init; }
@@ -133,7 +133,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// </summary>
     [ProtoContract]
     [ProtoInclude(100, typeof(BaseInitDerivedInitChild))]
-    public class BaseInitDerivedInitRoot
+    public partial class BaseInitDerivedInitRoot
     {
         [ProtoMember(1)]
         public int BaseId { get; init; }
@@ -143,7 +143,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class BaseInitDerivedInitChild : BaseInitDerivedInitRoot
+    public partial class BaseInitDerivedInitChild : BaseInitDerivedInitRoot
     {
         [ProtoMember(1)]
         public string ChildLabel { get; init; }

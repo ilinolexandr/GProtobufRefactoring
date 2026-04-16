@@ -1,6 +1,6 @@
 using System;
 
-namespace ProtoBuf
+namespace GProtobuf
 {
     /// <summary>
     /// Marks an optional static factory method on a proxy type that produces a fresh proxy instance during deserialization.

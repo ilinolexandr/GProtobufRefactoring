@@ -1,5 +1,4 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     /// <summary>
@@ -7,7 +6,7 @@ namespace GProtobuf.Tests.TestModel
     /// Used to verify Level200 requirement: max recursion depth = 100.
     /// </summary>
     [ProtoContract]
-    public class RecursiveNode
+    public partial class RecursiveNode
     {
         [ProtoMember(1)]
         public int Value { get; set; }
@@ -20,7 +19,7 @@ namespace GProtobuf.Tests.TestModel
     /// Test model with multiple recursive fields.
     /// </summary>
     [ProtoContract]
-    public class TreeNode
+    public partial class TreeNode
     {
         [ProtoMember(1)]
         public int Value { get; set; }

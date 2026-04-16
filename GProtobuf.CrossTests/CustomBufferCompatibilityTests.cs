@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using FluentAssertions;
-using ProtoBuf;
+using GProtobuf;
 using Xunit;
 
 namespace GProtobuf.CrossTests
@@ -14,7 +14,7 @@ namespace GProtobuf.CrossTests
     /// which is the same wire format as standard byte[] fields in protobuf-net.
     /// This means protobuf-net can read custom buffer data if we define a compatible type.
     /// </summary>
-    public class CustomBufferCompatibilityTests
+    public partial class CustomBufferCompatibilityTests
     {
         #region Protobuf-net compatible models
 
@@ -23,7 +23,7 @@ namespace GProtobuf.CrossTests
         /// Field 10 is defined as byte[] to match the custom buffer wire format.
         /// </summary>
         [ProtoContract]
-        public class ProtobufNetCompatibleModel
+        public partial class ProtobufNetCompatibleModel
         {
             [ProtoMember(1)]
             public int Id { get; set; }
@@ -39,7 +39,7 @@ namespace GProtobuf.CrossTests
         /// Protobuf-net model for multiple custom buffers.
         /// </summary>
         [ProtoContract]
-        public class ProtobufNetMultiBufferModel
+        public partial class ProtobufNetMultiBufferModel
         {
             [ProtoMember(1)]
             public int Version { get; set; }
@@ -76,7 +76,7 @@ namespace GProtobuf.CrossTests
 
             // Deserialize with protobuf-net
             ms.Position = 0;
-            var protobufNetModel = Serializer.Deserialize<ProtobufNetCompatibleModel>(ms);
+            var protobufNetModel = ProtoBuf.Serializer.Deserialize<ProtobufNetCompatibleModel>(ms);
 
             // Assert - protobuf-net should read the same data
             protobufNetModel.Id.Should().Be(42);
@@ -103,7 +103,7 @@ namespace GProtobuf.CrossTests
 
             // Deserialize with protobuf-net
             ms.Position = 0;
-            var protobufNetModel = Serializer.Deserialize<ProtobufNetMultiBufferModel>(ms);
+            var protobufNetModel = ProtoBuf.Serializer.Deserialize<ProtobufNetMultiBufferModel>(ms);
 
             // Assert
             protobufNetModel.Version.Should().Be(1);
@@ -128,7 +128,7 @@ namespace GProtobuf.CrossTests
             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, gprotobufModel);
 
             ms.Position = 0;
-            var protobufNetModel = Serializer.Deserialize<ProtobufNetCompatibleModel>(ms);
+            var protobufNetModel = ProtoBuf.Serializer.Deserialize<ProtobufNetCompatibleModel>(ms);
 
             // Assert
             protobufNetModel.Id.Should().Be(100);
@@ -156,7 +156,7 @@ namespace GProtobuf.CrossTests
 
             ms.Position = 0;
             // Use a compatible model for protobuf-net
-            var protobufNetModel = Serializer.Deserialize<LargeDataProtobufNetModel>(ms);
+            var protobufNetModel = ProtoBuf.Serializer.Deserialize<LargeDataProtobufNetModel>(ms);
 
             // Assert
             protobufNetModel.Tag.Should().Be("Large");
@@ -164,7 +164,7 @@ namespace GProtobuf.CrossTests
         }
 
         [ProtoContract]
-        public class LargeDataProtobufNetModel
+        public partial class LargeDataProtobufNetModel
         {
             [ProtoMember(1)]
             public string Tag { get; set; }
@@ -189,7 +189,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, protobufNetModel);
+            ProtoBuf.Serializer.Serialize(ms, protobufNetModel);
             var bytes = ms.ToArray();
 
             // Act - deserialize with GProtobuf
@@ -214,7 +214,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, protobufNetModel);
+            ProtoBuf.Serializer.Serialize(ms, protobufNetModel);
             var bytes = ms.ToArray();
 
             // Act
@@ -261,7 +261,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var msProtobufNet = new MemoryStream();
-            Serializer.Serialize(msProtobufNet, protobufNetModel);
+            ProtoBuf.Serializer.Serialize(msProtobufNet, protobufNetModel);
             var protobufNetBytes = msProtobufNet.ToArray();
 
             // Assert - wire formats should be identical
@@ -294,7 +294,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var msP = new MemoryStream();
-            Serializer.Serialize(msP, pnModel);
+            ProtoBuf.Serializer.Serialize(msP, pnModel);
             var pBytes = msP.ToArray();
 
             // Output for debugging (visible in test output)

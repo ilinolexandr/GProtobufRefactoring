@@ -1,10 +1,9 @@
 using System.Collections.Generic;
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class ShortMapTestModel
+    public partial class ShortMapTestModel
     {
         // Short as key
         [ProtoMember(1)]

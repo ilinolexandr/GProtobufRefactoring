@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
@@ -10,7 +10,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Fix: Use ReadContent() instead of Populate() for readonly structs.
     /// </summary>
     [ProtoContract]
-    public readonly struct ValueTypeKey : System.IEquatable<ValueTypeKey>
+    public readonly partial struct ValueTypeKey : System.IEquatable<ValueTypeKey>
     {
         [ProtoMember(1)]
         public readonly uint Value;
@@ -30,7 +30,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Description for a value type.
     /// </summary>
     [ProtoContract]
-    public class ValueTypeDescription
+    public partial class ValueTypeDescription
     {
         [ProtoMember(1)]
         public string Name { get; set; }
@@ -46,7 +46,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Model with Dictionary where key is readonly struct.
     /// </summary>
     [ProtoContract]
-    public class ReadonlyStructKeyModel
+    public partial class ReadonlyStructKeyModel
     {
         /// <summary>
         /// Dictionary with readonly struct as key.

@@ -1,9 +1,8 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class PrimitiveArraysTestModel
+    public partial class PrimitiveArraysTestModel
     {
         // Float arrays
         [ProtoMember(1125124)]

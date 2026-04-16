@@ -1,6 +1,6 @@
 using System;
 
-namespace ProtoBuf
+namespace GProtobuf.Generator.Attributes
 {
     /// <summary>
     /// Marks a method to be called before deserialization begins.

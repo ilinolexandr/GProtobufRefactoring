@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using ProtoBuf;
+using GProtobuf;
 
 namespace GProtobuf.Tests.TestModel
 {
@@ -7,7 +7,7 @@ namespace GProtobuf.Tests.TestModel
     /// Test model for [ProtoBeforeSerialization] and [ProtoAfterSerialization] callbacks.
     /// </summary>
     [ProtoContract]
-    public class SerializationCallbackModel
+    public partial class SerializationCallbackModel
     {
         [ProtoMember(1)]
         public string Name { get; set; }
@@ -55,7 +55,7 @@ namespace GProtobuf.Tests.TestModel
     /// Test model with multiple callbacks.
     /// </summary>
     [ProtoContract]
-    public class MultipleCallbacksModel
+    public partial class MultipleCallbacksModel
     {
         [ProtoMember(1)]
         public string Data { get; set; }
@@ -86,7 +86,7 @@ namespace GProtobuf.Tests.TestModel
     /// This tests the two-pass approach correctness.
     /// </summary>
     [ProtoContract]
-    public class TwoPassCallbackModel
+    public partial class TwoPassCallbackModel
     {
         [ProtoMember(1)]
         public byte[] Payload { get; set; }
@@ -117,7 +117,7 @@ namespace GProtobuf.Tests.TestModel
     /// Struct with serialization callbacks.
     /// </summary>
     [ProtoContract]
-    public struct CallbackStruct
+    public partial struct CallbackStruct
     {
         [ProtoMember(1)]
         public int Value { get; set; }
@@ -142,7 +142,7 @@ namespace GProtobuf.Tests.TestModel
     [ProtoContract]
     [ProtoInclude(100, typeof(DerivedWithCallback))]
     [ProtoInclude(101, typeof(DerivedWithoutCallback))]
-    public class BaseWithCallback
+    public partial class BaseWithCallback
     {
         [ProtoMember(1)]
         public string BaseName { get; set; }
@@ -170,7 +170,7 @@ namespace GProtobuf.Tests.TestModel
     /// Derived class with its own callbacks.
     /// </summary>
     [ProtoContract]
-    public class DerivedWithCallback : BaseWithCallback
+    public partial class DerivedWithCallback : BaseWithCallback
     {
         [ProtoMember(1)]
         public string DerivedName { get; set; }
@@ -196,7 +196,7 @@ namespace GProtobuf.Tests.TestModel
     /// Derived class without its own callbacks (relies on base callbacks).
     /// </summary>
     [ProtoContract]
-    public class DerivedWithoutCallback : BaseWithCallback
+    public partial class DerivedWithoutCallback : BaseWithCallback
     {
         [ProtoMember(1)]
         public int DerivedValue { get; set; }
@@ -211,7 +211,7 @@ namespace GProtobuf.Tests.TestModel
     /// Tests whether nested object callbacks are invoked.
     /// </summary>
     [ProtoContract]
-    public class ParentWithNestedCallback
+    public partial class ParentWithNestedCallback
     {
         [ProtoMember(1)]
         public string ParentName { get; set; }
@@ -227,7 +227,7 @@ namespace GProtobuf.Tests.TestModel
     /// Child object with its own callbacks, used as nested member.
     /// </summary>
     [ProtoContract]
-    public class NestedChildWithCallback
+    public partial class NestedChildWithCallback
     {
         [ProtoMember(1)]
         public string ChildName { get; set; }
@@ -260,7 +260,7 @@ namespace GProtobuf.Tests.TestModel
     /// Container with List of objects that have callbacks.
     /// </summary>
     [ProtoContract]
-    public class ContainerWithCallbackList
+    public partial class ContainerWithCallbackList
     {
         [ProtoMember(1)]
         public string ContainerName { get; set; }
@@ -273,7 +273,7 @@ namespace GProtobuf.Tests.TestModel
     /// Container with Dictionary where values have callbacks.
     /// </summary>
     [ProtoContract]
-    public class ContainerWithCallbackDictionary
+    public partial class ContainerWithCallbackDictionary
     {
         [ProtoMember(1)]
         public string ContainerName { get; set; }
@@ -286,7 +286,7 @@ namespace GProtobuf.Tests.TestModel
     /// Item used in collections, has its own callbacks.
     /// </summary>
     [ProtoContract]
-    public class ItemWithCallback
+    public partial class ItemWithCallback
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -323,7 +323,7 @@ namespace GProtobuf.Tests.TestModel
     /// Tests exception propagation.
     /// </summary>
     [ProtoContract]
-    public class ExceptionInBeforeCallback
+    public partial class ExceptionInBeforeCallback
     {
         [ProtoMember(1)]
         public string Data { get; set; }
@@ -352,7 +352,7 @@ namespace GProtobuf.Tests.TestModel
     /// Tests that serialization completes before exception propagates.
     /// </summary>
     [ProtoContract]
-    public class ExceptionInAfterCallback
+    public partial class ExceptionInAfterCallback
     {
         [ProtoMember(1)]
         public string Data { get; set; }
@@ -385,7 +385,7 @@ namespace GProtobuf.Tests.TestModel
     /// Static callbacks should NOT be invoked (no instance context).
     /// </summary>
     [ProtoContract]
-    public class StaticCallbackModel
+    public partial class StaticCallbackModel
     {
         [ProtoMember(1)]
         public string Data { get; set; }
@@ -424,7 +424,7 @@ namespace GProtobuf.Tests.TestModel
     /// protobuf-net supports StreamingContext parameter - we should skip these or handle them.
     /// </summary>
     [ProtoContract]
-    public class ParameterizedCallbackModel
+    public partial class ParameterizedCallbackModel
     {
         [ProtoMember(1)]
         public string Data { get; set; }
@@ -460,7 +460,7 @@ namespace GProtobuf.Tests.TestModel
     /// </summary>
     [ProtoContract]
     [ProtoInclude(100, typeof(MiddleWithCallback))]
-    public class RootWithCallback
+    public partial class RootWithCallback
     {
         [ProtoMember(1)]
         public string RootName { get; set; }
@@ -485,7 +485,7 @@ namespace GProtobuf.Tests.TestModel
     /// </summary>
     [ProtoContract]
     [ProtoInclude(100, typeof(LeafWithCallback))]
-    public class MiddleWithCallback : RootWithCallback
+    public partial class MiddleWithCallback : RootWithCallback
     {
         [ProtoMember(1)]
         public string MiddleName { get; set; }
@@ -507,7 +507,7 @@ namespace GProtobuf.Tests.TestModel
     /// Leaf level of 3-level inheritance.
     /// </summary>
     [ProtoContract]
-    public class LeafWithCallback : MiddleWithCallback
+    public partial class LeafWithCallback : MiddleWithCallback
     {
         [ProtoMember(1)]
         public string LeafName { get; set; }
@@ -534,7 +534,7 @@ namespace GProtobuf.Tests.TestModel
     /// Private callbacks may or may not be detected by the generator.
     /// </summary>
     [ProtoContract]
-    public class PrivateCallbackModel
+    public partial class PrivateCallbackModel
     {
         [ProtoMember(1)]
         public string Data { get; set; }
@@ -567,7 +567,7 @@ namespace GProtobuf.Tests.TestModel
     /// Container with array (not List) of callback objects.
     /// </summary>
     [ProtoContract]
-    public class ContainerWithCallbackArray
+    public partial class ContainerWithCallbackArray
     {
         [ProtoMember(1)]
         public string ContainerName { get; set; }
@@ -585,7 +585,7 @@ namespace GProtobuf.Tests.TestModel
     /// Used to test multiple serialization calls.
     /// </summary>
     [ProtoContract]
-    public class CallbackCounterModel
+    public partial class CallbackCounterModel
     {
         [ProtoMember(1)]
         public string Data { get; set; }
@@ -614,7 +614,7 @@ namespace GProtobuf.Tests.TestModel
     /// Test model for [ProtoBeforeDeserialization] and [ProtoAfterDeserialization] callbacks.
     /// </summary>
     [ProtoContract]
-    public class DeserializationCallbackModel
+    public partial class DeserializationCallbackModel
     {
         [ProtoMember(1)]
         public string Name { get; set; }
@@ -646,7 +646,7 @@ namespace GProtobuf.Tests.TestModel
     /// Test model with all four callback types.
     /// </summary>
     [ProtoContract]
-    public class FullCallbackModel
+    public partial class FullCallbackModel
     {
         [ProtoMember(1)]
         public string Name { get; set; }
@@ -686,7 +686,7 @@ namespace GProtobuf.Tests.TestModel
     /// </summary>
     [ProtoContract]
     [ProtoInclude(100, typeof(DerivedWithDeserializationCallback))]
-    public class BaseWithDeserializationCallback
+    public partial class BaseWithDeserializationCallback
     {
         [ProtoMember(1)]
         public string BaseName { get; set; }
@@ -710,7 +710,7 @@ namespace GProtobuf.Tests.TestModel
     /// Derived class with its own deserialization callbacks.
     /// </summary>
     [ProtoContract]
-    public class DerivedWithDeserializationCallback : BaseWithDeserializationCallback
+    public partial class DerivedWithDeserializationCallback : BaseWithDeserializationCallback
     {
         [ProtoMember(1)]
         public int DerivedValue { get; set; }

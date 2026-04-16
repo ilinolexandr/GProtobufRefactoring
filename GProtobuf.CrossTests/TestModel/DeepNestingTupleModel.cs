@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 
 namespace GProtobuf.CrossTests.TestModel
@@ -10,7 +10,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Some fields here are designed to FAIL compilation to test the nesting limit protection.
     /// </summary>
     [ProtoContract]
-    public class DeepNestingTupleModel
+    public partial class DeepNestingTupleModel
     {
         // Depth 1: Should work fine
         [ProtoMember(1)]

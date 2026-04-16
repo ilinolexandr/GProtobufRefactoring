@@ -1,11 +1,11 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class MapCollectionModel
+    public partial class MapCollectionModel
     {
         [ProtoMember(1)]
         public Dictionary<string, HashSet<int>> StringIntHashsetMap { get; set; }

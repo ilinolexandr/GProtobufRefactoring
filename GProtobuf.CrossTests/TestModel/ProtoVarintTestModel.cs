@@ -1,9 +1,5 @@
 using System;
-using ProtoBuf;
-using ProtoVarintAttribute = GProtobuf.Core.ProtoVarintAttribute;
-using ProtoVarintType = GProtobuf.Core.ProtoVarintType;
-using ProtoVarintConstructorAttribute = GProtobuf.Core.ProtoVarintConstructorAttribute;
-using ProtoVarintValueAttribute = GProtobuf.Core.ProtoVarintValueAttribute;
+using GProtobuf;
 
 namespace GProtobuf.CrossTests.TestModel
 {
@@ -129,7 +125,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model with a single ProtoVarint field.
     /// </summary>
     [ProtoContract]
-    public class SimpleProtoVarintModel
+    public partial class SimpleProtoVarintModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -145,7 +141,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model with multiple different ProtoVarint types.
     /// </summary>
     [ProtoContract]
-    public class MultipleProtoVarintModel
+    public partial class MultipleProtoVarintModel
     {
         [ProtoMember(1)]
         public KNXAddress SourceAddress { get; set; }
@@ -167,7 +163,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model demonstrating ProtoVarint with regular protobuf fields.
     /// </summary>
     [ProtoContract]
-    public class MixedProtoVarintModel
+    public partial class MixedProtoVarintModel
     {
         [ProtoMember(1)]
         public string DeviceName { get; set; }
@@ -192,7 +188,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model with only ProtoVarint fields (no regular types).
     /// </summary>
     [ProtoContract]
-    public class OnlyProtoVarintModel
+    public partial class OnlyProtoVarintModel
     {
         [ProtoMember(1)]
         public KNXAddress Address1 { get; set; }
@@ -223,7 +219,7 @@ namespace GProtobuf.CrossTests.TestModel
     }
 
     [ProtoContract]
-    public class DeviceIdModel
+    public partial class DeviceIdModel
     {
         [ProtoMember(1)]
         public int SequenceNumber { get; set; }
@@ -240,7 +236,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Test model demonstrating default value behavior for ProtoVarint.
     /// </summary>
     [ProtoContract]
-    public class DefaultValueProtoVarintModel
+    public partial class DefaultValueProtoVarintModel
     {
         [ProtoMember(1)]
         public KNXAddress ZeroAddress { get; set; }  // Default: 0
@@ -257,7 +253,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// This tests the fix for CalculateMapEntry not calling CalculateXxxContentSize for ProtoVarint types.
     /// </summary>
     [ProtoContract]
-    public class DictionaryWithProtoVarintKeyModel
+    public partial class DictionaryWithProtoVarintKeyModel
     {
         [ProtoMember(1)]
         public int Id { get; set; }

@@ -3,7 +3,7 @@ using Xunit.Abstractions;
 using System;
 using System.Linq;
 using System.Text;
-using ProtoBuf;
+using GProtobuf;
 using GProtobuf.Tests.TestModel;
 using GProtobuf.Core;
 

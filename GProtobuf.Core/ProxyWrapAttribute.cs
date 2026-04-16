@@ -1,6 +1,6 @@
 using System;
 
-namespace ProtoBuf
+namespace GProtobuf
 {
     /// <summary>
     /// Marks a static factory method on a proxy type that wraps an original instance into a proxy instance for serialization.

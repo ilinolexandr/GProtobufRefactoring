@@ -2,8 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using FluentAssertions;
 using GProtobuf.Tests.Serialization;
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests;
 
 // ==================== Reproduction model ====================
@@ -14,7 +13,7 @@ namespace GProtobuf.Tests;
 /// causing CS1503 in OnePassStreamWriter map entry method.
 /// </summary>
 [ProtoContract]
-public class NullableProxyMapTestMessage
+public partial class NullableProxyMapTestMessage
 {
     [ProtoMember(1)]
     public Dictionary<int, ExternalVector3?>? NullableVectors { get; set; }

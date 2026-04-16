@@ -1,6 +1,5 @@
 using FluentAssertions;
-using ProtoBuf;
-
+using GProtobuf;
 // Assembly-level proxy registration for cross-namespace types
 [assembly: SerializationProxy(typeof(TestProxies.CrossNsPoint), typeof(TestProxies.CrossNsPointProxy))]
 
@@ -21,7 +20,7 @@ namespace TestProxies
 
     /// <summary>Proxy в namespace TestProxies — proxy і message в різних namespaces</summary>
     [ProtoContract]
-    public struct CrossNsPointProxy
+    public partial struct CrossNsPointProxy
     {
         [ProtoMember(1)] public int X { get; set; }
         [ProtoMember(2)] public int Y { get; set; }
@@ -39,7 +38,7 @@ namespace TestMessages
 {
     /// <summary>Message в namespace TestMessages, proxy field в TestProxies</summary>
     [ProtoContract]
-    public class CrossNsTestMessage
+    public partial class CrossNsTestMessage
     {
         [ProtoMember(1)]
         public TestProxies.CrossNsPoint Position { get; set; }

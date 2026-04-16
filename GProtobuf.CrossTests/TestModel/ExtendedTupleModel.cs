@@ -1,11 +1,11 @@
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class ExtendedTupleModel
+    public partial class ExtendedTupleModel
     {
         #region 3-7 Element Tuples
 

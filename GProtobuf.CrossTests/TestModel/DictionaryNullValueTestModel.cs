@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 
@@ -9,21 +9,21 @@ namespace GProtobuf.Tests.TestModel
     // ═══════════════════════════════════════════════════════════════
 
     [ProtoContract]
-    public class DictWithStringNullValues
+    public partial class DictWithStringNullValues
     {
         [ProtoMember(1)]
         public Dictionary<int, string> Items { get; set; }
     }
 
     [ProtoContract]
-    public class DictWithObjectNullValues
+    public partial class DictWithObjectNullValues
     {
         [ProtoMember(1)]
         public Dictionary<string, NullValueNestedObject> Items { get; set; }
     }
 
     [ProtoContract]
-    public class NullValueNestedObject
+    public partial class NullValueNestedObject
     {
         [ProtoMember(1)]
         public string Name { get; set; }
@@ -37,14 +37,14 @@ namespace GProtobuf.Tests.TestModel
     // ═══════════════════════════════════════════════════════════════
 
     [ProtoContract]
-    public class ConcurrentDictWithStringNullValues
+    public partial class ConcurrentDictWithStringNullValues
     {
         [ProtoMember(1)]
         public ConcurrentDictionary<int, string> Items { get; set; }
     }
 
     [ProtoContract]
-    public class ConcurrentDictWithObjectNullValues
+    public partial class ConcurrentDictWithObjectNullValues
     {
         [ProtoMember(1)]
         public ConcurrentDictionary<string, NullValueNestedObject> Items { get; set; }
@@ -55,7 +55,7 @@ namespace GProtobuf.Tests.TestModel
     // ═══════════════════════════════════════════════════════════════
 
     [ProtoContract]
-    public class DictStringKeyStringNullValue
+    public partial class DictStringKeyStringNullValue
     {
         [ProtoMember(1)]
         public Dictionary<string, string> Items { get; set; }
@@ -66,14 +66,14 @@ namespace GProtobuf.Tests.TestModel
     // ═══════════════════════════════════════════════════════════════
 
     [ProtoContract]
-    public class DictWithNullableIntNullValues
+    public partial class DictWithNullableIntNullValues
     {
         [ProtoMember(1)]
         public Dictionary<int, int?> Items { get; set; }
     }
 
     [ProtoContract]
-    public class DictWithNullableLongNullValues
+    public partial class DictWithNullableLongNullValues
     {
         [ProtoMember(1)]
         public Dictionary<int, long?> Items { get; set; }
@@ -84,7 +84,7 @@ namespace GProtobuf.Tests.TestModel
     // ═══════════════════════════════════════════════════════════════
 
     [ProtoContract]
-    public class DictWithByteArrayNullValues
+    public partial class DictWithByteArrayNullValues
     {
         [ProtoMember(1)]
         public Dictionary<int, byte[]> Items { get; set; }
@@ -95,14 +95,14 @@ namespace GProtobuf.Tests.TestModel
     // ═══════════════════════════════════════════════════════════════
 
     [ProtoContract]
-    public class DictLevel2NullValues_IntStringString
+    public partial class DictLevel2NullValues_IntStringString
     {
         [ProtoMember(1)]
         public Dictionary<int, Dictionary<string, string>> Items { get; set; }
     }
 
     [ProtoContract]
-    public class DictLevel2NullValues_StringIntObject
+    public partial class DictLevel2NullValues_StringIntObject
     {
         [ProtoMember(1)]
         public Dictionary<string, Dictionary<int, NullValueNestedObject>> Items { get; set; }
@@ -113,7 +113,7 @@ namespace GProtobuf.Tests.TestModel
     // ═══════════════════════════════════════════════════════════════
 
     [ProtoContract]
-    public class NullTestLevel1Container
+    public partial class NullTestLevel1Container
     {
         [ProtoMember(1)]
         public string Name { get; set; }
@@ -123,7 +123,7 @@ namespace GProtobuf.Tests.TestModel
     }
 
     [ProtoContract]
-    public class NullTestLevel2Container
+    public partial class NullTestLevel2Container
     {
         [ProtoMember(1)]
         public string Description { get; set; }
@@ -133,7 +133,7 @@ namespace GProtobuf.Tests.TestModel
     }
 
     [ProtoContract]
-    public class NullTestLevel3Container
+    public partial class NullTestLevel3Container
     {
         [ProtoMember(1)]
         public int Value { get; set; }
@@ -143,7 +143,7 @@ namespace GProtobuf.Tests.TestModel
     }
 
     [ProtoContract]
-    public class DeepNestedNullTestModel
+    public partial class DeepNestedNullTestModel
     {
         [ProtoMember(1)]
         public Dictionary<string, NullTestLevel1Container> Root { get; set; }
@@ -154,14 +154,14 @@ namespace GProtobuf.Tests.TestModel
     // ═══════════════════════════════════════════════════════════════
 
     [ProtoContract]
-    public class DictWithListNullValues
+    public partial class DictWithListNullValues
     {
         [ProtoMember(1)]
         public Dictionary<int, List<string>> Items { get; set; }
     }
 
     [ProtoContract]
-    public class DictWithListOfObjectsNullValues
+    public partial class DictWithListOfObjectsNullValues
     {
         [ProtoMember(1)]
         public Dictionary<string, List<NullValueNestedObject>> Items { get; set; }

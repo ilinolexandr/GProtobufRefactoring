@@ -3,7 +3,7 @@ using GProtobuf.Tests.TestModel;
 //using GProtobuf.Generator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using ProtoBuf;
+using GProtobuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.CrossTests.TestModel
 {
     /// <summary>
@@ -8,7 +7,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// nested dictionaries, and collections of dictionaries.
     /// </summary>
     // [ProtoContract] // Temporarily disabled - nested dictionary and custom class map support not fully implemented in V2
-    public class ComplexMapTestModel
+    public partial class ComplexMapTestModel
     {
         // Custom class as key
         [ProtoMember(1)]
@@ -46,7 +45,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Custom class used as map key.
     /// </summary>
     // [ProtoContract] // Temporarily disabled
-    public class MapKeyClass
+    public partial class MapKeyClass
     {
         [ProtoMember(1)]
         public int Id { get; set; }
@@ -73,7 +72,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Custom class used as map value.
     /// </summary>
     // [ProtoContract] // Temporarily disabled
-    public class MapValueClass
+    public partial class MapValueClass
     {
         [ProtoMember(1)]
         public string Name { get; set; }

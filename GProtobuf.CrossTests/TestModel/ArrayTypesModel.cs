@@ -1,9 +1,8 @@
-using ProtoBuf;
-
+using GProtobuf;
 namespace GProtobuf.Tests.TestModel
 {
     [ProtoContract]
-    public class ArrayTypesModel
+    public partial class ArrayTypesModel
     {
         // Int array tests - non-packed
         [ProtoMember(1)]

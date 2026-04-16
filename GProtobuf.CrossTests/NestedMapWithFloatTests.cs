@@ -5,7 +5,7 @@ using System.Linq;
 using GProtobuf.Core;
 using GProtobuf.CrossTests.TestModel;
 using GProtobuf.CrossTests.TestModel.Serialization;
-using ProtoBuf;
+using GProtobuf;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -40,7 +40,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, model);
+            ProtoBuf.Serializer.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             _output.WriteLine($"SimpleIntFloatMap serialized length: {bytes.Length}");
@@ -69,7 +69,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, model);
+            ProtoBuf.Serializer.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             _output.WriteLine($"EnumToIntFloatNestedMap serialized length: {bytes.Length}");
@@ -100,7 +100,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, model);
+            ProtoBuf.Serializer.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             _output.WriteLine($"EnumToConcurrentIntFloatNestedMap serialized length: {bytes.Length}");
@@ -126,7 +126,7 @@ namespace GProtobuf.CrossTests
 
             // Serialize with protobuf-net
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, model);
+            ProtoBuf.Serializer.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             _output.WriteLine($"Protobuf-net serialized length: {bytes.Length}");
@@ -171,7 +171,7 @@ namespace GProtobuf.CrossTests
 
             // Serialize with protobuf-net
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, model);
+            ProtoBuf.Serializer.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             _output.WriteLine($"Protobuf-net serialized length: {bytes.Length}");
@@ -217,7 +217,7 @@ namespace GProtobuf.CrossTests
 
             // Serialize with protobuf-net
             using var ms = new MemoryStream();
-            Serializer.Serialize(ms, model);
+            ProtoBuf.Serializer.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             _output.WriteLine($"Protobuf-net serialized length: {bytes.Length}");

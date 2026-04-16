@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
@@ -8,7 +8,7 @@ namespace GProtobuf.CrossTests.TestModel
     /// Isolated from ComprehensiveDictionaryTestModel to avoid conflicts with other fields.
     /// </summary>
     [ProtoContract]
-    public class NestedDictionaryTestModel
+    public partial class NestedDictionaryTestModel
     {
         [ProtoMember(1)]
         public Dictionary<string, Dictionary<int, string>> StringToIntStringDictMap { get; set; }

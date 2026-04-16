@@ -1,4 +1,4 @@
-using ProtoBuf;
+using GProtobuf;
 
 namespace GProtobuf.CrossTests.Refactored;
 
@@ -10,7 +10,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -41,7 +41,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -71,7 +71,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -101,7 +101,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -132,7 +132,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -163,7 +163,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -197,7 +197,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -231,7 +231,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -265,7 +265,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -302,7 +302,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.BadProxy))]
             namespace TestNs;
 
@@ -339,7 +339,7 @@ public sealed class SerializationProxyDiagnosticTests
     {
         // language=C#
         var code = """
-            using ProtoBuf;
+            using GProtobuf;
             [assembly: SerializationProxy(typeof(TestNs.ExtType), typeof(TestNs.GoodProxy))]
             namespace TestNs;
 

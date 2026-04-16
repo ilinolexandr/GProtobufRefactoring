@@ -1,8 +1,7 @@
 using FluentAssertions;
 using GProtobuf.Tests;
 using GProtobuf.Tests.Serialization;
-using ProtoBuf;
-
+using GProtobuf;
 // Реєстрація proxy маппінгу для нового [ProxyAcquire] feature
 [assembly: SerializationProxy(typeof(GProtobuf.Tests.AcquireExternalPoint), typeof(GProtobuf.Tests.AcquirePointProxy))]
 
@@ -30,7 +29,7 @@ public sealed class AcquireExternalPoint
 /// Веде статистику викликів Acquire/Wrap/Convert/Return для верифікації.
 /// </summary>
 [ProtoContract]
-public sealed class AcquirePointProxy
+public sealed partial class AcquirePointProxy
 {
     // Лічильники для тестів
     public static int AcquireCallCount;
@@ -88,26 +87,26 @@ public sealed class AcquirePointProxy
 // ==================== Тестові повідомлення ====================
 
 [ProtoContract]
-public sealed class AcquireSingleMessage
+public sealed partial class AcquireSingleMessage
 {
     [ProtoMember(1)] public AcquireExternalPoint Point { get; set; }
     [ProtoMember(2)] public string? Tag { get; set; }
 }
 
 [ProtoContract]
-public sealed class AcquireCollectionMessage
+public sealed partial class AcquireCollectionMessage
 {
     [ProtoMember(1)] public List<AcquireExternalPoint>? Points { get; set; }
 }
 
 [ProtoContract]
-public sealed class AcquireNestedInner
+public sealed partial class AcquireNestedInner
 {
     [ProtoMember(1)] public AcquireExternalPoint Origin { get; set; }
 }
 
 [ProtoContract]
-public sealed class AcquireNestedOuter
+public sealed partial class AcquireNestedOuter
 {
     [ProtoMember(1)] public AcquireNestedInner? Inner { get; set; }
 }

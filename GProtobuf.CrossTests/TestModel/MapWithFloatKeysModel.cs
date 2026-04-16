@@ -1,10 +1,10 @@
-using ProtoBuf;
+using GProtobuf;
 using System.Collections.Generic;
 
 namespace GProtobuf.CrossTests.TestModel
 {
     [ProtoContract]
-    public class MapWithFloatKeysModel
+    public partial class MapWithFloatKeysModel
     {
         [ProtoMember(1)]
         public Dictionary<float, string> FloatStringMap { get; set; }
