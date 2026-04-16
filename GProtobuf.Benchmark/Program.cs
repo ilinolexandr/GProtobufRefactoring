@@ -1,88 +1,65 @@
-using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Environments;
-using BenchmarkDotNet.Jobs;
-using BenchmarkDotNet.Running;
-using BenchmarkDotNet.Toolchains.InProcess.Emit;
-using GProtobuf.Benchmark.Benchmarks;
 using System;
+using System.Reflection;
+using BenchmarkDotNet.Running;
+using GProtobuf.Benchmark.Infrastructure;
 
 namespace GProtobuf.Benchmark
 {
-    class Program
+    internal static class Program
     {
         static void Main(string[] args)
         {
-            var config = ManualConfig.Create(DefaultConfig.Instance);
+            var profile = BenchmarkConfig.ResolveProfileFromArgs(args);
+            var config = new BenchmarkConfig(profile);
 
-            // Add .NET 8.0 job with optimized settings
-            config.AddJob(Job.Default
-                //.WithRuntime(CoreRuntime.Core80)
-                .WithWarmupCount(0)
-                .WithIterationCount(1));
-                //.WithGcServer(true)
-                //.WithGcConcurrent(true);
-                //.WithId(".NET 8.0"));
+            Console.WriteLine($"[GProtobuf.Benchmark] profile = {profile}");
+            Console.WriteLine("   Change with env GPROTOBUF_BENCH_MODE={dev|ci-fast|full} or flag --profile <mode>");
+            Console.WriteLine();
 
-            // Uncomment to run with InProcess toolchain (faster but less accurate)
-            // config.AddJob(Job.Default.WithToolchain(InProcessEmitToolchain.Instance));
+            // Drop --profile <value> from args since BDN doesn't know it.
+            var bdnArgs = StripProfileArg(args);
 
-            if (args.Length > 0)
-            {
-                switch (args[0].ToLower())
-                {
-                    case "primitives":
-                        Console.WriteLine("Running Primitive Types Benchmarks...");
-                        BenchmarkRunner.Run<PrimitiveTypesBenchmark>(config);
-                        break;
-                    case "collections":
-                        Console.WriteLine("Running Collections Benchmarks...");
-                        BenchmarkRunner.Run<CollectionsBenchmark>(config);
-                        break;
-                    case "nested":
-                        Console.WriteLine("Running Nested Messages Benchmarks...");
-                        BenchmarkRunner.Run<NestedMessagesBenchmark>(config);
-                        break;
-                    case "all":
-                    default:
-                        RunAllBenchmarks(config);
-                        break;
-                }
-            }
-            else
-            {
-                RunAllBenchmarks(config);
-            }
+            // BDN drops into an interactive prompt when no selection arg is present.
+            // That hangs non-TTY runs (CI, captured output). Default to '--filter *'
+            // so unattended runs execute the full suite instead of waiting for stdin.
+            bdnArgs = EnsureSelectionArg(bdnArgs);
+
+            BenchmarkSwitcher.FromAssembly(Assembly.GetExecutingAssembly()).Run(bdnArgs, config);
         }
 
-        private static void RunAllBenchmarks(IConfig config)
+        private static string[] StripProfileArg(string[] args)
         {
-            //var bench = new NestedMessagesBenchmark();
-            //bench.Setup();
-            ////bench.GProtobuf_Serialize_IBufferWriter();
-            //for (int i = 0; i < 10000000; i++) 
-            //bench.GProtobuf_Serialize_Stream();
-            //bench.GProtobuf_SerializeCustom();
+            var list = new System.Collections.Generic.List<string>(args.Length);
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i].Equals("--profile", StringComparison.OrdinalIgnoreCase))
+                {
+                    i++; // skip value too
+                    continue;
+                }
+                list.Add(args[i]);
+            }
+            return list.ToArray();
+        }
 
-            //var bench = new CollectionsBenchmark();
-            //bench.Setup();
-            //bench.GProtobuf_Deserialize();
+        private static readonly string[] SelectionArgs =
+        {
+            "--filter", "-f", "--list", "--help", "-h", "--version", "--info"
+        };
 
-            //Console.WriteLine("Running All Benchmarks...");
-            //Console.WriteLine();
+        private static string[] EnsureSelectionArg(string[] args)
+        {
+            foreach (var a in args)
+                foreach (var s in SelectionArgs)
+                    if (a.Equals(s, StringComparison.OrdinalIgnoreCase))
+                        return args;
 
-            Console.WriteLine("1. Primitive Types Benchmarks");
-            BenchmarkRunner.Run<PrimitiveTypesBenchmark>(config);
-
-            ////Console.WriteLine();
-            //Console.WriteLine("2. Collections Benchmarks");
-            //BenchmarkRunner.Run<CollectionsBenchmark>(config);
-
-            ////Console.WriteLine();
-            //Console.WriteLine("3. Nested Messages Benchmarks");
-            //BenchmarkRunner.Run<NestedMessagesBenchmark>(config);
-
-            //Console.WriteLine();
-            //Console.WriteLine("All benchmarks completed!");
+            Console.WriteLine("[GProtobuf.Benchmark] no --filter specified → defaulting to '--filter *' (use --filter <pattern> to narrow)");
+            var extended = new string[args.Length + 2];
+            Array.Copy(args, extended, args.Length);
+            extended[args.Length]     = "--filter";
+            extended[args.Length + 1] = "*";
+            return extended;
         }
     }
 }
