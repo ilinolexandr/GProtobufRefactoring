@@ -1,4 +1,3 @@
-using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.Utilities;
 
 namespace GProtobuf.Generator.WireFormat

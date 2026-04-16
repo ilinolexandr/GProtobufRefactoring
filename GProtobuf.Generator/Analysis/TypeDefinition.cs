@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using GProtobuf.Generator.Attributes;
 
 namespace GProtobuf.Generator.Analysis
 {
@@ -63,13 +62,13 @@ namespace GProtobuf.Generator.Analysis
     /// Element type for custom collections (e.g., "DeviceValueType" for ValueLogTypeHashSet).
     /// Null if IsCustomCollection is false.
     /// </param>
-    public sealed record TypeDefinition(
+    internal sealed record TypeDefinition(
         bool IsStruct,
         bool IsAbstract,
         bool IsEnum,
         string FullName,
-        List<ProtoIncludeAttribute> ProtoIncludes,
-        List<ProtoMemberAttribute> ProtoMembers,
+        List<ProtoIncludeInfo> ProtoIncludes,
+        List<ProtoMemberInfo> ProtoMembers,
         bool HasParameterlessConstructor,
         Microsoft.CodeAnalysis.INamedTypeSymbol? TypeSymbol = null,
         string? BaseClass = null,

@@ -1,9 +1,9 @@
-namespace GProtobuf.Generator.Attributes
+namespace GProtobuf.Generator.Analysis
 {
     /// <summary>
     /// Sub-format to use when serializing/deserializing data
     /// </summary>
-    public enum DataFormat
+    internal enum DataFormat
     {
         /// <summary>
         /// Uses the default encoding for the data-type.

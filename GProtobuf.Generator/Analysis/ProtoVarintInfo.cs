@@ -1,11 +1,10 @@
-using GProtobuf.Generator.Attributes;
 
 namespace GProtobuf.Generator.Analysis
 {
     /// <summary>
     /// Contains information about a ProtoVarint type for code generation.
     /// </summary>
-    public sealed class ProtoVarintInfo
+    internal sealed class ProtoVarintInfo
     {
         /// <summary>
         /// The full type name of the ProtoVarint struct/class.

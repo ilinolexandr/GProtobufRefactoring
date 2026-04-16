@@ -150,7 +150,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// Registers the map type in the virtual type registry.
         /// Always registers since we use KeyValue classes for all dictionaries.
         /// </summary>
-        public VirtualMapEntryInfo RegisterIfNeeded(ProtoMemberAttribute member)
+        public VirtualMapEntryInfo RegisterIfNeeded(ProtoMemberInfo member)
         {
             if (_registry == null)
                 return null;
@@ -171,7 +171,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// Generates code to read a map field.
         /// Uses virtual type methods for complex types, inline code for simple types.
         /// </summary>
-        public void GenerateRead(ProtoMemberAttribute member, string targetVar, string readerVar = "reader")
+        public void GenerateRead(ProtoMemberInfo member, string targetVar, string readerVar = "reader")
         {
             var keyType = member.MapKeyType;
             var valueType = member.MapValueType;
@@ -196,7 +196,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// Generates code that calls ReadMapEntry directly without creating intermediate KeyValue object.
         /// ReadMapEntry returns (bool success, TKey key, TValue value) tuple.
         /// </summary>
-        private void GenerateVirtualTypeRead(string targetVar, VirtualMapEntryInfo virtualInfo, ProtoMemberAttribute member, string dictCreationType, string readerVar)
+        private void GenerateVirtualTypeRead(string targetVar, VirtualMapEntryInfo virtualInfo, ProtoMemberInfo member, string dictCreationType, string readerVar)
         {
             var mapEntryTypeName = VirtualTypeNameGenerator.GetMapEntryTypeName(virtualInfo.KeyType, virtualInfo.ValueType);
 
@@ -223,7 +223,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// <summary>
         /// Generates inline reading code for simple map types.
         /// </summary>
-        private void GenerateInlineRead(string targetVar, string keyType, string valueType, ProtoMemberAttribute member, string dictCreationType, string readerVar)
+        private void GenerateInlineRead(string targetVar, string keyType, string valueType, ProtoMemberInfo member, string dictCreationType, string readerVar)
         {
             // Read entry length
             _sb.AppendIndentedLine($"var entryLength = {readerVar}.ReadVarUInt32();");
@@ -489,7 +489,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// Generates code to write a map field.
         /// Uses virtual type methods for complex types, inline code for simple types.
         /// </summary>
-        public void GenerateWrite(ProtoMemberAttribute member, string sourceVar)
+        public void GenerateWrite(ProtoMemberInfo member, string sourceVar)
         {
             var keyType = member.MapKeyType;
             var valueType = member.MapValueType;
@@ -520,7 +520,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// <summary>
         /// Generates code that calls WriteMapEntry directly with keyValue.Key, keyValue.Value.
         /// </summary>
-        private void GenerateVirtualTypeWrite(string sourceVar, VirtualMapEntryInfo virtualInfo, ProtoMemberAttribute member)
+        private void GenerateVirtualTypeWrite(string sourceVar, VirtualMapEntryInfo virtualInfo, ProtoMemberInfo member)
         {
             var mapEntryTypeName = VirtualTypeNameGenerator.GetMapEntryTypeName(virtualInfo.KeyType, virtualInfo.ValueType);
 
@@ -540,7 +540,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// <summary>
         /// Generates inline writing code for simple map types.
         /// </summary>
-        private void GenerateInlineWrite(string sourceVar, string keyType, string valueType, ProtoMemberAttribute member)
+        private void GenerateInlineWrite(string sourceVar, string keyType, string valueType, ProtoMemberInfo member)
         {
             // Reuse calculators outside the loop to reduce allocations
             _sb.AppendIndentedLine("var entryCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
@@ -756,7 +756,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// Generates code to calculate size of a map field.
         /// Uses virtual type methods for complex types, inline code for simple types.
         /// </summary>
-        public void GenerateSize(ProtoMemberAttribute member, string sourceVar)
+        public void GenerateSize(ProtoMemberInfo member, string sourceVar)
         {
             GenerateSize(member, sourceVar, "calculator");
         }
@@ -765,7 +765,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// Generates code to calculate size of a map field into a specified calculator variable.
         /// Uses virtual type methods for complex types, inline code for simple types.
         /// </summary>
-        public void GenerateSize(ProtoMemberAttribute member, string sourceVar, string calculatorVar)
+        public void GenerateSize(ProtoMemberInfo member, string sourceVar, string calculatorVar)
         {
             var valueType = member.MapValueType;
 
@@ -795,7 +795,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// <summary>
         /// Generates code that calls CalculateMapEntrySize directly with keyValue.Key, keyValue.Value.
         /// </summary>
-        private void GenerateVirtualTypeSize(string sourceVar, VirtualMapEntryInfo virtualInfo, ProtoMemberAttribute member, string calculatorVar = "calculator")
+        private void GenerateVirtualTypeSize(string sourceVar, VirtualMapEntryInfo virtualInfo, ProtoMemberInfo member, string calculatorVar = "calculator")
         {
             var mapEntryTypeName = VirtualTypeNameGenerator.GetMapEntryTypeName(virtualInfo.KeyType, virtualInfo.ValueType);
             var (_, tagBytes) = TypeMapping.PrecomputeTagBytes(member.FieldId, WireType.Len);
@@ -821,7 +821,7 @@ namespace GProtobuf.Generator.V2.Handlers
         /// <summary>
         /// Generates inline size calculation code for simple map types.
         /// </summary>
-        private void GenerateInlineSize(string sourceVar, string valueType, ProtoMemberAttribute member, string calculatorVar = "calculator")
+        private void GenerateInlineSize(string sourceVar, string valueType, ProtoMemberInfo member, string calculatorVar = "calculator")
         {
             // Reuse calculators outside the loop to reduce allocations
             _sb.AppendIndentedLine("var entryCalc = new global::GProtobuf.Core.WriteSizeCalculator();");
@@ -864,7 +864,7 @@ namespace GProtobuf.Generator.V2.Handlers
             _sb.EndBlock(); // foreach
         }
 
-        private void GenerateEntrySizeCalculation(ProtoMemberAttribute member, string keyVar, string valueVar, string calcVar)
+        private void GenerateEntrySizeCalculation(ProtoMemberInfo member, string keyVar, string valueVar, string calcVar)
         {
             // Key size (field 1)
             GeneratePrimitiveSizeCalculation(member.MapKeyType, keyVar, calcVar, member.MapKeyIsEnum, 1);

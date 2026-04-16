@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GProtobuf.Generator.Analysis;
-using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.Utilities;
 using GProtobuf.Generator.WireFormat;
 
@@ -12,17 +11,17 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
     internal static class DeferredInitDispatcher
     {
         /// <summary>Per-derived metadata: ProtoInclude, own members, and identifier-safe temp prefix.</summary>
-        public sealed class DerivedInfo
+        internal sealed class DerivedInfo
         {
-            public ProtoIncludeAttribute Include = null!;
-            public IReadOnlyList<ProtoMemberAttribute> OwnMembers = null!;
+            public ProtoIncludeInfo Include = null!;
+            public IReadOnlyList<ProtoMemberInfo> OwnMembers = null!;
             public string TempPrefix = null!;
         }
 
         /// <summary>Per-reader specialization: wrapper region open/close, inner reader var, target-resolver scope.</summary>
-        public sealed class Strategy
+        internal sealed class Strategy
         {
-            public Action<ProtoMemberAttribute, string /*wireTypeVar*/, string /*readerVar*/> GenerateFieldReadCase = null!;
+            public Action<ProtoMemberInfo, string /*wireTypeVar*/, string /*readerVar*/> GenerateFieldReadCase = null!;
             public Action EmitOpenWrapperRegion = null!;
             public Action EmitCloseWrapperRegion = null!;
             public string InnerReaderVar = null!;
@@ -63,7 +62,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
             IReadOnlyList<DerivedInfo> derivedInfos,
             Strategy strategy)
         {
-            var baseMembers = rootType.ProtoMembers ?? new List<ProtoMemberAttribute>();
+            var baseMembers = rootType.ProtoMembers ?? new List<ProtoMemberInfo>();
 
             // Temp locals for base fields.
             foreach (var member in baseMembers)
@@ -188,8 +187,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         public static void EmitObjectInitializerReturn(
             StringBuilderWithIndent sb,
             string targetTypeFullName,
-            IList<ProtoMemberAttribute> baseMembers,
-            IReadOnlyList<ProtoMemberAttribute>? derivedOwnMembers,
+            IList<ProtoMemberInfo> baseMembers,
+            IReadOnlyList<ProtoMemberInfo>? derivedOwnMembers,
             string? derivedTempPrefix)
         {
             int total = baseMembers.Count + (derivedOwnMembers?.Count ?? 0);

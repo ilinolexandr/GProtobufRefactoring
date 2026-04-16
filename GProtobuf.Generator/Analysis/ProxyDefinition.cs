@@ -6,7 +6,7 @@ namespace GProtobuf.Generator.Analysis
     /// Represents a serialization proxy mapping from an original type to a proxy type.
     /// Created during source generation by analyzing [assembly: SerializationProxy] attributes.
     /// </summary>
-    public sealed class ProxyDefinition
+    internal sealed class ProxyDefinition
     {
         /// <summary>
         /// Validation diagnostics collected during proxy analysis.

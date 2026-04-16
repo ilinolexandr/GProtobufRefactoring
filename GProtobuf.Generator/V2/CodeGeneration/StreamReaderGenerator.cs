@@ -36,7 +36,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private string GetMemberTarget(string memberName)
             => _memberTargetResolver != null ? _memberTargetResolver(memberName) : $"result.{memberName}";
 
-        private string GetMemberTarget(GProtobuf.Generator.Attributes.ProtoMemberAttribute member) => GetMemberTarget(member.Name);
+        private string GetMemberTarget(ProtoMemberInfo member) => GetMemberTarget(member.Name);
 
         public StreamReaderGenerator(StringBuilderWithIndent sb, TypeRegistry registry)
             : base(sb, registry)
@@ -645,7 +645,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else if (_registry.IsProtoVarint(TypeMapping.NormalizeTypeName(elementType)))
             {
-                var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(elementType)) ?? Attributes.ProtoVarintType.UInt32;
+                var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(elementType)) ?? ProtoVarintType.UInt32;
                 var readMethod = Helpers.PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
                 var globalTypeName = TypeMapping.GetGlobalGenericTypeName(elementType);
                 _sb.AppendIndentedLine($"{targetCollection}.Add(new {globalTypeName}(reader.{readMethod}()));");
@@ -934,7 +934,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             var chain = _registry.GetInheritanceChain(type.FullName);
 
             // Collect all fields needing temp lists from the entire inheritance chain
-            var fieldsNeedingTempList = new List<ProtoMemberAttribute>();
+            var fieldsNeedingTempList = new List<ProtoMemberInfo>();
             foreach (var typeName in chain)
             {
                 var typeInChain = _registry.GetByFullName(typeName);
@@ -1057,7 +1057,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates switch case for ProtoInclude that enters nested level.
         /// Uses PushLimit/PopLimit for zero-allocation nested message reading.
         /// </summary>
-        private void GenerateNestedProtoIncludeCase(ProtoIncludeAttribute include, IReadOnlyList<string> chain, int nextLevelIndex, string currentReaderVar)
+        private void GenerateNestedProtoIncludeCase(ProtoIncludeInfo include, IReadOnlyList<string> chain, int nextLevelIndex, string currentReaderVar)
         {
             _sb.AppendIndentedLine($"case {include.FieldId}: {{");
             _sb.IncreaseIndent();
@@ -1107,7 +1107,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// <summary>
         /// Generates switch case for reading a field into 'result' for derived types.
         /// </summary>
-        private void GenerateFieldReadCaseForDerived(ProtoMemberAttribute member, string wireTypeVar, string readerVar)
+        private void GenerateFieldReadCaseForDerived(ProtoMemberInfo member, string wireTypeVar, string readerVar)
         {
             bool needsBraces = member.IsMap || member.IsCollection ||
                               (!member.IsEnum && !_primitiveHandler.CanHandle(member.Type));
@@ -1180,7 +1180,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// <summary>
         /// Generates collection field reading for derived types using PushLimit.
         /// </summary>
-        private void GenerateCollectionFieldReadBodyForDerived(ProtoMemberAttribute member, string wireTypeVar, string readerVar)
+        private void GenerateCollectionFieldReadBodyForDerived(ProtoMemberInfo member, string wireTypeVar, string readerVar)
         {
             if (member.CollectionElementType == null)
             {
@@ -1258,7 +1258,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// <summary>
         /// Generates complex type field reading for derived types using PushLimit.
         /// </summary>
-        private void GenerateComplexTypeReadBodyForDerived(ProtoMemberAttribute member, string readerVar)
+        private void GenerateComplexTypeReadBodyForDerived(ProtoMemberInfo member, string readerVar)
         {
             // Check if type has a serialization proxy
             var proxy = GetProxyForType(member.Type);
@@ -1406,7 +1406,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private void GenerateReadContentWithDeferredInitializer(TypeDefinition type, string className, string nsPrefix)
         {
             var fullTypeName = $"global::{type.FullName}";
-            var members = type.ProtoMembers ?? new List<GProtobuf.Generator.Attributes.ProtoMemberAttribute>();
+            var members = type.ProtoMembers ?? new List<ProtoMemberInfo>();
 
             _sb.AppendIndentedLine("// Deferred construction for type with init-only properties:");
             _sb.AppendIndentedLine("// read all members into local temp variables, then build the instance via an object initializer.");
@@ -1516,7 +1516,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else if (_registry.IsProtoVarint(TypeMapping.NormalizeTypeName(elementType)))
             {
-                var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(elementType)) ?? Attributes.ProtoVarintType.UInt32;
+                var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(elementType)) ?? ProtoVarintType.UInt32;
                 var readMethod = PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
                 _sb.AppendIndentedLine($"result.Add(new {globalElementType}(reader.{readMethod}()));");
             }
@@ -1677,7 +1677,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates field read case that assigns to a local variable instead of object field.
         /// Used for constructor-based deserialization.
         /// </summary>
-        private void GenerateFieldReadCaseForParameter(ProtoMemberAttribute member, string targetVariable)
+        private void GenerateFieldReadCaseForParameter(ProtoMemberInfo member, string targetVariable)
         {
             _sb.AppendIndentedLine($"case {member.FieldId}:");
             _sb.IncreaseIndent();
@@ -1828,8 +1828,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 .ToList();
 
             // Separate fields into ObjectArrayBuilder (for classes) and List<T> (for structs/primitives)
-            var fieldsUsingObjectBuilder = fieldsNeedingTempList?.Where(m => ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList() ?? new List<ProtoMemberAttribute>();
-            var fieldsUsingTempList = fieldsNeedingTempList?.Where(m => !ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList() ?? new List<ProtoMemberAttribute>();
+            var fieldsUsingObjectBuilder = fieldsNeedingTempList?.Where(m => ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList() ?? new List<ProtoMemberInfo>();
+            var fieldsUsingTempList = fieldsNeedingTempList?.Where(m => !ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList() ?? new List<ProtoMemberInfo>();
 
             // Declare ObjectArrayBuilder for class element collections.
             // ReadXxxContent uses a freshly constructed `result`, so no pre-seed needed.
@@ -2067,7 +2067,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         #region Wire Type Validation
 
-        private bool ShouldGenerateWireTypeValidation(ProtoMemberAttribute member)
+        private bool ShouldGenerateWireTypeValidation(ProtoMemberInfo member)
         {
             // Collections with dual-mode (packed/unpacked) support handle wire type internally
             if (member.IsCollection)
@@ -2087,7 +2087,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Read methods now align with Populate methods behavior.
         /// Malformed data will throw exception in ReadXXX methods.
         /// </summary>
-        private void GenerateWireTypeValidation(ProtoMemberAttribute member, string wireTypeVar = "wireType", string readerVar = "reader")
+        private void GenerateWireTypeValidation(ProtoMemberInfo member, string wireTypeVar = "wireType", string readerVar = "reader")
         {
             // Wire type validation removed for performance
             // Read methods now use fail-fast approach (same as Populate methods)
@@ -2106,7 +2106,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         #region Field Generation
 
-        private void GenerateFieldReadCase(ProtoMemberAttribute member, string nsPrefix)
+        private void GenerateFieldReadCase(ProtoMemberInfo member, string nsPrefix)
         {
             var category = GeneratorHelpers.GetFieldCategory(member, _primitiveHandler);
 
@@ -2169,7 +2169,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GeneratePrimitiveFieldReadBody(ProtoMemberAttribute member)
+        private void GeneratePrimitiveFieldReadBody(ProtoMemberInfo member)
         {
             // Use StreamReaders extension methods for type-aware reading
             var typeName = TypeMapping.NormalizeTypeName(member.Type);
@@ -2268,7 +2268,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GeneratePrimitiveFieldReadBodyForType(ProtoMemberAttribute member, string innerType)
+        private void GeneratePrimitiveFieldReadBodyForType(ProtoMemberInfo member, string innerType)
         {
             var normalizedInnerType = TypeMapping.NormalizeTypeName(innerType);
             var dataFormat = member.DataFormat;
@@ -2316,7 +2316,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GenerateMapFieldReadBody(ProtoMemberAttribute member, string nsPrefix)
+        private void GenerateMapFieldReadBody(ProtoMemberInfo member, string nsPrefix)
         {
             // Use MapHandler to generate consistent helper method calls (matching Populate methods pattern)
             // This reuses the existing ReadMapEntry_* helper methods instead of inlining ~80 lines per field
@@ -2324,7 +2324,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             mapHandler.GenerateRead(member, GetMemberTarget(member), "reader");
         }
 
-        private void GenerateCollectionFieldReadBody(ProtoMemberAttribute member, string nsPrefix)
+        private void GenerateCollectionFieldReadBody(ProtoMemberInfo member, string nsPrefix)
         {
             var normalizedType = TypeMapping.NormalizeTypeName(member.CollectionElementType);
             bool isEnumCollection = _registry != null && (_registry.IsEnum(member.CollectionElementType) || _registry.IsEnum(normalizedType));
@@ -2340,7 +2340,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GeneratePrimitiveCollectionRead(ProtoMemberAttribute member, bool isEnumCollection)
+        private void GeneratePrimitiveCollectionRead(ProtoMemberInfo member, bool isEnumCollection)
         {
             var elementType = TypeMapping.GetGlobalTypeName(member.CollectionElementType);
             var normalizedElementType = TypeMapping.NormalizeTypeName(member.CollectionElementType);
@@ -2609,7 +2609,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GenerateComplexCollectionRead(ProtoMemberAttribute member, string nsPrefix)
+        private void GenerateComplexCollectionRead(ProtoMemberInfo member, string nsPrefix)
         {
             var elementType = TypeMapping.GetGlobalTypeName(member.CollectionElementType);
             var elementClassName = TypeNameHelper.GetClassName(member.CollectionElementType);
@@ -2704,7 +2704,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             else if (isProtoVarint)
             {
                 // Handle ProtoVarint types - read as simple varint
-                var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(member.CollectionElementType)) ?? Attributes.ProtoVarintType.UInt32;
+                var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(member.CollectionElementType)) ?? ProtoVarintType.UInt32;
                 var readMethod = Helpers.PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
                 var globalTypeName = TypeMapping.GetGlobalGenericTypeName(member.CollectionElementType);
                 _sb.AppendIndentedLine($"{targetCollection}.Add(new {globalTypeName}(reader.{readMethod}()));");
@@ -2755,7 +2755,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine($"while (reader.TryPeekSameField({member.FieldId}, {peekWireType}));");
         }
 
-        private void GenerateTupleFieldReadBody(ProtoMemberAttribute member, string nsPrefix)
+        private void GenerateTupleFieldReadBody(ProtoMemberInfo member, string nsPrefix)
         {
             // For tuples, use PushLimit for zero-allocation nested message reading
             var itemTypes = TupleHandler.ParseTupleTypes(member.Type);
@@ -2767,7 +2767,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine("reader.PopLimit(tupleOldLimit);");
         }
 
-        private void GenerateComplexTypeReadBody(ProtoMemberAttribute member, string nsPrefix)
+        private void GenerateComplexTypeReadBody(ProtoMemberInfo member, string nsPrefix)
         {
             // Check if type has a serialization proxy
             var proxy = GetProxyForType(member.Type);
@@ -2798,7 +2798,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates read code for a field whose type has a serialization proxy.
         /// Reads proxy from stream, converts proxy → original via [ProxyConvert].
         /// </summary>
-        private void GenerateProxyTypeRead(ProtoMemberAttribute member, ProxyDefinition proxy)
+        private void GenerateProxyTypeRead(ProtoMemberInfo member, ProxyDefinition proxy)
         {
             var proxyNsPrefix = GeneratorHelpers.GetNamespacePrefix(proxy.ProxyNamespace, _currentNamespace);
 
@@ -2813,7 +2813,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine("reader.PopLimit(oldLimit);");
         }
 
-        private void GenerateProtoIncludeReadCase(TypeDefinition parentType, ProtoIncludeAttribute include, string nsPrefix)
+        private void GenerateProtoIncludeReadCase(TypeDefinition parentType, ProtoIncludeInfo include, string nsPrefix)
         {
             var derivedClassName = TypeNameHelper.GetClassName(include.Type);
             var derivedNs = _registry.GetNamespaceForType(include.Type);
@@ -2949,7 +2949,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else if (_registry.IsProtoVarint(TypeMapping.NormalizeTypeName(elementType)))
             {
-                var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(elementType)) ?? Attributes.ProtoVarintType.UInt32;
+                var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(elementType)) ?? ProtoVarintType.UInt32;
                 var readMethod = PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
                 _sb.AppendIndentedLine($"instance.Add(new {globalElementType}(reader.{readMethod}()));");
             }
@@ -2986,7 +2986,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // when the element type is class- or string-eligible for ObjectArrayBuilder.
             var tempListMembers = type.ProtoMembers?
                 .Where(m => NeedsTempList(m.Type) || ObjectArrayBuilderHelper.IsFieldNeedingTempListOrBuilder(m, _registry))
-                .ToList() ?? new List<ProtoMemberAttribute>();
+                .ToList() ?? new List<ProtoMemberInfo>();
 
             // Separate fields into ObjectArrayBuilder (for classes) and List<T> (for structs/primitives)
             var fieldsUsingObjectBuilder = tempListMembers.Where(m => ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList();
@@ -3194,7 +3194,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// <summary>
         /// Generates field read case for Populate method (uses 'instance' instead of 'result').
         /// </summary>
-        private void GeneratePopulateFieldReadCase(ProtoMemberAttribute member, string nsPrefix)
+        private void GeneratePopulateFieldReadCase(ProtoMemberInfo member, string nsPrefix)
         {
             var category = GeneratorHelpers.GetFieldCategory(member, _primitiveHandler);
 
@@ -3257,7 +3257,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GeneratePopulatePrimitiveFieldReadBody(ProtoMemberAttribute member)
+        private void GeneratePopulatePrimitiveFieldReadBody(ProtoMemberInfo member)
         {
             var typeName = TypeMapping.NormalizeTypeName(member.Type);
             var dataFormat = member.DataFormat;
@@ -3354,7 +3354,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GeneratePopulatePrimitiveFieldReadBodyForType(ProtoMemberAttribute member, string innerType)
+        private void GeneratePopulatePrimitiveFieldReadBodyForType(ProtoMemberInfo member, string innerType)
         {
             var normalizedInnerType = TypeMapping.NormalizeTypeName(innerType);
             var dataFormat = member.DataFormat;
@@ -3402,7 +3402,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GeneratePopulateComplexTypeReadBody(ProtoMemberAttribute member, string nsPrefix)
+        private void GeneratePopulateComplexTypeReadBody(ProtoMemberInfo member, string nsPrefix)
         {
             // Check if type has a serialization proxy (Populate path)
             var populateProxy = GetProxyForType(member.Type);
@@ -3480,7 +3480,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine("reader.PopLimit(oldLimit);");
         }
 
-        private void GeneratePopulateTupleFieldReadBody(ProtoMemberAttribute member, string nsPrefix)
+        private void GeneratePopulateTupleFieldReadBody(ProtoMemberInfo member, string nsPrefix)
         {
             // Use PushLimit for zero-allocation nested message reading
             var itemTypes = TupleHandler.ParseTupleTypes(member.Type);
@@ -3492,7 +3492,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine("reader.PopLimit(tupleOldLimit);");
         }
 
-        private void GeneratePopulateMapFieldReadBody(ProtoMemberAttribute member, string nsPrefix)
+        private void GeneratePopulateMapFieldReadBody(ProtoMemberInfo member, string nsPrefix)
         {
             // Use PushLimit for zero-allocation nested message reading
             _sb.AppendIndentedLine("var mapLength = reader.ReadVarInt32();");
@@ -4412,7 +4412,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine("}");
         }
 
-        private void GeneratePopulateCollectionFieldReadBody(ProtoMemberAttribute member, string nsPrefix)
+        private void GeneratePopulateCollectionFieldReadBody(ProtoMemberInfo member, string nsPrefix)
         {
             var normalizedType = TypeMapping.NormalizeTypeName(member.CollectionElementType);
             bool isEnumCollection = _registry != null && (_registry.IsEnum(member.CollectionElementType) || _registry.IsEnum(normalizedType));
@@ -4428,7 +4428,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GeneratePopulatePrimitiveCollectionRead(ProtoMemberAttribute member, bool isEnumCollection)
+        private void GeneratePopulatePrimitiveCollectionRead(ProtoMemberInfo member, bool isEnumCollection)
         {
             var elementType = TypeMapping.GetGlobalTypeName(member.CollectionElementType);
             var normalizedElementType = TypeMapping.NormalizeTypeName(member.CollectionElementType);
@@ -4652,7 +4652,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GeneratePopulateComplexCollectionRead(ProtoMemberAttribute member, string nsPrefix)
+        private void GeneratePopulateComplexCollectionRead(ProtoMemberInfo member, string nsPrefix)
         {
             var elementType = TypeMapping.GetGlobalTypeName(member.CollectionElementType);
             var elementClassName = TypeNameHelper.GetClassName(member.CollectionElementType);
@@ -4731,7 +4731,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     if (isProtoVarint)
                     {
                         // Handle ProtoVarint types - read as simple varint
-                        var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(member.CollectionElementType)) ?? Attributes.ProtoVarintType.UInt32;
+                        var varintType = _registry.GetProtoVarintType(TypeMapping.NormalizeTypeName(member.CollectionElementType)) ?? ProtoVarintType.UInt32;
                         var readMethod = Helpers.PrimitiveTypeCodeGenerator.GetProtoVarintReadMethod(varintType);
                         var globalTypeName = TypeMapping.GetGlobalGenericTypeName(member.CollectionElementType);
                         _sb.AppendIndentedLine($"{targetCollection}.Add(new {globalTypeName}(reader.{readMethod}()));");

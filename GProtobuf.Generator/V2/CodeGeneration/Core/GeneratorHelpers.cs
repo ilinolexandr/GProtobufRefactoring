@@ -21,7 +21,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         public TypeDefinition ParentType { get; set; }
 
         /// <summary>ProtoInclude attribute linking parent to derived type.</summary>
-        public ProtoIncludeAttribute ProtoInclude { get; set; }
+        public ProtoIncludeInfo ProtoInclude { get; set; }
 
         /// <summary>Wire format wrapper tag (fieldId << 3 | WireType.Len).</summary>
         public int WrapperTag { get; set; }
@@ -111,7 +111,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         /// <param name="member">The proto member attribute</param>
         /// <param name="primitiveHandler">The primitive handler for type checking</param>
         /// <returns>The field category for routing</returns>
-        public static FieldCategory GetFieldCategory(ProtoMemberAttribute member, PrimitiveHandler primitiveHandler)
+        public static FieldCategory GetFieldCategory(ProtoMemberInfo member, PrimitiveHandler primitiveHandler)
         {
             if (member.IsMap)
                 return FieldCategory.Map;
@@ -143,7 +143,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         /// <param name="type">The base type definition</param>
         /// <param name="derivedTypeName">The full name of the derived type to find</param>
         /// <returns>The ProtoInclude attribute if found, null otherwise</returns>
-        public static ProtoIncludeAttribute FindProtoInclude(TypeDefinition type, string derivedTypeName)
+        public static ProtoIncludeInfo FindProtoInclude(TypeDefinition type, string derivedTypeName)
         {
             if (type?.ProtoIncludes == null)
                 return null;
@@ -182,7 +182,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         /// <param name="typeDef">The type definition (can be null)</param>
         /// <param name="registry">The type registry for checking if type is enum</param>
         /// <returns>The value access expression</returns>
-        public static string GetNullableValueAccess(string sourceVar, ProtoMemberAttribute member, TypeDefinition typeDef, TypeRegistry registry)
+        public static string GetNullableValueAccess(string sourceVar, ProtoMemberInfo member, TypeDefinition typeDef, TypeRegistry registry)
         {
             // If member.IsNullable = true in context of GenerateComplexType,
             // it means it's a nullable value type (struct or enum), not a reference type.
@@ -307,11 +307,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         /// </remarks>
         /// <param name="members">The original ProtoMember collection</param>
         /// <returns>Sorted enumerable for optimal dispatch ordering</returns>
-        public static System.Collections.Generic.IEnumerable<Attributes.ProtoMemberAttribute> GetSortedFieldsForDispatch(
-            System.Collections.Generic.IEnumerable<Attributes.ProtoMemberAttribute> members)
+        public static System.Collections.Generic.IEnumerable<ProtoMemberInfo> GetSortedFieldsForDispatch(
+            System.Collections.Generic.IEnumerable<ProtoMemberInfo> members)
         {
             if (members == null)
-                return System.Linq.Enumerable.Empty<Attributes.ProtoMemberAttribute>();
+                return System.Linq.Enumerable.Empty<ProtoMemberInfo>();
 
             // Sort by FieldId ascending - lower IDs are typically hotter paths
             // This aligns with protobuf best practices where important/common fields have low IDs
@@ -324,11 +324,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         /// </summary>
         /// <param name="protoIncludes">The original ProtoInclude collection</param>
         /// <returns>Sorted enumerable for optimal dispatch ordering</returns>
-        public static System.Collections.Generic.IEnumerable<ProtoIncludeAttribute> GetSortedProtoIncludesForDispatch(
-            System.Collections.Generic.IEnumerable<ProtoIncludeAttribute> protoIncludes)
+        public static System.Collections.Generic.IEnumerable<ProtoIncludeInfo> GetSortedProtoIncludesForDispatch(
+            System.Collections.Generic.IEnumerable<ProtoIncludeInfo> protoIncludes)
         {
             if (protoIncludes == null)
-                return System.Linq.Enumerable.Empty<ProtoIncludeAttribute>();
+                return System.Linq.Enumerable.Empty<ProtoIncludeInfo>();
 
             // Sort by FieldId ascending - lower IDs are typically more common subtypes
             return protoIncludes.OrderBy(p => p.FieldId);

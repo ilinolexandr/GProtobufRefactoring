@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using GProtobuf.Generator.Analysis;
-using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers;
 using GProtobuf.Generator.V2.Handlers.Core;
@@ -999,7 +998,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Sorts ProtoIncludes from most derived to base to ensure proper type checking.
         /// Example: [C, B] so that "instance is C" is checked before "instance is B"
         /// </summary>
-        private List<ProtoIncludeAttribute> SortProtoIncludesByDepth(List<ProtoIncludeAttribute> includes)
+        private List<ProtoIncludeInfo> SortProtoIncludesByDepth(List<ProtoIncludeInfo> includes)
         {
             if (includes == null || includes.Count <= 1)
                 return includes;
@@ -1159,7 +1158,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// <summary>
         /// Generates code to write a single field based on its type.
         /// </summary>
-        private void GenerateFieldWrite(ProtoMemberAttribute member, string objectName)
+        private void GenerateFieldWrite(ProtoMemberInfo member, string objectName)
         {
             string sourceVar = $"{objectName}.{member.Name}";
             var category = GeneratorHelpers.GetFieldCategory(member, _primitiveHandler);
@@ -1201,7 +1200,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GenerateEnumFieldWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateEnumFieldWrite(ProtoMemberInfo member, string sourceVar)
         {
             EnumFieldHelper.GenerateEnumField(
                 _sb,
@@ -1211,13 +1210,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 writeValue: (valueExpr, _) => _sb.AppendIndentedLine($"writer.WriteVarInt32((int){valueExpr});"));
         }
 
-        private void GenerateMapFieldWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateMapFieldWrite(ProtoMemberInfo member, string sourceVar)
         {
             var mapHandler = new MapHandler(_sb, _virtualMapRegistry, _className, _registry, _virtualTypesNamespace);
             mapHandler.GenerateWrite(member, sourceVar);
         }
 
-        private void GenerateCollectionFieldWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateCollectionFieldWrite(ProtoMemberInfo member, string sourceVar)
         {
             // Check if element type is enum (enums use varint encoding like primitives)
             var normalizedType = TypeMapping.NormalizeTypeName(member.CollectionElementType);
@@ -1269,7 +1268,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GenerateComplexTypeWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateComplexTypeWrite(ProtoMemberInfo member, string sourceVar)
         {
             // Check if type has a serialization proxy
             var proxy = GetProxyForType(member.Type);
@@ -1326,7 +1325,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates write code for a field whose type has a serialization proxy.
         /// Converts original → proxy via [ProxyWrap], serializes proxy, optionally calls [ProxyReturn].
         /// </summary>
-        private void GenerateProxyTypeWrite(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
+        private void GenerateProxyTypeWrite(ProtoMemberInfo member, string sourceVar, ProxyDefinition proxy)
         {
             var proxyTypeDef = _registry.GetByFullName(proxy.ProxyTypeFullName);
             bool isOriginalStruct = proxy.IsStruct; // proxy struct implies original is likely struct too
@@ -1379,7 +1378,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Wire format: [field tag][total length] [wrapper tag][wrapper length][derived fields only][base fields OUTSIDE wrapper]
         /// NOTE: Base fields are written OUTSIDE the wrapper for protobuf-net compatibility.
         /// </summary>
-        private void GenerateNestedDerivedTypeWrite(ProtoMemberAttribute member, string sourceVar, string typeName, TypeDefinition typeDef)
+        private void GenerateNestedDerivedTypeWrite(ProtoMemberInfo member, string sourceVar, string typeName, TypeDefinition typeDef)
         {
             bool isNonNullableStruct = typeDef != null && typeDef.IsStruct && !member.IsNullable;
             string valueArg = GeneratorHelpers.GetNullableValueAccess(sourceVar, member, typeDef, _registry);
@@ -1450,7 +1449,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// <summary>
         /// Generates standard write code for complex types (no nested derived type special handling).
         /// </summary>
-        private void GenerateStandardComplexTypeWrite(ProtoMemberAttribute member, string sourceVar, string typeName, TypeDefinition typeDef)
+        private void GenerateStandardComplexTypeWrite(ProtoMemberInfo member, string sourceVar, string typeName, TypeDefinition typeDef)
         {
             bool isNonNullableStruct = typeDef != null && typeDef.IsStruct && !member.IsNullable;
             var calcVar = isNonNullableStruct ? $"calculator_{member.FieldId}" : "calculator";
@@ -1484,7 +1483,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates runtime type dispatch to add ProtoInclude wrapper for derived type instances.
         /// NOTE: Base fields are written OUTSIDE the wrapper for protobuf-net compatibility.
         /// </summary>
-        private void GeneratePolymorphicFieldWrite(ProtoMemberAttribute member, string sourceVar, string typeName, TypeDefinition typeDef)
+        private void GeneratePolymorphicFieldWrite(ProtoMemberInfo member, string sourceVar, string typeName, TypeDefinition typeDef)
         {
             var sortedDerived = GeneratorHelpers.GetSortedDerivedTypes(member.Type, _registry);
             if (sortedDerived == null)
@@ -1598,7 +1597,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates code to calculate size of a single field into a specified calculator variable.
         /// Similar to GenerateFieldWrite but for size calculation.
         /// </summary>
-        private void GenerateFieldSizeCalculation(ProtoMemberAttribute member, string objectName, string calculatorVar)
+        private void GenerateFieldSizeCalculation(ProtoMemberInfo member, string objectName, string calculatorVar)
         {
             string sourceVar = $"{objectName}.{member.Name}";
 
@@ -1644,7 +1643,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GenerateEnumFieldSizeCalculation(ProtoMemberAttribute member, string sourceVar, string calculatorVar)
+        private void GenerateEnumFieldSizeCalculation(ProtoMemberInfo member, string sourceVar, string calculatorVar)
         {
             EnumFieldHelper.GenerateEnumField(
                 _sb,
@@ -1654,13 +1653,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 writeValue: (valueExpr, _) => _sb.AppendIndentedLine($"{calculatorVar}.WriteVarInt32((int){valueExpr});"));
         }
 
-        private void GenerateMapFieldSizeCalculation(ProtoMemberAttribute member, string sourceVar, string calculatorVar)
+        private void GenerateMapFieldSizeCalculation(ProtoMemberInfo member, string sourceVar, string calculatorVar)
         {
             var mapHandler = new MapHandler(_sb, _virtualMapRegistry, _className, _registry, _virtualTypesNamespace);
             mapHandler.GenerateSize(member, sourceVar, calculatorVar);
         }
 
-        private void GenerateCollectionFieldSizeCalculation(ProtoMemberAttribute member, string sourceVar, string calculatorVar)
+        private void GenerateCollectionFieldSizeCalculation(ProtoMemberInfo member, string sourceVar, string calculatorVar)
         {
             // Check if element type is enum (enums use varint encoding like primitives)
             var normalizedType = TypeMapping.NormalizeTypeName(member.CollectionElementType);
@@ -1714,7 +1713,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GenerateComplexTypeSizeCalculation(ProtoMemberAttribute member, string sourceVar, string calculatorVar)
+        private void GenerateComplexTypeSizeCalculation(ProtoMemberInfo member, string sourceVar, string calculatorVar)
         {
             var typeName = TypeNameHelper.GetClassName(member.Type);
 

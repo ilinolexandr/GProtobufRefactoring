@@ -4,7 +4,7 @@ namespace GProtobuf.Generator.CodeGeneration
     /// Options extracted from [assembly: GProtobufOptions(...)] attribute.
     /// Controls which code generators are enabled.
     /// </summary>
-    public sealed record GeneratorOptions
+    internal sealed record GeneratorOptions
     {
         /// <summary>
         /// Enable generation of SpanReader-based deserialization methods.

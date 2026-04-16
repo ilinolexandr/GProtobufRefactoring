@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using GProtobuf.Generator.Analysis;
-using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.Handlers.Core;
 using GProtobuf.Generator.WireFormat;
 
@@ -25,7 +24,7 @@ namespace GProtobuf.Generator.V2.Helpers
         /// <param name="member">The proto member attribute describing the collection.</param>
         /// <param name="registry">The type registry for looking up type information.</param>
         /// <returns>True if ObjectArrayBuilder should be used, false for List&lt;T&gt;.</returns>
-        internal static bool ShouldUseObjectArrayBuilder(ProtoMemberAttribute member, TypeRegistry registry)
+        internal static bool ShouldUseObjectArrayBuilder(ProtoMemberInfo member, TypeRegistry registry)
         {
             if (member?.CollectionElementType == null)
                 return false;
@@ -80,7 +79,7 @@ namespace GProtobuf.Generator.V2.Helpers
         /// _builder_X / _tempList_X variable regardless of element type, because Array and
         /// IEnumerable&lt;T&gt; cannot be incrementally appended.
         /// </summary>
-        internal static bool IsArrayOrIEnumerable(ProtoMemberAttribute member)
+        internal static bool IsArrayOrIEnumerable(ProtoMemberInfo member)
         {
             if (member == null || !member.IsCollection)
                 return false;
@@ -108,7 +107,7 @@ namespace GProtobuf.Generator.V2.Helpers
         /// These kinds go through the builder only when the element type is also builder-eligible
         /// (class or string) — otherwise the existing per-Add path is faster.
         /// </summary>
-        internal static bool IsAppendableBuilderCandidate(ProtoMemberAttribute member)
+        internal static bool IsAppendableBuilderCandidate(ProtoMemberInfo member)
         {
             if (member == null || !member.IsCollection || member.Type == null)
                 return false;
@@ -149,7 +148,7 @@ namespace GProtobuf.Generator.V2.Helpers
         /// - Array / IEnumerable&lt;T&gt;: always (element-type-agnostic; primitives still go through templist).
         /// - List&lt;T&gt; / IList&lt;T&gt; / ICollection&lt;T&gt;: only when element type is builder-eligible (class/string).
         /// </summary>
-        internal static bool IsFieldNeedingTempListOrBuilder(ProtoMemberAttribute member, TypeRegistry registry)
+        internal static bool IsFieldNeedingTempListOrBuilder(ProtoMemberInfo member, TypeRegistry registry)
         {
             if (IsArrayOrIEnumerable(member))
                 return true;
@@ -165,7 +164,7 @@ namespace GProtobuf.Generator.V2.Helpers
         /// at the read site (so PrimitiveHandler / CollectionHandler should write directly into
         /// <c>_builder_{Name}</c> instead of a local temp list or instance.X.Add).
         /// </summary>
-        internal static bool ShouldUseObjectArrayBuilderForRead(ProtoMemberAttribute member, TypeRegistry registry)
+        internal static bool ShouldUseObjectArrayBuilderForRead(ProtoMemberInfo member, TypeRegistry registry)
         {
             if (!ShouldUseObjectArrayBuilder(member, registry))
                 return false;
@@ -184,7 +183,7 @@ namespace GProtobuf.Generator.V2.Helpers
         /// <param name="member">The proto member attribute describing the collection.</param>
         /// <param name="registry">The type registry for looking up type information.</param>
         /// <returns>True if _tempList_ declaration is needed, false otherwise.</returns>
-        internal static bool NeedsTempListDeclaration(ProtoMemberAttribute member, TypeRegistry registry)
+        internal static bool NeedsTempListDeclaration(ProtoMemberInfo member, TypeRegistry registry)
         {
             if (member?.CollectionElementType == null)
                 return false;
@@ -231,8 +230,8 @@ namespace GProtobuf.Generator.V2.Helpers
         /// </param>
         internal static void GenerateDeclarations(
             StringBuilderWithIndent sb,
-            IReadOnlyList<ProtoMemberAttribute> members,
-            Func<ProtoMemberAttribute, string> getElementType,
+            IReadOnlyList<ProtoMemberInfo> members,
+            Func<ProtoMemberInfo, string> getElementType,
             string targetVarForPreSeed = null)
         {
             if (members == null || members.Count == 0)
@@ -269,9 +268,9 @@ namespace GProtobuf.Generator.V2.Helpers
         /// If null, defaults to checking CollectionKind == Array.</param>
         internal static void GenerateTempListFinalization(
             StringBuilderWithIndent sb,
-            IReadOnlyList<ProtoMemberAttribute> members,
+            IReadOnlyList<ProtoMemberInfo> members,
             string targetVar,
-            Func<ProtoMemberAttribute, bool> isArrayType = null)
+            Func<ProtoMemberInfo, bool> isArrayType = null)
         {
             if (members == null || members.Count == 0)
                 return;
@@ -310,9 +309,9 @@ namespace GProtobuf.Generator.V2.Helpers
         /// If null, defaults to checking CollectionKind == Array.</param>
         internal static void GenerateConversion(
             StringBuilderWithIndent sb,
-            IReadOnlyList<ProtoMemberAttribute> members,
+            IReadOnlyList<ProtoMemberInfo> members,
             string targetVar,
-            Func<ProtoMemberAttribute, bool> isArrayType = null)
+            Func<ProtoMemberInfo, bool> isArrayType = null)
         {
             if (members == null || members.Count == 0)
                 return;
@@ -347,7 +346,7 @@ namespace GProtobuf.Generator.V2.Helpers
         /// <param name="members">The collection members using ObjectArrayBuilder.</param>
         internal static void GenerateDispose(
             StringBuilderWithIndent sb,
-            IReadOnlyList<ProtoMemberAttribute> members)
+            IReadOnlyList<ProtoMemberInfo> members)
         {
             if (members == null || members.Count == 0)
                 return;

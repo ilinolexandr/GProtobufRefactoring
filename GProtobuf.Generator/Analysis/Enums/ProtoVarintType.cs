@@ -1,9 +1,9 @@
-namespace GProtobuf.Generator.Attributes
+namespace GProtobuf.Generator.Analysis
 {
     /// <summary>
     /// Specifies the varint encoding type for ProtoVarint structs.
     /// </summary>
-    public enum ProtoVarintType
+    internal enum ProtoVarintType
     {
         /// <summary>
         /// Unsigned 32-bit integer (varint encoding).

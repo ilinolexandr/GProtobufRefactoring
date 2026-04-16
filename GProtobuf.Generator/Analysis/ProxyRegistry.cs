@@ -5,7 +5,7 @@ namespace GProtobuf.Generator.Analysis
     /// <summary>
     /// Registry of serialization proxy mappings. Maps original type full names to their proxy definitions.
     /// </summary>
-    public sealed class ProxyRegistry
+    internal sealed class ProxyRegistry
     {
         private readonly Dictionary<string, ProxyDefinition> _proxies = new Dictionary<string, ProxyDefinition>();
         private readonly Dictionary<string, ProxyDefinition> _proxiesByProxyType = new Dictionary<string, ProxyDefinition>();

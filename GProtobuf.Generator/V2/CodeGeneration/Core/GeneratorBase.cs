@@ -159,7 +159,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         protected void ForEachTypeMember(
             TypeDefinition type,
             string sourceVar,
-            Action<ProtoMemberAttribute, string> handleProtoMember,
+            Action<ProtoMemberInfo, string> handleProtoMember,
             Action<CustomBufferMember, string> handleCustomBufferMember = null)
         {
             if (type.ProtoMembers != null)
@@ -183,9 +183,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         /// Iterates over ProtoMembers only (with optional null/count check).
         /// </summary>
         protected void ForEachProtoMember(
-            IReadOnlyList<ProtoMemberAttribute> members,
+            IReadOnlyList<ProtoMemberInfo> members,
             string sourceVar,
-            Action<ProtoMemberAttribute, string> handleMember)
+            Action<ProtoMemberInfo, string> handleMember)
         {
             if (members != null && members.Count > 0)
             {

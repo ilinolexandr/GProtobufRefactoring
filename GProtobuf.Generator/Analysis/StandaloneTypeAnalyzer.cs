@@ -7,7 +7,7 @@ namespace GProtobuf.Generator.Analysis
     /// <summary>
     /// Analyzes ITypeSymbol from [GenerateSerializer] attribute and creates StandaloneTypeInfo.
     /// </summary>
-    public static class StandaloneTypeAnalyzer
+    internal static class StandaloneTypeAnalyzer
     {
         private static readonly HashSet<string> PrimitiveTypes = new()
         {

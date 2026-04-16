@@ -7,7 +7,7 @@ namespace GProtobuf.Generator.V2.Helpers
     /// Represents a node in the binary dispatch tree.
     /// Can be either an internal node (with pivot and children) or a leaf node (with case data).
     /// </summary>
-    public class BinaryDispatchNode
+    internal class BinaryDispatchNode
     {
         /// <summary>
         /// For internal nodes: the pivot field ID for comparison.
@@ -45,7 +45,7 @@ namespace GProtobuf.Generator.V2.Helpers
     /// <summary>
     /// Represents a single case in the dispatch (field ID -> type name mapping).
     /// </summary>
-    public class DispatchCase
+    internal class DispatchCase
     {
         public int FieldId { get; set; }
         public string TypeName { get; set; }
@@ -60,7 +60,7 @@ namespace GProtobuf.Generator.V2.Helpers
     /// <summary>
     /// Analyzes ProtoInclude cases and builds optimal binary dispatch trees.
     /// </summary>
-    public static class BinaryDispatchAnalyzer
+    internal static class BinaryDispatchAnalyzer
     {
         /// <summary>
         /// Minimum number of cases required to use binary dispatch.
@@ -99,7 +99,7 @@ namespace GProtobuf.Generator.V2.Helpers
         /// </summary>
         /// <param name="protoIncludes">List of ProtoInclude attributes.</param>
         /// <returns>Root node of the binary dispatch tree.</returns>
-        public static BinaryDispatchNode BuildTree(IEnumerable<ProtoIncludeAttribute> protoIncludes)
+        public static BinaryDispatchNode BuildTree(IEnumerable<ProtoIncludeInfo> protoIncludes)
         {
             var cases = protoIncludes
                 .Select(pi => new DispatchCase(pi.FieldId, pi.Type))

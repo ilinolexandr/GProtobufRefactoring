@@ -131,7 +131,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (mapTypes.Count == 0 && tupleTypes.Count == 0)
                 return;
 
-            sb.AppendIndentedLine("internal static class SpanReaders");
+            sb.AppendIndentedLine("public static class SpanReaders");
             sb.StartNewBlock();
 
             // Generate EstimateMapCapacity helper (if we have any map types)
@@ -186,7 +186,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (mapTypes.Count == 0 && tupleTypes.Count == 0 && collectionTypes.Count == 0)
                 return;
 
-            sb.AppendIndentedLine("internal static class StreamReaders");
+            sb.AppendIndentedLine("public static class StreamReaders");
             sb.StartNewBlock();
 
             // Generate map entry readers
@@ -437,7 +437,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (mapTypes.Count == 0 && tupleTypes.Count == 0)
                 return;
 
-            sb.AppendIndentedLine("internal static class SizeCalculators");
+            sb.AppendIndentedLine("public static class SizeCalculators");
             sb.StartNewBlock();
 
             // Generate map entry size calculators
@@ -483,7 +483,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (mapTypes.Count == 0 && tupleTypes.Count == 0)
                 return;
 
-            sb.AppendIndentedLine($"internal static class {className}");
+            sb.AppendIndentedLine($"public static class {className}");
             sb.StartNewBlock();
 
             // Generate map entry writers
@@ -529,7 +529,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (mapTypes.Count == 0 && tupleTypes.Count == 0)
                 return;
 
-            sb.AppendIndentedLine("internal static class OnePassStreamWriters");
+            sb.AppendIndentedLine("public static class OnePassStreamWriters");
             sb.StartNewBlock();
 
             // Generate map entry writers

@@ -1,4 +1,3 @@
-using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.Handlers.Core;
 using GProtobuf.Generator.V2.Helpers;
 using System.Collections.Generic;

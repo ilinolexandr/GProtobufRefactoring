@@ -1,5 +1,4 @@
 using GProtobuf.Generator.Analysis;
-using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.Handlers.Core;
 using GProtobuf.Generator.V2.Helpers;
 using GProtobuf.Generator.WireFormat;

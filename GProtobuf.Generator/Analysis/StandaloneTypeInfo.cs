@@ -6,7 +6,7 @@ namespace GProtobuf.Generator.Analysis
     /// Represents a standalone type for serialization (List&lt;T&gt;, T[], Dictionary&lt;K,V&gt;, primitives).
     /// These types are registered via [assembly: GenerateSerializer(typeof(...))] attribute.
     /// </summary>
-    public sealed record StandaloneTypeInfo(
+    internal sealed record StandaloneTypeInfo(
         StandaloneTypeKind Kind,
         string FullTypeName,
         string TargetNamespace,
@@ -38,7 +38,7 @@ namespace GProtobuf.Generator.Analysis
     /// <summary>
     /// Kind of standalone type for serialization.
     /// </summary>
-    public enum StandaloneTypeKind
+    internal enum StandaloneTypeKind
     {
         List,
         Array,

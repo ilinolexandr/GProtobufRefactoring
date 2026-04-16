@@ -19,7 +19,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         /// <param name="writeValue">Action to write the value. Parameters: (valueExpression, isNullableValue)</param>
         public static void GenerateEnumField(
             StringBuilderWithIndent sb,
-            ProtoMemberAttribute member,
+            ProtoMemberInfo member,
             string sourceVar,
             Action writeTag,
             Action<string, bool> writeValue)

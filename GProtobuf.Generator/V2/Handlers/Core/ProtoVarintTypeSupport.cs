@@ -13,11 +13,11 @@ namespace GProtobuf.Generator.V2.Handlers.Core
         #region Read Generation
 
         /// <summary>
-        /// Generates code to read a ProtoVarint field using ProtoMemberAttribute info.
+        /// Generates code to read a ProtoVarint field using ProtoMemberInfo info.
         /// </summary>
         public static void GenerateRead(
             StringBuilderWithIndent sb,
-            ProtoMemberAttribute member,
+            ProtoMemberInfo member,
             string targetVar,
             string readerVar = "reader")
         {
@@ -45,11 +45,11 @@ namespace GProtobuf.Generator.V2.Handlers.Core
         #region Write Generation
 
         /// <summary>
-        /// Generates code to write a ProtoVarint field using ProtoMemberAttribute info.
+        /// Generates code to write a ProtoVarint field using ProtoMemberInfo info.
         /// </summary>
         public static void GenerateWrite(
             StringBuilderWithIndent sb,
-            ProtoMemberAttribute member,
+            ProtoMemberInfo member,
             string sourceVar,
             string writerVar = "writer")
         {
@@ -101,11 +101,11 @@ namespace GProtobuf.Generator.V2.Handlers.Core
         #region Size Calculation Generation
 
         /// <summary>
-        /// Generates code to calculate size of a ProtoVarint field using ProtoMemberAttribute info.
+        /// Generates code to calculate size of a ProtoVarint field using ProtoMemberInfo info.
         /// </summary>
         public static void GenerateSize(
             StringBuilderWithIndent sb,
-            ProtoMemberAttribute member,
+            ProtoMemberInfo member,
             string sourceVar,
             string calculatorVar = "calculator")
         {

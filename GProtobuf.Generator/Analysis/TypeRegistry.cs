@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.Utilities;
 
 namespace GProtobuf.Generator.Analysis
@@ -10,7 +9,7 @@ namespace GProtobuf.Generator.Analysis
     /// Centralized registry for managing type definitions, inheritance hierarchies, and namespace resolution.
     /// Populated during SerializerGenerator analysis phase, queried during code generation.
     /// </summary>
-    public class TypeRegistry
+    internal class TypeRegistry
     {
         // Fast lookups by type identity
         private readonly Dictionary<string, TypeDefinition> _byFullName = new Dictionary<string, TypeDefinition>();
@@ -35,7 +34,7 @@ namespace GProtobuf.Generator.Analysis
 
         private static readonly string[] EmptyStringArray = Array.Empty<string>();
         private static readonly TypeDefinition[] EmptyTypeArray = Array.Empty<TypeDefinition>();
-        private static readonly ProtoMemberAttribute[] EmptyProtoMemberArray = Array.Empty<ProtoMemberAttribute>();
+        private static readonly ProtoMemberInfo[] EmptyProtoMemberArray = Array.Empty<ProtoMemberInfo>();
 
         #region Registration
 
@@ -82,7 +81,7 @@ namespace GProtobuf.Generator.Analysis
         /// Registers a lightweight ProtoVarint type that doesn't have [ProtoContract].
         /// Only stores the ProtoVarint metadata needed for code generation.
         /// </summary>
-        public void RegisterProtoVarintType(string fullName, Attributes.ProtoVarintType varintType, string valueMember)
+        public void RegisterProtoVarintType(string fullName, ProtoVarintType varintType, string valueMember)
         {
             if (_byFullName.ContainsKey(fullName))
                 return; // Already registered (e.g., has [ProtoContract])
@@ -173,7 +172,7 @@ namespace GProtobuf.Generator.Analysis
         /// Gets the ProtoVarint type for a type marked with [ProtoVarint] attribute.
         /// Returns null if the type is not a ProtoVarint type.
         /// </summary>
-        public Attributes.ProtoVarintType? GetProtoVarintType(string typeName)
+        public ProtoVarintType? GetProtoVarintType(string typeName)
         {
             var type = GetByFullName(typeName);
             if (type?.IsProtoVarint == true)
@@ -406,7 +405,7 @@ namespace GProtobuf.Generator.Analysis
             return GetMaxChainDepth(type.FullName) <= maxDepth;
         }
 
-        public IReadOnlyList<ProtoMemberAttribute> GetOwnProtoMembers(string fullTypeName)
+        public IReadOnlyList<ProtoMemberInfo> GetOwnProtoMembers(string fullTypeName)
         {
             var type = GetByFullName(fullTypeName);
             if (type?.ProtoMembers == null || type.ProtoMembers.Count == 0)
@@ -426,7 +425,7 @@ namespace GProtobuf.Generator.Analysis
                 parentMemberNames.Add(parentMember.Name);
             }
 
-            var ownMembers = new List<ProtoMemberAttribute>(type.ProtoMembers.Count);
+            var ownMembers = new List<ProtoMemberInfo>(type.ProtoMembers.Count);
             foreach (var member in type.ProtoMembers)
             {
                 if (!parentMemberNames.Contains(member.Name))
@@ -442,7 +441,7 @@ namespace GProtobuf.Generator.Analysis
 
         #region Nested Derived Type Detection
 
-        public bool IsConcreteNestedDerivedType(ProtoMemberAttribute member)
+        public bool IsConcreteNestedDerivedType(ProtoMemberInfo member)
         {
             if (member == null || string.IsNullOrEmpty(member.Type))
                 return false;
@@ -460,7 +459,7 @@ namespace GProtobuf.Generator.Analysis
             return IsDerivedType(member.Type);
         }
 
-        public bool IsPolymorphicField(ProtoMemberAttribute member)
+        public bool IsPolymorphicField(ProtoMemberInfo member)
         {
             if (member == null || string.IsNullOrEmpty(member.Type))
                 return false;
@@ -575,10 +574,10 @@ namespace GProtobuf.Generator.Analysis
     /// <summary>
     /// Represents a ProtoMember field resolved through flat inheritance chain.
     /// </summary>
-    public class MergedFieldInfo
+    internal class MergedFieldInfo
     {
         public int FieldId { get; set; }
-        public ProtoMemberAttribute Field { get; set; }
+        public ProtoMemberInfo Field { get; set; }
         public string DeclaringType { get; set; }
         public bool IsShadowed { get; set; }
     }

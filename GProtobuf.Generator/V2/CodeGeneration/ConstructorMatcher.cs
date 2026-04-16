@@ -11,7 +11,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
     /// </summary>
     internal class ConstructorMatcher
     {
-        public class FieldInfo
+        internal class FieldInfo
         {
             public int FieldId { get; set; }
             public string Name { get; set; }
@@ -58,7 +58,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             return result;
         }
 
-        public class ConstructorMatchResult
+        internal class ConstructorMatchResult
         {
             public IMethodSymbol? Constructor { get; set; }
             public List<ParameterMapping>? ParameterMappings { get; set; }
@@ -69,7 +69,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             public bool IsSuccess => ErrorMessage == null;
         }
 
-        public class ParameterMapping
+        internal class ParameterMapping
         {
             public string ParameterName { get; set; }
             public int ParameterOrdinal { get; set; }

@@ -4,7 +4,7 @@ namespace GProtobuf.Generator.Analysis
     /// Represents a serialization callback method marked with [ProtoBeforeSerialization] or [ProtoAfterSerialization].
     /// Created during source generation by analyzing methods with callback attributes.
     /// </summary>
-    public sealed class SerializationCallback
+    internal sealed class SerializationCallback
     {
         /// <summary>
         /// Name of the callback method.

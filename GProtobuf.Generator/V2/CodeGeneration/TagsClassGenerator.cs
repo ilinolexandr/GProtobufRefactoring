@@ -168,7 +168,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (_collectedTags.Count == 0)
                 return;
 
-            _sb.AppendIndentedLine("internal static class Tags");
+            _sb.AppendIndentedLine("public static class Tags");
             _sb.StartNewBlock();
 
             foreach (var (fieldId, wireType) in _collectedTags)

@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using GProtobuf.Generator.Analysis;
-using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers;
 using GProtobuf.Generator.V2.Handlers.Core;
@@ -753,7 +752,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// <summary>
         /// Generates code to calculate size of a single field.
         /// </summary>
-        private void GenerateFieldSize(ProtoMemberAttribute member, string objectName)
+        private void GenerateFieldSize(ProtoMemberInfo member, string objectName)
         {
             string sourceVar = $"{objectName}.{member.Name}";
             var category = GeneratorHelpers.GetFieldCategory(member, _primitiveHandler);
@@ -795,7 +794,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GenerateEnumFieldSize(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateEnumFieldSize(ProtoMemberInfo member, string sourceVar)
         {
             EnumFieldHelper.GenerateEnumField(
                 _sb,
@@ -805,13 +804,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 writeValue: (valueExpr, _) => _sb.AppendIndentedLine($"calculator.WriteVarInt32((int){valueExpr});"));
         }
 
-        private void GenerateMapFieldSize(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateMapFieldSize(ProtoMemberInfo member, string sourceVar)
         {
             var mapHandler = new MapHandler(_sb, _virtualMapRegistry, "SizeCalculators", _registry, _virtualTypesNamespace);
             mapHandler.GenerateSize(member, sourceVar);
         }
 
-        private void GenerateCollectionFieldSize(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateCollectionFieldSize(ProtoMemberInfo member, string sourceVar)
         {
             // Check if element type is enum (enums use varint encoding like primitives)
             var normalizedType = TypeMapping.NormalizeTypeName(member.CollectionElementType);
@@ -861,7 +860,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GenerateComplexTypeSize(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateComplexTypeSize(ProtoMemberInfo member, string sourceVar)
         {
             // Check if type has a serialization proxy
             var proxy = GetProxyForType(member.Type);
@@ -912,7 +911,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates size calculation for a field whose type has a serialization proxy.
         /// Converts original → proxy via [ProxyWrap], calculates proxy size.
         /// </summary>
-        private void GenerateProxyTypeSize(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
+        private void GenerateProxyTypeSize(ProtoMemberInfo member, string sourceVar, ProxyDefinition proxy)
         {
             bool needsNullCheck = !proxy.IsStruct || member.IsNullable;
 
@@ -950,7 +949,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates size calculation for nested derived type fields (with ProtoInclude wrapper).
         /// Wire format: [field tag][total length] [wrapper tag][wrapper length] [derived fields] [base fields]
         /// </summary>
-        private void GenerateNestedDerivedTypeSize(ProtoMemberAttribute member, string sourceVar, string typeName, TypeDefinition typeDef)
+        private void GenerateNestedDerivedTypeSize(ProtoMemberInfo member, string sourceVar, string typeName, TypeDefinition typeDef)
         {
             bool isNonNullableStruct = typeDef != null && typeDef.IsStruct && !member.IsNullable;
             string valueArg = GeneratorHelpers.GetNullableValueAccess(sourceVar, member, typeDef, _registry);
@@ -1014,7 +1013,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// <summary>
         /// Generates standard size calculation for complex types (no nested derived type special handling).
         /// </summary>
-        private void GenerateStandardComplexTypeSize(ProtoMemberAttribute member, string sourceVar, string typeName, TypeDefinition typeDef)
+        private void GenerateStandardComplexTypeSize(ProtoMemberInfo member, string sourceVar, string typeName, TypeDefinition typeDef)
         {
             bool isNonNullableStruct = typeDef != null && typeDef.IsStruct && !member.IsNullable;
             var lengthVar = isNonNullableStruct ? $"lengthBefore_{member.FieldId}" : "lengthBefore";
@@ -1040,7 +1039,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Example: [ProtoMember(2)] ProtoParameterBase ProtoValue (where ProtoParameterBase has multiple ProtoIncludes)
         /// Generates runtime type dispatch to calculate ProtoInclude wrapper size for derived type instances.
         /// </summary>
-        private void GeneratePolymorphicFieldSize(ProtoMemberAttribute member, string sourceVar, string typeName, TypeDefinition typeDef)
+        private void GeneratePolymorphicFieldSize(ProtoMemberInfo member, string sourceVar, string typeName, TypeDefinition typeDef)
         {
             var sortedDerived = GeneratorHelpers.GetSortedDerivedTypes(member.Type, _registry);
             if (sortedDerived == null)

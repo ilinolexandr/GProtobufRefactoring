@@ -60,8 +60,8 @@ public sealed class SerializerGenerator : IIncrementalGenerator
             {
                 var typeWithAttribute = (syntaxContext.TargetSymbol as INamedTypeSymbol)!;
                 var namespaceName = syntaxContext.TargetSymbol.ContainingNamespace.ToDisplayString();
-                var protoIncludes = GetProtoIncludeAttributes(typeWithAttribute);
-                var protoMembers = GetProtoMemberAttributes(typeWithAttribute, out var ignoredGetOnly);
+                var protoIncludes = GetProtoIncludeInfos(typeWithAttribute);
+                var protoMembers = GetProtoMemberInfos(typeWithAttribute, out var ignoredGetOnly);
                 var customBufferMembers = GetCustomBufferMembers(typeWithAttribute);
                 var hasParameterlessConstructor = HasParameterlessConstructor(typeWithAttribute);
                 var baseClass = GetBaseClass(typeWithAttribute);
@@ -132,8 +132,8 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                 }
 
                 var namespaceName = syntaxContext.TargetSymbol.ContainingNamespace.ToDisplayString();
-                var protoIncludes = GetProtoIncludeAttributes(typeWithAttribute);
-                var protoMembers = GetProtoMemberAttributes(typeWithAttribute, out var ignoredGetOnly);
+                var protoIncludes = GetProtoIncludeInfos(typeWithAttribute);
+                var protoMembers = GetProtoMemberInfos(typeWithAttribute, out var ignoredGetOnly);
                 var customBufferMembers = GetCustomBufferMembers(typeWithAttribute);
                 var hasParameterlessConstructor = HasParameterlessConstructor(typeWithAttribute);
                 var baseClass = GetBaseClass(typeWithAttribute);
@@ -535,12 +535,12 @@ public sealed class SerializerGenerator : IIncrementalGenerator
             && match.ParameterMappings.Count > 0;
     }
 
-    private static List<ProtoMemberAttribute> GetProtoMemberAttributes(INamedTypeSymbol typeSymbol)
-        => GetProtoMemberAttributes(typeSymbol, out _);
+    private static List<ProtoMemberInfo> GetProtoMemberInfos(INamedTypeSymbol typeSymbol)
+        => GetProtoMemberInfos(typeSymbol, out _);
 
-    private static List<ProtoMemberAttribute> GetProtoMemberAttributes(INamedTypeSymbol typeSymbol, out List<string> ignoredGetOnlyProperties)
+    private static List<ProtoMemberInfo> GetProtoMemberInfos(INamedTypeSymbol typeSymbol, out List<string> ignoredGetOnlyProperties)
     {
-        var result = new List<ProtoMemberAttribute>();
+        var result = new List<ProtoMemberInfo>();
         ignoredGetOnlyProperties = null;
 
         foreach (var property in typeSymbol.GetMembers().OfType<IPropertySymbol>())
@@ -613,15 +613,13 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                     }
 
                     // Vytvoríme inštanciu s FieldId
-                    var protoMember = new ProtoMemberAttribute(fieldId)
+                    var protoMember = new ProtoMemberInfo(fieldId)
                     {
                         Name = propertyName,
                         Type = propertyType,
                         Namespace = nmspace,
-                        Interfaces = property.Type.AllInterfaces.Select(i => i.ToDisplayString()).ToList(),
                         IsNullable = isNullable,
                         IsInit = isInitOnly,
-                        HasPublicSetter = hasPublicSetter,
                         IsCollection = collectionInfo.IsCollection,
                         CollectionElementType = collectionInfo.ElementType != null ? TypeMapping.NormalizeTypeName(collectionInfo.ElementType) : null,
                         CollectionKind = collectionInfo.Kind,
@@ -727,16 +725,14 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                         throw new System.Exception($"ProtoVarint validation error for field '{fieldName}' in type '{typeSymbol.Name}': {protoVarintInfo.ValidationError}");
                     }
 
-                    // Create ProtoMemberAttribute instance
-                    var protoMember = new ProtoMemberAttribute(fieldId)
+                    // Create ProtoMemberInfo instance
+                    var protoMember = new ProtoMemberInfo(fieldId)
                     {
                         Name = fieldName,
                         Type = fieldType,
                         Namespace = nmspace,
-                        Interfaces = field.Type.AllInterfaces.Select(i => i.ToDisplayString()).ToList(),
                         IsNullable = isNullable,
                         IsInit = false,
-                        HasPublicSetter = !field.IsReadOnly,
                         IsCollection = collectionInfo.IsCollection,
                         CollectionElementType = collectionInfo.ElementType != null ? TypeMapping.NormalizeTypeName(collectionInfo.ElementType) : null,
                         CollectionKind = collectionInfo.Kind,
@@ -1018,7 +1014,6 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                         attribute.ConstructorArguments[0].Value is int fieldId &&
                         attribute.ConstructorArguments[1].Value is int operationValue)
                     {
-                        // ProtoBufferOperation enum: GetSize=0, Write=1, Read=2
                         switch (operationValue)
                         {
                             case 0: // GetSize
@@ -1083,9 +1078,9 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         return result;
     }
 
-    private static List<ProtoIncludeAttribute> GetProtoIncludeAttributes(INamedTypeSymbol typeSymbol)
+    private static List<ProtoIncludeInfo> GetProtoIncludeInfos(INamedTypeSymbol typeSymbol)
     {
-        var result = new List<ProtoIncludeAttribute>();
+        var result = new List<ProtoIncludeInfo>();
 
         // Prejdeme všetky atribúty na danej triede
         foreach (var attribute in typeSymbol.GetAttributes())
@@ -1116,7 +1111,7 @@ public sealed class SerializerGenerator : IIncrementalGenerator
             if (typeName is null || typeNamespace is null)
                 continue;
 
-            result.Add(new ProtoIncludeAttribute(tag, typeName, typeNamespace));
+            result.Add(new ProtoIncludeInfo(tag, typeName));
         }
 
         return result;

@@ -1,9 +1,9 @@
-namespace GProtobuf.Generator.Attributes
+namespace GProtobuf.Generator.Analysis
 {
     /// <summary>
     /// Represents the kind of collection type for serialization
     /// </summary>
-    public enum CollectionKind
+    internal enum CollectionKind
     {
         /// <summary>
         /// Not a collection type

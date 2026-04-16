@@ -559,7 +559,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (_registry != null && _registry.IsProtoVarint(TypeMapping.NormalizeTypeName(elementType)))
             {
                 var normalizedElemType = TypeMapping.NormalizeTypeName(elementType);
-                var varintType = _registry.GetProtoVarintType(normalizedElemType) ?? Attributes.ProtoVarintType.UInt32;
+                var varintType = _registry.GetProtoVarintType(normalizedElemType) ?? ProtoVarintType.UInt32;
                 var valueMember = _registry.GetProtoVarintValueMember(normalizedElemType);
                 var writeMethod = PrimitiveTypeCodeGenerator.GetProtoVarintWriteMethod(varintType);
                 TagCodeHelper.WriteTag(_sb, fieldId, WireType.VarInt);
@@ -1178,7 +1178,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// <summary>
         /// Generates code to write a single field based on its type.
         /// </summary>
-        private void GenerateFieldWrite(ProtoMemberAttribute member, string objectName)
+        private void GenerateFieldWrite(ProtoMemberInfo member, string objectName)
         {
             string sourceVar = $"{objectName}.{member.Name}";
             var category = GeneratorHelpers.GetFieldCategory(member, _primitiveHandler);
@@ -1219,7 +1219,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private void GenerateEnumFieldWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateEnumFieldWrite(ProtoMemberInfo member, string sourceVar)
         {
             EnumFieldHelper.GenerateEnumField(
                 _sb,
@@ -1229,7 +1229,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 writeValue: (valueExpr, _) => _sb.AppendIndentedLine($"writer.WriteVarInt32((int){valueExpr});"));
         }
 
-        private void GenerateMapFieldWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateMapFieldWrite(ProtoMemberInfo member, string sourceVar)
         {
             _sb.AppendIndentedLine($"if ({sourceVar} != null)");
             _sb.StartNewBlock();
@@ -1255,7 +1255,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.EndBlock();
         }
 
-        private void GenerateCollectionFieldWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateCollectionFieldWrite(ProtoMemberInfo member, string sourceVar)
         {
             var normalizedType = TypeMapping.NormalizeTypeName(member.CollectionElementType);
             bool isEnumCollection = _registry != null && (_registry.IsEnum(member.CollectionElementType) || _registry.IsEnum(normalizedType));
@@ -1310,7 +1310,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates write code for collections of BCL types like DateTime, Guid, TimeSpan.
         /// These are simple types but not included in primitive array handling.
         /// </summary>
-        private void GenerateBclTypeCollectionWrite(ProtoMemberAttribute member, string sourceVar, string normalizedType)
+        private void GenerateBclTypeCollectionWrite(ProtoMemberInfo member, string sourceVar, string normalizedType)
         {
             _sb.AppendIndentedLine($"if ({sourceVar} != null)");
             _sb.StartNewBlock();
@@ -1341,9 +1341,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates write code for collections of ProtoVarint types (structs with [ProtoVarint] attribute).
         /// These are written as simple VarInt values, not as sub-messages.
         /// </summary>
-        private void GenerateProtoVarintCollectionWrite(ProtoMemberAttribute member, string sourceVar, string normalizedType)
+        private void GenerateProtoVarintCollectionWrite(ProtoMemberInfo member, string sourceVar, string normalizedType)
         {
-            var varintType = _registry.GetProtoVarintType(normalizedType) ?? Attributes.ProtoVarintType.UInt32;
+            var varintType = _registry.GetProtoVarintType(normalizedType) ?? ProtoVarintType.UInt32;
             var valueMember = _registry.GetProtoVarintValueMember(normalizedType);
             var writeMethod = PrimitiveTypeCodeGenerator.GetProtoVarintWriteMethod(varintType);
 
@@ -1359,7 +1359,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.EndBlock();
         }
 
-        private void GenerateTupleFieldWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateTupleFieldWrite(ProtoMemberInfo member, string sourceVar)
         {
             var itemTypes = TupleHandler.ParseTupleTypes(member.Type);
             var tupleInfo = _virtualTupleRegistry.Register(member.Type, itemTypes);
@@ -1369,7 +1369,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine("writer.EndSubMessage();");
         }
 
-        private void GenerateTupleCollectionWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateTupleCollectionWrite(ProtoMemberInfo member, string sourceVar)
         {
             var itemTypes = TupleHandler.ParseTupleTypes(member.CollectionElementType);
             var tupleInfo = _virtualTupleRegistry.Register(member.CollectionElementType, itemTypes);
@@ -1388,7 +1388,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.EndBlock();
         }
 
-        private void GenerateComplexCollectionWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateComplexCollectionWrite(ProtoMemberInfo member, string sourceVar)
         {
             // Check if element type has a serialization proxy
             var proxy = GetProxyForType(member.CollectionElementType);
@@ -1437,7 +1437,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.EndBlock();
         }
 
-        private void GenerateProxyCollectionWrite(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
+        private void GenerateProxyCollectionWrite(ProtoMemberInfo member, string sourceVar, ProxyDefinition proxy)
         {
             _sb.AppendIndentedLine($"if ({sourceVar} != null)");
             _sb.StartNewBlock();
@@ -1465,7 +1465,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.EndBlock();
         }
 
-        private void GenerateComplexTypeWrite(ProtoMemberAttribute member, string sourceVar)
+        private void GenerateComplexTypeWrite(ProtoMemberInfo member, string sourceVar)
         {
             // Check if type has a serialization proxy
             var proxy = GetProxyForType(member.Type);
@@ -1536,7 +1536,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         /// Generates write code for a field whose type has a serialization proxy (OnePass variant).
         /// Uses BeginSubMessage/EndSubMessage instead of size pre-calculation.
         /// </summary>
-        private void GenerateProxyTypeWrite(ProtoMemberAttribute member, string sourceVar, ProxyDefinition proxy)
+        private void GenerateProxyTypeWrite(ProtoMemberInfo member, string sourceVar, ProxyDefinition proxy)
         {
             bool needsNullCheck = !proxy.IsStruct || member.IsNullable;
 

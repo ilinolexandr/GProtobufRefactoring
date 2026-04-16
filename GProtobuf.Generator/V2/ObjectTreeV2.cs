@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using GProtobuf.Generator.Analysis;
-using GProtobuf.Generator.Attributes;
 using GProtobuf.Generator.V2.CodeGeneration;
 using GProtobuf.Generator.V2.CodeGeneration.Core;
 using GProtobuf.Generator.V2.Handlers.Core;
@@ -48,7 +47,7 @@ namespace GProtobuf.Generator.V2
     /// 5. Code generators execute (Span, Stream, Buffer, Size, KeyValue)
     /// 6. Tags class inserted at beginning of file
     /// </remarks>
-    public class ObjectTreeV2
+    internal class ObjectTreeV2
     {
         private readonly TypeRegistry _registry = new();
         private readonly Microsoft.CodeAnalysis.Compilation _compilation;

@@ -4,7 +4,7 @@ namespace GProtobuf.Generator.Analysis
     /// Represents a custom buffer member with associated size, fill, and read methods.
     /// Created during source generation by analyzing methods with ProtoMemberBuffer* attributes.
     /// </summary>
-    public sealed class CustomBufferMember
+    internal sealed class CustomBufferMember
     {
         /// <summary>
         /// Unique field ID (tag) for this custom buffer field.
