@@ -773,6 +773,77 @@ namespace GProtobuf.Generator.WireFormat
             };
         }
 
+        /// <summary>
+        /// Determines whether the encoded size of a value of the given type can be
+        /// computed inline at the call-site (either as a compile-time constant or a
+        /// cheap runtime expression), without allocating a WriteSizeCalculator.
+        /// </summary>
+        /// <param name="typeName">Type name (normalized or raw).</param>
+        /// <param name="isEnum">True if the type is an enum (encoded as varint).</param>
+        /// <param name="isNullable">True if the type is nullable. Nullable values are
+        /// always rejected because their size depends on whether the value is present.</param>
+        public static bool CanComputeSizeInlineForType(string typeName, bool isEnum = false, bool isNullable = false)
+        {
+            if (isNullable) return false;
+            return CanUseInlineSizeCalculation(typeName, isEnum);
+        }
+
+        /// <summary>
+        /// Attempts to compute a compile-time constant total wire size for a set of fields.
+        /// Returns true only if every field has both a fixed tag size and a fixed value size
+        /// (i.e. <see cref="GetFixedWireSize"/> returns a non-negative number for the given format).
+        /// On any non-fixed field, returns false and <paramref name="totalBytes"/> is set to 0.
+        /// </summary>
+        /// <remarks>
+        /// Enums are varint-encoded and therefore never fixed-size, so passing an enum type name
+        /// (or its underlying int type without <see cref="DataFormat.FixedSize"/>) will yield false.
+        /// </remarks>
+        public static bool TryGetFixedTotalSize(
+            IEnumerable<(int fieldId, WireType wireType, string typeName, DataFormat format)> fields,
+            out int totalBytes)
+        {
+            totalBytes = 0;
+            foreach (var f in fields)
+            {
+                int valueSize = GetFixedWireSize(f.typeName, f.format);
+                if (valueSize < 0)
+                {
+                    totalBytes = 0;
+                    return false;
+                }
+                var (_, tagBytes) = PrecomputeTagBytes(f.fieldId, f.wireType);
+                totalBytes += tagBytes + valueSize;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Builds a C# expression string that sums tag bytes plus per-field size expressions
+        /// for each supplied field, producing something like
+        /// <c>"1 + global::GProtobuf.Core.WireFormatHelpers.GetVarintSize((uint)a) + 1 + 4"</c>.
+        /// Returns <c>null</c> if any field's type has no inline size expression
+        /// (i.e. <see cref="GetInlineSizeExpression"/> returns null); callers should fall back.
+        /// Fixed-size terms are emitted as integer literals so the C# compiler folds them
+        /// into a single constant.
+        /// </summary>
+        public static string BuildInlineSizeSum(
+            IEnumerable<(int fieldId, WireType wireType, string typeName, string valueExpr, DataFormat format, bool isEnum)> fields)
+        {
+            var parts = new List<string>();
+            foreach (var f in fields)
+            {
+                var sizeExpr = GetInlineSizeExpression(f.typeName, f.valueExpr, f.format, f.isEnum);
+                if (sizeExpr == null)
+                {
+                    return null;
+                }
+                var (_, tagBytes) = PrecomputeTagBytes(f.fieldId, f.wireType);
+                parts.Add(tagBytes.ToString());
+                parts.Add(sizeExpr);
+            }
+            return string.Join(" + ", parts);
+        }
+
         #endregion
 
         #region Type Name Utilities

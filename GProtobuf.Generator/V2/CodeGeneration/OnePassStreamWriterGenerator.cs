@@ -18,6 +18,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
     {
         private const string WriterType = "global::GProtobuf.Core.OnePassStreamWriter";
         private const string ClassName = "OnePassStreamWriters";
+
+        // Phase 1 rollback flag: when false, the inline map-entry size optimisation
+        // is skipped and the original BeginSubMessage/EndSubMessage path is emitted.
+        internal static bool EnableInlineMapEntrySize = true;
+
         private readonly HashSet<string> _generatedCustomBufferHelpers = new HashSet<string>();
 
         public OnePassStreamWriterGenerator(StringBuilderWithIndent sb, TypeRegistry registry)
@@ -272,10 +277,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.StartNewBlock();
             _sb.AppendIndentedLine($"foreach (var keyKvp in {sourceVar})");
             _sb.StartNewBlock();
-            TagCodeHelper.WriteTag(_sb, 1, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
-            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{nestedEntryInfo.TypeName}(ref writer, keyKvp.Key, keyKvp.Value);");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
+            EmitMapEntryCallSite(nestedEntryInfo, "keyKvp.Key", "keyKvp.Value", 1);
             _sb.EndBlock();
             _sb.EndBlock();
         }
@@ -453,11 +455,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendIndentedLine($"foreach (var kvp in {sourceVar})");
             _sb.StartNewBlock();
 
-            // Each nested dictionary entry is written as repeated field 2 with BeginSubMessage/EndSubMessage
-            TagCodeHelper.WriteTag(_sb, 2, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
-            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{nestedEntryInfo.TypeName}(ref writer, kvp.Key, kvp.Value);");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
+            // Each nested dictionary entry is written as repeated field 2.
+            EmitMapEntryCallSite(nestedEntryInfo, "kvp.Key", "kvp.Value", 2);
 
             _sb.EndBlock();
             _sb.EndBlock();
@@ -1229,15 +1228,94 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 writeValue: (valueExpr, _) => _sb.AppendIndentedLine($"writer.WriteVarInt32((int){valueExpr});"));
         }
 
+        /// <summary>
+        /// Emits the wire code for a single map entry at a call-site. Tries the Phase 1
+        /// inline-size path first (outer tag + WriteVarUInt32(precomputed-size) + direct body call);
+        /// falls back to the original BeginSubMessage/EndSubMessage wrapper when any eligibility
+        /// check fails.
+        /// </summary>
+        private void EmitMapEntryCallSite(
+            VirtualMapEntryInfo entry,
+            string keyVar,
+            string valueVar,
+            int outerFieldId)
+        {
+            if (TryEmitInlineMapEntrySizeAndWrite(entry, keyVar, valueVar, outerFieldId))
+                return;
+
+            TagCodeHelper.WriteTag(_sb, outerFieldId, WireType.Len);
+            _sb.AppendIndentedLine("writer.BeginSubMessage();");
+            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{entry.TypeName}(ref writer, {keyVar}, {valueVar});");
+            _sb.AppendIndentedLine("writer.EndSubMessage();");
+        }
+
+        /// <summary>
+        /// Attempts to emit a map entry inline: outer tag + WriteVarUInt32(precomputed-size) + direct call
+        /// to the entry body writer, skipping BeginSubMessage/EndSubMessage.
+        /// Returns true on success (nothing more to emit at the call-site); false means the caller
+        /// must fall back to the original Begin/End path.
+        /// Eligibility: both key and value are non-nullable, non-ProtoVarint primitive (or enum)
+        /// types whose encoded size is an inline expression.
+        /// </summary>
+        private bool TryEmitInlineMapEntrySizeAndWrite(
+            VirtualMapEntryInfo entry,
+            string keyVar,
+            string valueVar,
+            int outerFieldId)
+        {
+            if (!EnableInlineMapEntrySize) return false;
+
+            // Nullable<T> inner types: size depends on HasValue — not inline-computable here.
+            if (TypeHelper.IsNullableType(entry.KeyType) || TypeHelper.IsNullableType(entry.ValueType))
+                return false;
+
+            // [ProtoVarint] wrapper structs need the size-calculator path.
+            if (entry.KeyTypeInfo?.IsProtoVarint == true || entry.ValueTypeInfo?.IsProtoVarint == true)
+                return false;
+
+            // Both must be primitives (or enums) with an inline size expression.
+            if (!TypeMapping.CanComputeSizeInlineForType(entry.KeyType, entry.KeyIsEnum)) return false;
+            if (!TypeMapping.CanComputeSizeInlineForType(entry.ValueType, entry.ValueIsEnum)) return false;
+
+            // Inner wire types for fields 1 (key) and 2 (value) of the virtual map entry.
+            var keyWireType = entry.KeyIsEnum ? WireType.VarInt : TypeMapping.GetWireType(entry.KeyType, DataFormat.Default);
+            var valueWireType = entry.ValueIsEnum ? WireType.VarInt : TypeMapping.GetWireType(entry.ValueType, DataFormat.Default);
+
+            string sizePrefix;
+            var fixedFields = new[]
+            {
+                (fieldId: 1, wireType: keyWireType, typeName: entry.KeyType, format: DataFormat.Default),
+                (fieldId: 2, wireType: valueWireType, typeName: entry.ValueType, format: DataFormat.Default),
+            };
+            if (TypeMapping.TryGetFixedTotalSize(fixedFields, out int fixedTotal))
+            {
+                sizePrefix = fixedTotal.ToString();
+            }
+            else
+            {
+                var runtimeFields = new[]
+                {
+                    (fieldId: 1, wireType: keyWireType, typeName: entry.KeyType, valueExpr: keyVar, format: DataFormat.Default, isEnum: entry.KeyIsEnum),
+                    (fieldId: 2, wireType: valueWireType, typeName: entry.ValueType, valueExpr: valueVar, format: DataFormat.Default, isEnum: entry.ValueIsEnum),
+                };
+                var sumExpr = TypeMapping.BuildInlineSizeSum(runtimeFields);
+                if (sumExpr == null) return false;
+                sizePrefix = $"(uint)({sumExpr})";
+            }
+
+            // Commit: emit outer tag + size prefix + direct body call (no Begin/End).
+            TagCodeHelper.WriteTag(_sb, outerFieldId, WireType.Len);
+            _sb.AppendIndentedLine($"writer.WriteVarUInt32({sizePrefix});");
+            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{entry.TypeName}(ref writer, {keyVar}, {valueVar});");
+            return true;
+        }
+
         private void GenerateMapFieldWrite(ProtoMemberInfo member, string sourceVar)
         {
             _sb.AppendIndentedLine($"if ({sourceVar} != null)");
             _sb.StartNewBlock();
             _sb.AppendIndentedLine($"foreach (var kvp in {sourceVar})");
             _sb.StartNewBlock();
-
-            TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
-            _sb.AppendIndentedLine("writer.BeginSubMessage();");
 
             // Register virtual map entry type
             var virtualType = _virtualMapRegistry.RegisterMapEntry(
@@ -1248,8 +1326,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 member.MapKeyEnumUnderlyingType,
                 member.MapValueEnumUnderlyingType);
 
-            _sb.AppendIndentedLine($"{VirtualTypesPrefix}.{ClassName}.Write{virtualType.TypeName}(ref writer, kvp.Key, kvp.Value);");
-            _sb.AppendIndentedLine("writer.EndSubMessage();");
+            EmitMapEntryCallSite(virtualType, "kvp.Key", "kvp.Value", member.FieldId);
 
             _sb.EndBlock();
             _sb.EndBlock();
