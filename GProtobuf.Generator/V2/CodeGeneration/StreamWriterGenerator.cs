@@ -1337,7 +1337,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 _sb.StartNewBlock();
                 _sb.AppendIndentedLine($"var originalValue_{member.FieldId} = {sourceVar};");
-                _sb.AppendIndentedLine($"if (originalValue_{member.FieldId} != null)");
+                _sb.AppendIndentedLine($"if ({GeneratorHelpers.GetSkipIfEmptyCheck(member, $"originalValue_{member.FieldId}")})");
                 _sb.StartNewBlock();
                 localVar = member.IsNullable ? $"originalValue_{member.FieldId}.Value" : $"originalValue_{member.FieldId}";
             }

@@ -212,6 +212,17 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
         }
 
         /// <summary>
+        /// Returns the "skip-if-empty" check expression for a member's source variable.
+        /// Uses "!= null" for Nullable&lt;T&gt; wrappers (compiles for any T, including structs without operator ==).
+        /// Uses "!= default" otherwise — equivalent to "!= null" for reference types, and for non-nullable
+        /// value types it skips serialization of default values without materializing an instance.
+        /// </summary>
+        public static string GetSkipIfEmptyCheck(ProtoMemberInfo member, string varName)
+        {
+            return member.IsNullable ? $"{varName} != null" : $"{varName} != default";
+        }
+
+        /// <summary>
         /// Gets a qualified method call prefix for cross-namespace calls.
         /// Returns empty string if the type is in the current namespace.
         /// </summary>

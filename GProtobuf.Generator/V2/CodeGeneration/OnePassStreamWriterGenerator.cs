@@ -179,7 +179,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             else if (_primitiveHandler.CanHandle(virtualType.KeyType))
             {
-                _primitiveHandler.GenerateWrite(_sb, sourceVar, virtualType.KeyType, DataFormat.Default, 1, false, false);
+                _primitiveHandler.GenerateWrite(_sb, sourceVar, virtualType.KeyType, DataFormat.Default, 1, false, isRequired: true);
             }
             else if (TupleHandler.IsTupleType(virtualType.KeyType))
             {
@@ -323,7 +323,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     // Nullable primitive - check HasValue and access .Value
                     _sb.AppendIndentedLine($"if ({sourceVar} != null)");
                     _sb.StartNewBlock();
-                    _primitiveHandler.GenerateWrite(_sb, $"{sourceVar}.Value", underlyingType, DataFormat.Default, 2, false, false);
+                    _primitiveHandler.GenerateWrite(_sb, $"{sourceVar}.Value", underlyingType, DataFormat.Default, 2, false, isRequired: true);
                     _sb.EndBlock();
                     return;
                 }
@@ -337,7 +337,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             if (_primitiveHandler.CanHandle(virtualType.ValueType))
             {
-                _primitiveHandler.GenerateWrite(_sb, sourceVar, virtualType.ValueType, DataFormat.Default, 2, false, false);
+                _primitiveHandler.GenerateWrite(_sb, sourceVar, virtualType.ValueType, DataFormat.Default, 2, false, isRequired: true);
                 return;
             }
 
@@ -543,7 +543,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // Primitive elements
             if (_primitiveHandler.CanHandle(elementType))
             {
-                _primitiveHandler.GenerateWrite(_sb, itemVar, elementType, DataFormat.Default, fieldId, false, false);
+                _primitiveHandler.GenerateWrite(_sb, itemVar, elementType, DataFormat.Default, fieldId, false, isRequired: true);
                 return;
             }
 
@@ -685,7 +685,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
                 if (_primitiveHandler.CanHandle(elementType))
                 {
-                    _primitiveHandler.GenerateWrite(_sb, itemAccess, elementType, DataFormat.Default, fieldId, false, false);
+                    _primitiveHandler.GenerateWrite(_sb, itemAccess, elementType, DataFormat.Default, fieldId, false, isRequired: true);
                 }
                 else if (elemTypeInfo?.IsEnum == true)
                 {
@@ -1546,7 +1546,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 _sb.StartNewBlock();
                 _sb.AppendIndentedLine($"var originalValue_{member.FieldId} = {sourceVar};");
-                _sb.AppendIndentedLine($"if (originalValue_{member.FieldId} != null)");
+                _sb.AppendIndentedLine($"if ({GeneratorHelpers.GetSkipIfEmptyCheck(member, $"originalValue_{member.FieldId}")})");
                 _sb.StartNewBlock();
                 localVar = member.IsNullable ? $"originalValue_{member.FieldId}.Value" : $"originalValue_{member.FieldId}";
             }

@@ -917,7 +917,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             if (needsNullCheck)
             {
-                _sb.AppendIndentedLine($"if ({sourceVar} != null)");
+                _sb.AppendIndentedLine($"if ({GeneratorHelpers.GetSkipIfEmptyCheck(member, sourceVar)})");
                 _sb.StartNewBlock();
             }
 
