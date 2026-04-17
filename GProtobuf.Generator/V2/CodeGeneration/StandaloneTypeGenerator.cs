@@ -876,7 +876,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         public void GenerateSerializers(List<StandaloneTypeInfo> standaloneTypes)
         {
             // Only generate if at least one writer is enabled
-            if (!_options.GenerateStreamWriter && !_options.GenerateBufferWriter)
+            if (!_options.GenerateStreamWriter && !_options.GenerateBufferWriter && !_options.GenerateOnePassStreamWriter)
             {
                 return;
             }
@@ -967,6 +967,27 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     _sb.EndBlock();
                     _sb.AppendNewLine();
                 }
+
+                // OnePassStreamWriter serializer
+                if (_options.GenerateOnePassStreamWriter)
+                {
+                    _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} {varName})");
+                    _sb.AppendIndentedLine($"    => {methodName}OnePass(stream, {varName}, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
+                    _sb.AppendNewLine();
+
+                    _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} {varName}, global::GProtobuf.Core.BufferChainPoolCache pool)");
+                    _sb.StartNewBlock();
+                    _sb.AppendIndentedLine($"if ({varName} == null) return;");
+                    _sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
+                    _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], scope.Pool);");
+                    _sb.AppendIndentedLine($"foreach (var item in {varName})");
+                    _sb.StartNewBlock();
+                    GenerateElementWriteOnePass(elementType, info.ElementIsPrimitive, info.ElementIsEnum, "item");
+                    _sb.EndBlock();
+                    _sb.AppendIndentedLine("writer.Flush();");
+                    _sb.EndBlock();
+                    _sb.AppendNewLine();
+                }
             }
         }
 
@@ -1033,6 +1054,32 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.StartNewBlock();
                 GeneratePackedElementWrite(elementType, info.ElementIsEnum, "item", "writer");
                 _sb.EndBlock();
+
+                _sb.AppendIndentedLine("writer.Flush();");
+                _sb.EndBlock();
+                _sb.AppendNewLine();
+            }
+
+            // OnePassStreamWriter serializer - uses BeginSubMessage/EndSubMessage to length-prefix the packed block
+            if (_options.GenerateOnePassStreamWriter)
+            {
+                _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} {varName})");
+                _sb.AppendIndentedLine($"    => {methodName}OnePass(stream, {varName}, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
+                _sb.AppendNewLine();
+
+                _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} {varName}, global::GProtobuf.Core.BufferChainPoolCache pool)");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine($"if ({varName} == null) return;");
+                _sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
+                _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], scope.Pool);");
+
+                _sb.AppendIndentedLine($"writer.WriteSingleByte(0x{tag:X2}); // field 1, wire type 2 (packed)");
+                _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                _sb.AppendIndentedLine($"foreach (var item in {varName})");
+                _sb.StartNewBlock();
+                GeneratePackedElementWrite(elementType, info.ElementIsEnum, "item", "writer");
+                _sb.EndBlock();
+                _sb.AppendIndentedLine("writer.EndSubMessage();");
 
                 _sb.AppendIndentedLine("writer.Flush();");
                 _sb.EndBlock();
@@ -1151,6 +1198,74 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
+        private void GenerateElementWriteOnePass(string elementType, bool isPrimitive, bool isEnum, string varName)
+        {
+            if (isPrimitive)
+            {
+                if (isEnum)
+                {
+                    var tag = (1 << 3) | 0;
+                    _sb.AppendIndentedLine($"writer.WriteSingleByte(0x{tag:X2}); // field 1, wire type 0 (varint for enum)");
+                    _sb.AppendIndentedLine($"writer.WriteVarInt32((int){varName});");
+                }
+                else
+                {
+                    var wireType = GetWireType(elementType);
+                    var tag = (1 << 3) | wireType;
+                    _sb.AppendIndentedLine($"writer.WriteSingleByte(0x{tag:X2}); // field 1, wire type {wireType}");
+
+                    if (elementType == "string" || elementType == "System.String")
+                    {
+                        _sb.AppendIndentedLine($"writer.WriteString({varName});");
+                    }
+                    else
+                    {
+                        var writeExpr = GetPrimitiveWriteExpression(elementType, varName);
+                        _sb.AppendIndentedLine($"writer.{writeExpr};");
+                    }
+                }
+            }
+            else
+            {
+                var normalizedElemType = TypeMapping.NormalizeTypeName(elementType);
+                if (_registry.IsProtoVarint(normalizedElemType))
+                {
+                    var elemWriteVarintType = _registry.GetProtoVarintType(normalizedElemType) ?? ProtoVarintType.UInt32;
+                    var elemWriteValueMember = _registry.GetProtoVarintValueMember(normalizedElemType);
+                    _sb.AppendIndentedLine("writer.WriteSingleByte(0x08); // field 1, wire type 0 (varint for ProtoVarint)");
+                    var writeMethod = PrimitiveTypeCodeGenerator.GetProtoVarintWriteMethod(elemWriteVarintType);
+                    _sb.AppendIndentedLine($"writer.{writeMethod}({varName}.{elemWriteValueMember});");
+                }
+                else
+                {
+                    // Complex types: [tag=0x0A][BeginSubMessage][content][EndSubMessage]
+                    _sb.AppendIndentedLine("writer.WriteSingleByte(0x0A); // field 1, wire type 2");
+
+                    var proxy = GetProxy(elementType);
+                    if (proxy != null)
+                    {
+                        var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
+                        var proxyMethodSuffix = GetWriteMethodSuffix(proxy.ProxyTypeFullName);
+                        _sb.AppendIndentedLine($"var proxyItem = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}({varName}{proxy.WrapExtraArgs});");
+                        _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                        _sb.AppendIndentedLine($"{proxyPrefix}OnePassStreamWriters.Write{proxy.ProxyClassName}{proxyMethodSuffix}(ref writer, proxyItem);");
+                        _sb.AppendIndentedLine("writer.EndSubMessage();");
+                        if (proxy.ReturnMethodName != null)
+                            _sb.AppendIndentedLine($"proxyItem.{proxy.ReturnMethodName}();");
+                    }
+                    else
+                    {
+                        var className = TypeNameHelper.GetClassName(elementType);
+                        var writerClass = NamespaceHelper.GetWritersClass(elementType, "OnePassStreamWriters", _registry);
+                        var methodSuffix = GetWriteMethodSuffix(elementType);
+                        _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                        _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref writer, {varName});");
+                        _sb.AppendIndentedLine("writer.EndSubMessage();");
+                    }
+                }
+            }
+        }
+
         private void GenerateDictionarySerializer(StandaloneTypeInfo info, string methodName)
         {
             var keyType = info.KeyType!;
@@ -1198,6 +1313,206 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.EndBlock();
                 _sb.AppendNewLine();
             }
+
+            // OnePassStreamWriter serializer
+            if (_options.GenerateOnePassStreamWriter)
+            {
+                _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} dict)");
+                _sb.AppendIndentedLine($"    => {methodName}OnePass(stream, dict, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
+                _sb.AppendNewLine();
+
+                _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} dict, global::GProtobuf.Core.BufferChainPoolCache pool)");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine("if (dict == null) return;");
+                _sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
+                _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], scope.Pool);");
+                _sb.AppendIndentedLine("foreach (var kvp in dict)");
+                _sb.StartNewBlock();
+                GenerateMapEntryWriteOnePass(info);
+                _sb.EndBlock();
+                _sb.AppendIndentedLine("writer.Flush();");
+                _sb.EndBlock();
+                _sb.AppendNewLine();
+            }
+        }
+
+        private void GenerateMapEntryWriteOnePass(StandaloneTypeInfo info)
+        {
+            var keyType = info.KeyType!;
+            var valueType = info.ValueType!;
+
+            var isArrayOrListValue = info.NestedValueInfo != null &&
+                (info.NestedValueInfo.Kind == StandaloneTypeKind.List ||
+                 info.NestedValueInfo.Kind == StandaloneTypeKind.Array);
+
+            // [outer tag=0x0A][BeginSubMessage][keyField][valueField][EndSubMessage]
+            _sb.AppendIndentedLine("writer.WriteSingleByte(0x0A); // field 1, wire type 2 (map entry)");
+            _sb.AppendIndentedLine("writer.BeginSubMessage();");
+
+            // Key (field 1)
+            GenerateTaggedFieldWriteOnePass(keyType, "kvp.Key", 1, info.KeyIsPrimitive, null);
+
+            // Value (field 2)
+            if (isArrayOrListValue)
+            {
+                _sb.AppendIndentedLine("if (kvp.Value != null)");
+                _sb.StartNewBlock();
+                GenerateRepeatedFieldArrayWriteOnePass("kvp.Value", 2, info.NestedValueInfo!);
+                _sb.EndBlock();
+            }
+            else
+            {
+                var isNestedDictValue = info.NestedValueInfo != null &&
+                    info.NestedValueInfo.Kind == StandaloneTypeKind.Dictionary;
+                if (isNestedDictValue)
+                {
+                    _sb.AppendIndentedLine("if (kvp.Value != null)");
+                    _sb.StartNewBlock();
+                    GenerateTaggedFieldWriteOnePass(valueType, "kvp.Value", 2, info.ValueIsPrimitive, info.NestedValueInfo);
+                    _sb.EndBlock();
+                }
+                else
+                {
+                    GenerateTaggedFieldWriteOnePass(valueType, "kvp.Value", 2, info.ValueIsPrimitive, info.NestedValueInfo);
+                }
+            }
+
+            _sb.AppendIndentedLine("writer.EndSubMessage();");
+        }
+
+        private void GenerateTaggedFieldWriteOnePass(string typeName, string varName, int fieldNumber, bool isPrimitive, StandaloneTypeInfo? nestedInfo)
+        {
+            var normalizedType = TypeMapping.NormalizeTypeName(typeName);
+            if (_registry.IsProtoVarint(normalizedType))
+            {
+                var taggedVarintType = _registry.GetProtoVarintType(normalizedType) ?? ProtoVarintType.UInt32;
+                var taggedValueMember = _registry.GetProtoVarintValueMember(normalizedType);
+                var tag = (fieldNumber << 3) | 0;
+                var writeMethod = PrimitiveTypeCodeGenerator.GetProtoVarintWriteMethod(taggedVarintType);
+                TagCodeHelper.WriteTagValue(_sb, tag);
+                _sb.AppendIndentedLine($"writer.{writeMethod}({varName}.{taggedValueMember});");
+                return;
+            }
+
+            var wireType = GetWireType(typeName);
+            var tagNormal = (fieldNumber << 3) | wireType;
+            TagCodeHelper.WriteTagValue(_sb, tagNormal);
+
+            if (isPrimitive || IsPrimitiveType(typeName))
+            {
+                if (typeName == "string" || typeName == "System.String")
+                {
+                    _sb.AppendIndentedLine($"writer.WriteString({varName});");
+                }
+                else
+                {
+                    var writeExpr = GetPrimitiveWriteExpression(typeName, varName);
+                    _sb.AppendIndentedLine($"writer.{writeExpr};");
+                }
+            }
+            else if (nestedInfo != null && nestedInfo.Kind == StandaloneTypeKind.Dictionary)
+            {
+                // Nested Dict: write as length-delimited block containing repeated map entries
+                _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                _sb.AppendIndentedLine($"foreach (var _innerKvp_{fieldNumber} in {varName})");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine("writer.WriteSingleByte(0x0A); // field 1, wire type 2 (nested map entry)");
+                _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                GenerateTaggedFieldWriteOnePass(nestedInfo.KeyType!, $"_innerKvp_{fieldNumber}.Key", 1, nestedInfo.KeyIsPrimitive, null);
+                GenerateTaggedFieldWriteOnePass(nestedInfo.ValueType!, $"_innerKvp_{fieldNumber}.Value", 2, nestedInfo.ValueIsPrimitive, nestedInfo.NestedValueInfo);
+                _sb.AppendIndentedLine("writer.EndSubMessage();");
+                _sb.EndBlock();
+                _sb.AppendIndentedLine("writer.EndSubMessage();");
+            }
+            else
+            {
+                // Complex type - [tag][BeginSubMessage][content][EndSubMessage]
+                var proxy = GetProxy(typeName);
+                if (proxy != null)
+                {
+                    var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
+                    var proxyMethodSuffix = GetWriteMethodSuffix(proxy.ProxyTypeFullName);
+                    _sb.AppendIndentedLine($"var proxy_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}({varName}{proxy.WrapExtraArgs});");
+                    _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                    _sb.AppendIndentedLine($"{proxyPrefix}OnePassStreamWriters.Write{proxy.ProxyClassName}{proxyMethodSuffix}(ref writer, proxy_{fieldNumber});");
+                    _sb.AppendIndentedLine("writer.EndSubMessage();");
+                    if (proxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"proxy_{fieldNumber}.{proxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    var className = TypeNameHelper.GetClassName(typeName);
+                    var writerClass = NamespaceHelper.GetWritersClass(typeName, "OnePassStreamWriters", _registry);
+                    var methodSuffix = GetWriteMethodSuffix(typeName);
+                    _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                    _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref writer, {varName});");
+                    _sb.AppendIndentedLine("writer.EndSubMessage();");
+                }
+            }
+        }
+
+        private void GenerateRepeatedFieldArrayWriteOnePass(string varName, int fieldNumber, StandaloneTypeInfo nestedInfo)
+        {
+            var elementType = nestedInfo.ElementType!;
+            var safeVarName = varName.Replace(".", "_").Replace("[", "_").Replace("]", "_");
+
+            _sb.AppendIndentedLine($"foreach (var _elem_{safeVarName}_{fieldNumber} in {varName})");
+            _sb.StartNewBlock();
+
+            if (nestedInfo.ElementIsPrimitive)
+            {
+                if (nestedInfo.ElementIsEnum)
+                {
+                    var tag = (fieldNumber << 3) | 0;
+                    TagCodeHelper.WriteTagValue(_sb, tag);
+                    _sb.AppendIndentedLine($"writer.WriteVarInt32((int)_elem_{safeVarName}_{fieldNumber});");
+                }
+                else
+                {
+                    var wireType = GetWireType(elementType);
+                    var tag = (fieldNumber << 3) | wireType;
+                    TagCodeHelper.WriteTagValue(_sb, tag);
+
+                    if (elementType == "string" || elementType == "System.String")
+                    {
+                        _sb.AppendIndentedLine($"writer.WriteString(_elem_{safeVarName}_{fieldNumber});");
+                    }
+                    else
+                    {
+                        var writeExpr = GetPrimitiveWriteExpression(elementType, $"_elem_{safeVarName}_{fieldNumber}");
+                        _sb.AppendIndentedLine($"writer.{writeExpr};");
+                    }
+                }
+            }
+            else
+            {
+                var tag = (fieldNumber << 3) | 2;
+                TagCodeHelper.WriteTagValue(_sb, tag);
+
+                var proxy = GetProxy(elementType);
+                if (proxy != null)
+                {
+                    var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
+                    var proxyMethodSuffix = GetWriteMethodSuffix(proxy.ProxyTypeFullName);
+                    _sb.AppendIndentedLine($"var _proxyElem_{safeVarName}_{fieldNumber} = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(_elem_{safeVarName}_{fieldNumber}{proxy.WrapExtraArgs});");
+                    _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                    _sb.AppendIndentedLine($"{proxyPrefix}OnePassStreamWriters.Write{proxy.ProxyClassName}{proxyMethodSuffix}(ref writer, _proxyElem_{safeVarName}_{fieldNumber});");
+                    _sb.AppendIndentedLine("writer.EndSubMessage();");
+                    if (proxy.ReturnMethodName != null)
+                        _sb.AppendIndentedLine($"_proxyElem_{safeVarName}_{fieldNumber}.{proxy.ReturnMethodName}();");
+                }
+                else
+                {
+                    var className = TypeNameHelper.GetClassName(elementType);
+                    var writerClass = NamespaceHelper.GetWritersClass(elementType, "OnePassStreamWriters", _registry);
+                    var methodSuffix = GetWriteMethodSuffix(elementType);
+                    _sb.AppendIndentedLine("writer.BeginSubMessage();");
+                    _sb.AppendIndentedLine($"{writerClass}.Write{className}{methodSuffix}(ref writer, _elem_{safeVarName}_{fieldNumber});");
+                    _sb.AppendIndentedLine("writer.EndSubMessage();");
+                }
+            }
+
+            _sb.EndBlock();
         }
 
         private void GenerateMapEntryWrite(StandaloneTypeInfo info, string writerClassName)

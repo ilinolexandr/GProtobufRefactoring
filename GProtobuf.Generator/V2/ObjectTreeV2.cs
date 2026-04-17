@@ -1031,6 +1031,25 @@ namespace GProtobuf.Generator.V2
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
+
+                    if (_options.GenerateOnePassStreamWriter)
+                    {
+                        sb.AppendIndentedLine($"public static void Serialize{originalClassName}OnePass(Stream stream, global::{proxy.OriginalTypeFullName} obj)");
+                        sb.AppendIndentedLine($"    => Serialize{originalClassName}OnePass(stream, obj, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
+                        sb.AppendNewLine();
+
+                        sb.AppendIndentedLine($"public static void Serialize{originalClassName}OnePass(Stream stream, global::{proxy.OriginalTypeFullName} obj, global::GProtobuf.Core.BufferChainPoolCache pool)");
+                        sb.StartNewBlock();
+                        sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(obj{proxy.WrapExtraArgs});");
+                        sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
+                        sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], scope.Pool);");
+                        sb.AppendIndentedLine($"{proxyPrefix}OnePassStreamWriters.Write{proxy.ProxyClassName}(ref writer, proxy);");
+                        sb.AppendIndentedLine("writer.Flush();");
+                        if (proxy.ReturnMethodName != null)
+                            sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
+                        sb.EndBlock();
+                        sb.AppendNewLine();
+                    }
                 }
             }
 
