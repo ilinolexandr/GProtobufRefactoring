@@ -71,7 +71,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize with GProtobuf
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, gprotobufModel);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, gprotobufModel);
             var bytes = ms.ToArray();
 
             // Deserialize with protobuf-net
@@ -98,7 +98,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize with GProtobuf
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeMultipleCustomBufferModel(ms, gprotobufModel);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, gprotobufModel);
             var bytes = ms.ToArray();
 
             // Deserialize with protobuf-net
@@ -125,7 +125,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, gprotobufModel);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, gprotobufModel);
 
             ms.Position = 0;
             var protobufNetModel = ProtoBuf.Serializer.Deserialize<ProtobufNetCompatibleModel>(ms);
@@ -152,7 +152,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeLargeCustomBufferModel(ms, gprotobufModel);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, gprotobufModel);
 
             ms.Position = 0;
             // Use a compatible model for protobuf-net
@@ -249,7 +249,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var msGProtobuf = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(msGProtobuf, gprotobufModel);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(msGProtobuf, gprotobufModel);
             var gprotobufBytes = msGProtobuf.ToArray();
 
             // Serialize with protobuf-net (standard byte[])
@@ -283,7 +283,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var msG = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(msG, gprotobufModel);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(msG, gprotobufModel);
             var gBytes = msG.ToArray();
 
             // Protobuf-net

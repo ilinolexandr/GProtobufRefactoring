@@ -393,7 +393,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Name = "TestPoint"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyTestMessage(data);
 
         data.Should().NotBeNull();
@@ -418,7 +418,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyCollectionTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyCollectionTestMessage(data);
 
         data.Should().NotBeNull();
@@ -441,7 +441,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyArrayTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyArrayTestMessage(data);
 
         deserialized.Points.Should().HaveCount(2);
@@ -463,7 +463,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Tag = 42
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyNullableTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyNullableTestMessage(data);
 
         deserialized.MaybePosition.Should().NotBeNull();
@@ -482,7 +482,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Tag = 99
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyNullableTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyNullableTestMessage(data);
 
         deserialized.MaybePosition.Should().BeNull();
@@ -499,7 +499,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Label = "red-ish"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyClassTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyClassTestMessage(data);
 
         deserialized.Color.Should().NotBeNull();
@@ -519,7 +519,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Label = "none"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyClassTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyClassTestMessage(data);
 
         deserialized.Color.Should().BeNull();
@@ -537,7 +537,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Origin = new ExternalReadonlyPoint(100.5, 200.5)
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyMultiFieldTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyMultiFieldTestMessage(data);
 
         deserialized.Position.X.Should().Be(1f);
@@ -564,7 +564,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Description = "nested test"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyNestedContainer);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyNestedContainer(data);
 
         deserialized.Inner.Should().NotBeNull();
@@ -585,7 +585,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Name = null
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyTestMessage(data);
 
         // protobuf Level200: поля з default значеннями можуть бути пропущені
@@ -607,7 +607,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Label = "mixed"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyMixedTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyMixedTestMessage(data);
 
         deserialized.Position.X.Should().Be(1.1f);
@@ -632,7 +632,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
         };
 
         // Серіалізуємо з GProtobuf (proxy перетворює ExternalVector3 → Vector3Proxy під капотом)
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
 
         // Десеріалізуємо з protobuf-net, використовуючи message де Position = Vector3Proxy напряму
         var pnetResult = DeserializeWithProtobufNet<ProxyTestMessagePnet>(data);
@@ -652,7 +652,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Positions = new List<ExternalVector3>()
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyCollectionTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyCollectionTestMessage(data);
 
         // Порожній список → після десеріалізації може бути null (protobuf не пише порожні repeated)
@@ -667,7 +667,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Positions = null
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyCollectionTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyCollectionTestMessage(data);
 
         deserialized.Positions.Should().BeNull();
@@ -693,7 +693,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeLargeProxyContainer);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeLargeProxyContainer(data);
 
         deserialized.P1.X.Should().Be(1f);
@@ -718,7 +718,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Radius = 10.0
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyReadonlyStructTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyReadonlyStructTestMessage(data);
 
         deserialized.Point.X.Should().Be(3.14);
@@ -740,7 +740,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyDictStructTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyDictStructTestMessage(data);
 
         deserialized.Positions.Should().HaveCount(3);
@@ -762,7 +762,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyDictClassTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyDictClassTestMessage(data);
 
         deserialized.Colors.Should().HaveCount(2);
@@ -784,7 +784,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyDictStructTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var pnetResult = DeserializeWithProtobufNet<ProxyDictStructMessagePnet>(data);
         pnetResult.Positions.Should().HaveCount(1);
         pnetResult.Positions!["p1"].X.Should().Be(1.5f);
@@ -806,7 +806,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
 
         // Серіалізація: SizeCalc pass створює proxy + Writer pass створює proxy
         // Кожен pass може викликати Return() якщо [ProxyReturn] визначено
-        SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        SerializeWithGProtobuf(model, Serializers.Serialize);
 
         Vector3Proxy.ReturnCallCount.Should().BeGreaterThan(0,
             "[ProxyReturn] має бути викликаний під час серіалізації");
@@ -825,7 +825,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyHashSetTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyHashSetTestMessage(data);
 
         deserialized.Positions.Should().HaveCount(2);
@@ -846,7 +846,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeDerivedWithProxy);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeBaseWithProxy(data);
 
         deserialized.Should().BeOfType<DerivedWithProxy>();
@@ -873,7 +873,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyDictArrayValueTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyDictArrayValueTestMessage(data);
 
         deserialized.Data.Should().HaveCount(2);
@@ -897,7 +897,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyDictListValueTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyDictListValueTestMessage(data);
 
         deserialized.Items.Should().HaveCount(2);
@@ -924,7 +924,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyNestedDictTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyNestedDictTestMessage(data);
 
         deserialized.Data.Should().HaveCount(1);
@@ -949,7 +949,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyPoolingTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyPoolingTestMessage(data);
 
         deserialized.Size.Width.Should().Be(800);
@@ -981,7 +981,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTupleInDictTest);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeProxyTupleInDictTest(data);
 
         deserialized.Colors.Should().HaveCount(1);
@@ -1001,7 +1001,7 @@ public sealed class SerializationProxyTests : BaseSerializationTest
             Name = "return-test"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
 
         Vector3Proxy.ReturnCallCount = 0;
 

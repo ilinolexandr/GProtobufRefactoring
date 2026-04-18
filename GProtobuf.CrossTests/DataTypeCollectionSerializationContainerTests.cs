@@ -22,7 +22,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize via stream writer, deserialize via span reader
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDataTypeCollectionSerializationContainer(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeDataTypeCollectionSerializationContainer(bytes);
 
@@ -47,7 +47,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize and deserialize via stream
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDataTypeCollectionSerializationContainer(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeDataTypeCollectionSerializationContainer(ms);
 
@@ -72,7 +72,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize, then populate existing instance via stream
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDataTypeCollectionSerializationContainer(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             var target = new DataTypeCollectionSerializationContainer();
@@ -99,7 +99,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize, then populate via Stream overload
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDataTypeCollectionSerializationContainer(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var target = new DataTypeCollectionSerializationContainer();
@@ -122,7 +122,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDataTypeCollectionSerializationContainer(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeDataTypeCollectionSerializationContainer(ms);
 
@@ -148,7 +148,7 @@ namespace GProtobuf.CrossTests
 
             // Act - stream round trip
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDataTypeCollectionSerializationContainer(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeDataTypeCollectionSerializationContainer(ms);
 

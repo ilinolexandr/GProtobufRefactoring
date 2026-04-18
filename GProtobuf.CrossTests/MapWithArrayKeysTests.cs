@@ -48,7 +48,7 @@ namespace GProtobuf.CrossTests
             };
             
             // Act - Serialize with GProtobuf
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithArrayKeysModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize with GProtobuf
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapWithArrayKeysModel(bytes));
@@ -80,7 +80,7 @@ namespace GProtobuf.CrossTests
             };
             
             // Act - Serialize with GProtobuf
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithArrayKeysModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize with GProtobuf
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapWithArrayKeysModel(bytes));
@@ -126,7 +126,7 @@ namespace GProtobuf.CrossTests
             };
             
             // Act - Serialize with GProtobuf
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithArrayKeysModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize with GProtobuf
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapWithArrayKeysModel(bytes));
@@ -203,7 +203,7 @@ namespace GProtobuf.CrossTests
             };
             
             // Act - Serialize with GProtobuf
-            var gpData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithArrayKeysModel);
+            var gpData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Serialize with protobuf-net for comparison
             var pbData = SerializeWithProtobufNet(model);
@@ -238,7 +238,7 @@ namespace GProtobuf.CrossTests
             };
             
             // Act - Serialize with GProtobuf
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithArrayKeysModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize with GProtobuf
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapWithArrayKeysModel(bytes));
@@ -267,14 +267,14 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var gpData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithArrayKeysModel);
+            var gpData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             var pbData = SerializeWithProtobufNet(model);
             // Debug output
             Console.WriteLine(GetHexDump(gpData, "GProtobuf serialization"));
             Console.WriteLine(GetHexDump(pbData, "protobuf-net serialization"));
 
             // Test GProtobuf -> protobuf-net
-            var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithArrayKeysModel);
+            var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             var fromGProtobuf = DeserializeWithProtobufNet<MapWithArrayKeysModel>(gprotobufData);
 
             // Assert GProtobuf -> protobuf-net
@@ -318,7 +318,7 @@ namespace GProtobuf.CrossTests
             };
             
             // Act - Serialize with GProtobuf
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithArrayKeysModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize with GProtobuf
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapWithArrayKeysModel(bytes));
@@ -381,7 +381,7 @@ namespace GProtobuf.CrossTests
             //};
 
             // Act - Serialize with GProtobuf
-            var gpData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithArrayKeysModel);
+            var gpData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Serialize with protobuf-net for comparison
             var pbData = SerializeWithProtobufNet(model);

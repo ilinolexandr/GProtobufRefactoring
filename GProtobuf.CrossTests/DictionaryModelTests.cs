@@ -408,7 +408,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateSimpleDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
 
         deserialized.Should().BeEquivalentTo(model);
@@ -419,7 +419,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateEmptyDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
 
         // Empty collections become null after serialization/deserialization in protobuf
@@ -433,7 +433,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateNullDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
 
         deserialized.Should().BeEquivalentTo(model);
@@ -444,7 +444,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateComplexDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
 
         deserialized.Should().BeEquivalentTo(model);
@@ -455,7 +455,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateLargeDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
 
         // Use detailed comparison for large data to ensure accuracy
@@ -482,8 +482,8 @@ public sealed class DictionaryModelTests : BaseSerializationTest
         // Test that serializing the same data twice produces identical bytes
         var model = CreateSimpleDictionaryModel();
 
-        var data1 = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
-        var data2 = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data1 = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
+        var data2 = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
         data1.Should().Equal(data2, "serialization should be deterministic");
     }
@@ -493,7 +493,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateEnumDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
 
         // Verify EnumKeyDictionary
@@ -530,7 +530,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateSimpleDictionaryModel();
 
-        var gpData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var gpData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbData = SerializeWithProtobufNet(model);
         
         // Debug output
@@ -556,7 +556,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateEnumDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<DictionaryModel>(data);
 
         // Verify EnumKeyDictionary
@@ -589,7 +589,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateEmptyDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<DictionaryModel>(data);
 
         // Empty collections become null after serialization/deserialization in protobuf
@@ -603,7 +603,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateNullDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<DictionaryModel>(data);
 
         deserialized.Should().BeEquivalentTo(model);
@@ -614,7 +614,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
     {
         var model = CreateComplexDictionaryModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<DictionaryModel>(data);
 
         deserialized.Should().BeEquivalentTo(model);
@@ -627,7 +627,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
         // and then re-serialized by protobuf-net to produce equivalent data
         var model = CreateSimpleDictionaryModel();
 
-        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var protobufData = SerializeWithProtobufNet(model);
 
         var deserializedByProtobufNet = DeserializeWithProtobufNet<DictionaryModel>(gprotobufData);
@@ -662,7 +662,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
         var gprotobufDeserialized = DeserializeWithGProtobuf(protobufNetData, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
         
         // GProtobuf serialize
-        var gprotobufData = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var gprotobufData = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.Serialize);
         
         // protobuf-net deserialize
         var finalDeserialized = DeserializeWithProtobufNet<DictionaryModel>(gprotobufData);
@@ -677,7 +677,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
         var model = CreateLargeDictionaryModel();
 
         // GProtobuf serialize/deserialize
-        var gprotobufData1 = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var gprotobufData1 = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var gprotobufDeserialized = DeserializeWithGProtobuf(gprotobufData1, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
         
         // protobuf-net serialize
@@ -719,7 +719,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
             ValuePairs = null
         };
 
-        var data1 = SerializeWithGProtobuf(modelOnlyDict, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data1 = SerializeWithGProtobuf(modelOnlyDict, TestModel.Serialization.Serializers.Serialize);
 
         var data = SerializeWithProtobufNet(modelOnlyDict);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
@@ -766,7 +766,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
         // Manually modify the dictionary after creation to test edge case
         model.Dictionary[1] = "Updated"; // Overwrite key 1
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(bytes));
 
         deserialized.Dictionary[1].Should().Be("Updated");
@@ -783,7 +783,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
         var model = CreateSimpleDictionaryModel();
 
         var protobufNetData = SerializeWithProtobufNet(model);
-        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
         _outputHelper.WriteLine($"protobuf-net serialized size: {protobufNetData.Length} bytes");
         _outputHelper.WriteLine($"GProtobuf serialized size: {gprotobufData.Length} bytes");
@@ -805,7 +805,7 @@ public sealed class DictionaryModelTests : BaseSerializationTest
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         
         // Serialize
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var serializeTime = stopwatch.ElapsedMilliseconds;
         
         stopwatch.Restart();

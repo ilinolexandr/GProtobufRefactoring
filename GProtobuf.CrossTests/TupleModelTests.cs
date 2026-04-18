@@ -56,7 +56,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             
             var bytes = ms.ToArray();
@@ -76,7 +76,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             ms.Position = 0;
@@ -115,7 +115,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             
             var bytes = ms.ToArray();
@@ -135,7 +135,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             ms.Position = 0;
@@ -166,7 +166,7 @@ namespace GProtobuf.CrossTests
             var original = CreateTestModel();
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             
             var bytes = ms.ToArray();
@@ -181,7 +181,7 @@ namespace GProtobuf.CrossTests
             var original = CreateTestModel();
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             // Debug: Compare with protobuf-net serialization
@@ -240,7 +240,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             
             var bytes = ms.ToArray();
@@ -268,7 +268,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             ms.Position = 0;
@@ -312,7 +312,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             
             var bytes = ms.ToArray();

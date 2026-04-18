@@ -65,7 +65,7 @@ namespace GProtobuf.CrossTests
             var original = CreateTestModelWithTupleMap();
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDictionaryTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             
             var bytes = ms.ToArray();
@@ -93,7 +93,7 @@ namespace GProtobuf.CrossTests
             var original = CreateTestModelWithTupleMap();
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDictionaryTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             ms.Position = 0;
@@ -143,7 +143,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDictionaryTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
             
             var bytes = ms.ToArray();
@@ -163,7 +163,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDictionaryTupleModel(ms, original);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             ms.Position = 0;

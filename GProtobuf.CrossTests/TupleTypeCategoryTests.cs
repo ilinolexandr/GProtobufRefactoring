@@ -35,7 +35,7 @@ namespace GProtobuf.CrossTests
 
             // Act: Serialize
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeNestedTupleModel(ms, model);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             // Assert: Verify wire format structure
@@ -122,7 +122,7 @@ namespace GProtobuf.CrossTests
 
             // Act: Serialize
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeNestedTupleModel(ms, model);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             // Assert: Verify Rest (field 8) is length-prefixed
@@ -205,7 +205,7 @@ namespace GProtobuf.CrossTests
 
             // Act: Round-trip through both serializers
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeNestedTupleModel(ms, model);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, model);
             ms.Position = 0;
 
             // Deserialize with protobuf-net

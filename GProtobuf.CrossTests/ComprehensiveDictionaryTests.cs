@@ -28,7 +28,7 @@ namespace GProtobuf.CrossTests
                 DoubleStringMap = new Dictionary<double, string> { { 2.71828, "e" }, { 3.14159, "pi" } }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(3, deserialized.IntStringMap.Count);
@@ -74,7 +74,7 @@ namespace GProtobuf.CrossTests
                 StringDoubleMap = new Dictionary<string, double> { { "e", 2.71828 }, { "pi", 3.14159 } }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.StringIntMap.Count);
@@ -115,7 +115,7 @@ namespace GProtobuf.CrossTests
                 BoolBoolMap = new Dictionary<bool, bool> { { true, false }, { false, true } }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.IntIntMap.Count);
@@ -159,7 +159,7 @@ namespace GProtobuf.CrossTests
                 IntGuidMap = new Dictionary<int, Guid> { { 1, guid1 }, { 2, guid2 } }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.GuidStringMap.Count);
@@ -199,7 +199,7 @@ namespace GProtobuf.CrossTests
                 IntTimeSpanMap = new Dictionary<int, TimeSpan> { { 1, ts1 }, { 2, ts2 } }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.TimeSpanStringMap.Count);
@@ -255,7 +255,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(3, deserialized.EnumStringMap.Count);
@@ -296,7 +296,7 @@ namespace GProtobuf.CrossTests
         //         StringNullableLongMap = new Dictionary<string, long?> { { "big", 999999999L }, { "null", null } }
         //     };
         //
-        //     var bytes = Serializers.SerializeComprehensiveDictionaryTestModel(model);
+        //     var bytes = Serializers.Serialize(model);
         //     var deserialized = Deserializers.DeserializeComprehensiveDictionaryTestModel(bytes.ToArray());
         //
         //     Assert.Equal(3, deserialized.IntNullableIntMap.Count);
@@ -351,7 +351,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.StringIntListMap.Count);
@@ -419,7 +419,7 @@ namespace GProtobuf.CrossTests
                 // }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.StringIntHashSetMap.Count);
@@ -490,7 +490,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.StringIntArrayMap.Count);
@@ -563,7 +563,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.StringCustomClassMap.Count);
@@ -637,7 +637,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.CustomClassStringMap.Count);
@@ -679,7 +679,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.StringTupleMap.Count);
@@ -722,7 +722,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.TupleStringMap.Count);
@@ -783,7 +783,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             // Verify StringToIntStringDictMap
@@ -889,7 +889,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             // Verify edge cases for StringToIntStringDictMap
@@ -948,7 +948,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             // Verify TimeSpanToDictMap
@@ -1016,7 +1016,7 @@ namespace GProtobuf.CrossTests
             model.StringToIntStringDictMap["tiny"] = new Dictionary<int, string> { { 1, "single" } };
             model.StringToIntStringDictMap["empty"] = new Dictionary<int, string>();
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeNestedDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
 
             // Print hex dump for debugging
             var hex = System.BitConverter.ToString(bytes).Replace("-", " ");
@@ -1097,7 +1097,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Single(deserialized.GuidToCustomClassListMap);
@@ -1155,7 +1155,7 @@ namespace GProtobuf.CrossTests
                 // }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(3, deserialized.IntStringKVPList.Count);
@@ -1188,7 +1188,7 @@ namespace GProtobuf.CrossTests
                 StringIntListMap = new Dictionary<string, List<int>>()
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             // Empty collections deserialize as null in Protobuf (not empty instances)
@@ -1221,7 +1221,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(3, deserialized.StringStringMap.Count);
@@ -1256,7 +1256,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(2, deserialized.ByteArrayStringMap.Count);
@@ -1308,7 +1308,7 @@ namespace GProtobuf.CrossTests
                 StringFloatMap = new Dictionary<string, float> { { "e", 2.71f } }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Single(deserialized.IntStringMap);
@@ -1343,7 +1343,7 @@ namespace GProtobuf.CrossTests
                 model.IntStringMap[i] = $"value_{i}";
             }
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeComprehensiveDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
             var deserialized = DeserializeWithGProtobuf(bytes, b => Deserializers.DeserializeComprehensiveDictionaryTestModel(b));
 
             Assert.Equal(1000, deserialized.IntStringMap.Count);

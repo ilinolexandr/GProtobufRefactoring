@@ -30,7 +30,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize with GProtobuf
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeOuterClass(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             // Deserialize with GProtobuf
@@ -57,7 +57,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeOuterClass(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeOuterClass(bytes);
@@ -84,7 +84,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeOuterClass(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             // Act - deserialize with protobuf-net
@@ -153,7 +153,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeLevel1Class(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeLevel1Class(bytes);
@@ -187,7 +187,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize with GProtobuf
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeLevel1Class(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 
             // Deserialize with protobuf-net
             ms.Position = 0;
@@ -217,7 +217,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeContainerClass(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeContainerClass(bytes);
@@ -244,7 +244,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeContainerClass(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeContainerClass(bytes);
@@ -268,7 +268,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeContainerClass(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 
             ms.Position = 0;
             var deserialized = ProtoBuf.Serializer.Deserialize<ContainerClass>(ms);

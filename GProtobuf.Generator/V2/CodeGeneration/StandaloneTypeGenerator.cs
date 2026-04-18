@@ -889,6 +889,10 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private void GenerateSerializer(StandaloneTypeInfo info)
         {
+            // Standalone types keep the typed MethodNameSuffix on the public API:
+            // packed and non-packed variants of the same collection type (e.g. List<int>) share
+            // the same C# parameter list but emit different wire formats, so they cannot be
+            // C# overloads — the suffix (e.g. "ListOfInt32Packed") is what keeps them distinct.
             var methodName = $"Serialize{info.MethodNameSuffix}";
 
             switch (info.Kind)
@@ -906,6 +910,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     break;
             }
         }
+
+        private static string GetOnePassMethodName(string methodName) => methodName + "OnePass";
 
         private void GenerateListSerializer(StandaloneTypeInfo info, string methodName)
         {
@@ -971,11 +977,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 // OnePassStreamWriter serializer
                 if (_options.GenerateOnePassStreamWriter)
                 {
-                    _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} {varName})");
-                    _sb.AppendIndentedLine($"    => {methodName}OnePass(stream, {varName}, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
+                    var onePassName = GetOnePassMethodName(methodName);
+                    _sb.AppendIndentedLine($"public static void {onePassName}(Stream stream, {paramType} {varName})");
+                    _sb.AppendIndentedLine($"    => {onePassName}(stream, {varName}, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
                     _sb.AppendNewLine();
 
-                    _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} {varName}, global::GProtobuf.Core.BufferChainPoolCache pool)");
+                    _sb.AppendIndentedLine($"public static void {onePassName}(Stream stream, {paramType} {varName}, global::GProtobuf.Core.BufferChainPoolCache pool)");
                     _sb.StartNewBlock();
                     _sb.AppendIndentedLine($"if ({varName} == null) return;");
                     _sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
@@ -1063,11 +1070,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // OnePassStreamWriter serializer - uses BeginSubMessage/EndSubMessage to length-prefix the packed block
             if (_options.GenerateOnePassStreamWriter)
             {
-                _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} {varName})");
-                _sb.AppendIndentedLine($"    => {methodName}OnePass(stream, {varName}, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
+                var onePassName = GetOnePassMethodName(methodName);
+                _sb.AppendIndentedLine($"public static void {onePassName}(Stream stream, {paramType} {varName})");
+                _sb.AppendIndentedLine($"    => {onePassName}(stream, {varName}, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
                 _sb.AppendNewLine();
 
-                _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} {varName}, global::GProtobuf.Core.BufferChainPoolCache pool)");
+                _sb.AppendIndentedLine($"public static void {onePassName}(Stream stream, {paramType} {varName}, global::GProtobuf.Core.BufferChainPoolCache pool)");
                 _sb.StartNewBlock();
                 _sb.AppendIndentedLine($"if ({varName} == null) return;");
                 _sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
@@ -1317,11 +1325,12 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // OnePassStreamWriter serializer
             if (_options.GenerateOnePassStreamWriter)
             {
-                _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} dict)");
-                _sb.AppendIndentedLine($"    => {methodName}OnePass(stream, dict, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
+                var onePassName = GetOnePassMethodName(methodName);
+                _sb.AppendIndentedLine($"public static void {onePassName}(Stream stream, {paramType} dict)");
+                _sb.AppendIndentedLine($"    => {onePassName}(stream, dict, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
                 _sb.AppendNewLine();
 
-                _sb.AppendIndentedLine($"public static void {methodName}OnePass(Stream stream, {paramType} dict, global::GProtobuf.Core.BufferChainPoolCache pool)");
+                _sb.AppendIndentedLine($"public static void {onePassName}(Stream stream, {paramType} dict, global::GProtobuf.Core.BufferChainPoolCache pool)");
                 _sb.StartNewBlock();
                 _sb.AppendIndentedLine("if (dict == null) return;");
                 _sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");

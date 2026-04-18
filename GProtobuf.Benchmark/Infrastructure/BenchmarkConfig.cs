@@ -33,7 +33,7 @@ namespace GProtobuf.Benchmark.Infrastructure
             // Dev: in-process toolchain → no subprocess (avoids AV friction, faster turnaround).
             BenchmarkProfile.Dev    => Job.Default
                                           .WithToolchain(InProcessEmitToolchain.Instance)
-                                          .WithWarmupCount(3).WithIterationCount(50)
+                                          .WithWarmupCount(3).WithIterationCount(10)
                                           .WithId("Dev"),
             BenchmarkProfile.CiFast => Job.Default.WithWarmupCount(2).WithIterationCount(5).WithId("CiFast"),
             BenchmarkProfile.Full   => Job.Default.WithWarmupCount(3).WithIterationCount(10).WithId("Full"),

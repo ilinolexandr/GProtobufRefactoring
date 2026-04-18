@@ -118,7 +118,7 @@ namespace GProtobuf.Tests
 
             // Act - Serialize with GProtobuf
             var ms = new MemoryStream();
-            Serializers.SerializeShortMapTestModel(ms, original);
+            Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             // Deserialize with GProtobuf
@@ -190,7 +190,7 @@ namespace GProtobuf.Tests
 
             // Act - Serialize with GProtobuf
             var ms = new MemoryStream();
-            Serializers.SerializeShortMapTestModel(ms, original);
+            Serializers.Serialize(ms, original);
             var gprotobufBytes = ms.ToArray();
 
             // Deserialize with protobuf-net
@@ -292,7 +292,7 @@ namespace GProtobuf.Tests
 
             // Serialize and deserialize
             var ms = new MemoryStream();
-            Serializers.SerializeShortMapTestModel(ms, model);
+            Serializers.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             var deserialized = Deserializers.DeserializeShortMapTestModel(bytes);

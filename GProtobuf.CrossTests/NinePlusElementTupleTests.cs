@@ -53,7 +53,7 @@ namespace GProtobuf.CrossTests
 
             // Act: Serialize with GProtobuf, deserialize with protobuf-net
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeNinePlusElementTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             ms.Position = 0;
@@ -187,7 +187,7 @@ namespace GProtobuf.CrossTests
 
             // Act: Round-trip through GProtobuf
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeNinePlusElementTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();

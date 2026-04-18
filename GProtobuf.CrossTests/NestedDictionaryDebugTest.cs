@@ -23,7 +23,7 @@ namespace GProtobuf.CrossTests
                 }
             };
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeNestedDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
 
             // Print hex dump for debugging
             var hex = System.BitConverter.ToString(bytes).Replace("-", " ");
@@ -51,7 +51,7 @@ namespace GProtobuf.CrossTests
                 model.StringToIntStringDictMap["large"][i] = $"large_value_{i}";
             }
 
-            var bytes = SerializeWithGProtobuf(model, Serializers.SerializeNestedDictionaryTestModel);
+            var bytes = SerializeWithGProtobuf(model, Serializers.Serialize);
 
             // Print hex dump for debugging
             var hex = System.BitConverter.ToString(bytes).Replace("-", " ");

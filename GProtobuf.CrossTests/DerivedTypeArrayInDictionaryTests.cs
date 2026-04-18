@@ -130,7 +130,7 @@ public sealed class DerivedTypeArrayInDictionaryTests : BaseSerializationTest
         // Serialize with GProtobuf, deserialize with protobuf-net
         var model = CreateTestModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeDerivedTypeArrayModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         _output.WriteLine($"GProtobuf serialized size: {data.Length} bytes");
         _output.WriteLine($"GProtobuf hex: {System.BitConverter.ToString(data)}");
 
@@ -148,7 +148,7 @@ public sealed class DerivedTypeArrayInDictionaryTests : BaseSerializationTest
         // Serialize and deserialize with GProtobuf
         var model = CreateTestModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeDerivedTypeArrayModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeDerivedTypeArrayModel(bytes));
 
@@ -166,7 +166,7 @@ public sealed class DerivedTypeArrayInDictionaryTests : BaseSerializationTest
     {
         var model = CreateTestModel();
 
-        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.SerializeDerivedTypeArrayModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var protobufNetData = SerializeWithProtobufNet(model);
 
         _output.WriteLine($"GProtobuf size: {gprotobufData.Length} bytes");

@@ -27,7 +27,7 @@ namespace GProtobuf.CrossTests
             Assert.Null(model.ComputedChecksum);
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeSerializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Callback should have been invoked
             Assert.Equal(1, model.BeforeSerializationCount);
@@ -47,7 +47,7 @@ namespace GProtobuf.CrossTests
             Assert.Equal(0, model.AfterSerializationCount);
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeSerializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Both callbacks should have been invoked
             Assert.Equal(1, model.BeforeSerializationCount);
@@ -66,7 +66,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeSerializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Before should be first, After should be second
             Assert.Equal(2, model.CallbackLog.Count);
@@ -95,7 +95,7 @@ namespace GProtobuf.CrossTests
             Assert.False(model.BeforeCallbackInvoked);
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTwoPassCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Verify callback was invoked
             Assert.True(model.BeforeCallbackInvoked);
@@ -123,7 +123,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeMultipleCallbacksModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // All callbacks should be invoked
             Assert.Contains("PrepareData", model.CallbackLog);
@@ -145,7 +145,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeCallbackStruct(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Deserialize and verify the callback computed the correct value
             var bytes = ms.ToArray();
@@ -166,7 +166,7 @@ namespace GProtobuf.CrossTests
 
             using var ms = new MemoryStream();
             // Should not throw, just return without doing anything
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeSerializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             Assert.Equal(0, ms.Length);
         }
@@ -188,7 +188,7 @@ namespace GProtobuf.CrossTests
             Assert.Null(model.ComputedChecksum);
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeSerializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Verify the computed checksum was serialized
             var bytes = ms.ToArray();
@@ -215,7 +215,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeBaseWithCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Base callbacks should be invoked
             Assert.Contains("Base.BeforeSerialization", model.CallbackLog);
@@ -245,7 +245,7 @@ namespace GProtobuf.CrossTests
 
             using var ms = new MemoryStream();
             // Serialize using base type serializer (polymorphic)
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeBaseWithCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Base callbacks MUST be invoked even though we're serializing derived type
             // This is because WriteBase calls BeforeCallbacks, then switch to derived, then AfterCallbacks in finally
@@ -266,7 +266,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDerivedWithCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Derived callbacks should be invoked
             Assert.Contains("Derived.BeforeSerialization", model.CallbackLog);
@@ -293,7 +293,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDerivedWithoutCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeDerivedWithoutCallback(bytes);
@@ -323,7 +323,7 @@ namespace GProtobuf.CrossTests
             Assert.False(model.BeforeCallbackInvoked);
 
             // SerializeToArray uses two-pass: SizeCalculator + Write
-            var bytes = global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeToArrayTwoPassCallbackModel(model);
+            var bytes = global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeToArray(model);
 
             // Callback should have been invoked
             Assert.True(model.BeforeCallbackInvoked);
@@ -344,7 +344,7 @@ namespace GProtobuf.CrossTests
         {
             TwoPassCallbackModel model = null;
 
-            var bytes = global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeToArrayTwoPassCallbackModel(model);
+            var bytes = global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeToArray(model);
 
             Assert.NotNull(bytes);
             Assert.Empty(bytes);
@@ -369,7 +369,7 @@ namespace GProtobuf.CrossTests
 
             // GProtobuf serializes (callbacks compute checksum)
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeSerializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Verify callback was invoked
             Assert.Equal("HASH:9:999", model.ComputedChecksum);
@@ -426,7 +426,7 @@ namespace GProtobuf.CrossTests
 
             // GProtobuf serializes
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTwoPassCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // protobuf-net deserializes
             ms.Position = 0;
@@ -450,7 +450,7 @@ namespace GProtobuf.CrossTests
 
             // GProtobuf serializes (derived callbacks compute values)
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDerivedWithCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // protobuf-net deserializes
             ms.Position = 0;
@@ -487,7 +487,7 @@ namespace GProtobuf.CrossTests
             Assert.Null(model.Child.ChildComputedValue);
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeParentWithNestedCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Deserialize and check
             var bytes = ms.ToArray();
@@ -521,7 +521,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeParentWithNestedCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeParentWithNestedCallback(bytes);
@@ -559,7 +559,7 @@ namespace GProtobuf.CrossTests
             }
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeContainerWithCallbackList(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeContainerWithCallbackList(bytes);
@@ -602,7 +602,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeContainerWithCallbackDictionary(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeContainerWithCallbackDictionary(bytes);
@@ -627,7 +627,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeContainerWithCallbackList(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeContainerWithCallbackList(bytes);
@@ -654,7 +654,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeContainerWithCallbackList(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             ms.Position = 0;
             var deserialized = ProtoBuf.Serializer.Deserialize<ContainerWithCallbackList>(ms);
@@ -684,7 +684,7 @@ namespace GProtobuf.CrossTests
             using var ms = new MemoryStream();
 
             var exception = Assert.Throws<InvalidOperationException>(() =>
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeExceptionInBeforeCallback(ms, model));
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model));
 
             Assert.Equal("BeforeSerialization failed!", exception.Message);
 
@@ -708,7 +708,7 @@ namespace GProtobuf.CrossTests
             using var ms = new MemoryStream();
 
             Assert.Throws<InvalidOperationException>(() =>
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeExceptionInBeforeCallback(ms, model));
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model));
 
             // Stream should be empty because exception occurred before writing
             Assert.Equal(0, ms.Length);
@@ -731,7 +731,7 @@ namespace GProtobuf.CrossTests
             using var ms = new MemoryStream();
 
             var exception = Assert.Throws<InvalidOperationException>(() =>
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeExceptionInAfterCallback(ms, model));
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model));
 
             Assert.Equal("AfterSerialization failed!", exception.Message);
 
@@ -758,7 +758,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeExceptionInBeforeCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // AfterCallback should be invoked
             Assert.True(model.AfterCallbackInvoked);
@@ -790,7 +790,7 @@ namespace GProtobuf.CrossTests
             // First serialization
             using (var ms1 = new MemoryStream())
             {
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeCallbackCounterModel(ms1, model);
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms1, model);
             }
             Assert.Equal(1, model.BeforeCount);
             Assert.Equal(1, model.AfterCount);
@@ -798,7 +798,7 @@ namespace GProtobuf.CrossTests
             // Second serialization
             using (var ms2 = new MemoryStream())
             {
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeCallbackCounterModel(ms2, model);
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms2, model);
             }
             Assert.Equal(2, model.BeforeCount);
             Assert.Equal(2, model.AfterCount);
@@ -806,7 +806,7 @@ namespace GProtobuf.CrossTests
             // Third serialization
             using (var ms3 = new MemoryStream())
             {
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeCallbackCounterModel(ms3, model);
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms3, model);
             }
             Assert.Equal(3, model.BeforeCount);
             Assert.Equal(3, model.AfterCount);
@@ -833,7 +833,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeContainerWithCallbackArray(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeContainerWithCallbackArray(bytes);
@@ -867,7 +867,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeStaticCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Static callbacks should NOT be invoked
             // (they don't make sense - no instance to call on)
@@ -900,7 +900,7 @@ namespace GProtobuf.CrossTests
             Assert.False(model.BeforeWithoutParamInvoked);
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeParameterizedCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Parameterized callback should NOT be invoked
             Assert.False(model.BeforeWithParamInvoked);
@@ -928,7 +928,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeLeafWithCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Leaf callbacks should be invoked
             Assert.Contains("Leaf.Before", model.CallbackLog);
@@ -957,7 +957,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeRootWithCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Root callbacks should be invoked (we're serializing through Root type)
             Assert.Contains("Root.Before", model.CallbackLog);
@@ -977,7 +977,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeMiddleWithCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Middle callbacks should be invoked
             Assert.Contains("Middle.Before", model.CallbackLog);
@@ -1009,7 +1009,7 @@ namespace GProtobuf.CrossTests
             Assert.Null(model.ComputedValue);
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializePrivateCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             // Private callbacks should NOT be invoked
             // (they can't be called from generated code due to accessibility)
@@ -1044,7 +1044,7 @@ namespace GProtobuf.CrossTests
             Assert.Equal(0, model.AfterCount);
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeCallbackCounterModelOnePass(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeOnePass(ms, model);
 
             Assert.Equal(1, model.BeforeCount);
             Assert.Equal(1, model.AfterCount);
@@ -1069,7 +1069,7 @@ namespace GProtobuf.CrossTests
             Assert.Equal(0, model.AfterCount);
 
             Span<byte> buffer = stackalloc byte[256];
-            int written = global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeToCallbackCounterModel(buffer, model);
+            int written = global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTo(buffer, model);
 
             Assert.Equal(1, model.BeforeCount);
             Assert.Equal(1, model.AfterCount);
@@ -1093,7 +1093,7 @@ namespace GProtobuf.CrossTests
             Assert.Equal(0, model.AfterCount);
 
             var buffer = new System.Buffers.ArrayBufferWriter<byte>();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeCallbackCounterModel(buffer, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(buffer, model);
 
             Assert.Equal(1, model.BeforeCount);
             Assert.Equal(1, model.AfterCount);
@@ -1117,7 +1117,7 @@ namespace GProtobuf.CrossTests
 
             // Serialize with GProtobuf
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDeserializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             // Deserialize - callbacks should be invoked
@@ -1139,7 +1139,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDeserializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             var deserialized = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeDeserializationCallbackModel(bytes);
@@ -1160,7 +1160,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDeserializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             var deserialized = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeDeserializationCallbackModel(bytes);
@@ -1182,7 +1182,7 @@ namespace GProtobuf.CrossTests
 
             // Serialize - before/after serialization callbacks invoked
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeFullCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             Assert.Contains("BeforeSerialization", model.CallbackLog);
             Assert.Contains("AfterSerialization", model.CallbackLog);
@@ -1207,7 +1207,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeDeserializationCallbackModel(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
 
             ms.Position = 0;
             var deserialized = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeDeserializationCallbackModel(ms);
@@ -1229,7 +1229,7 @@ namespace GProtobuf.CrossTests
 
             // Serialize
             using var ms = new MemoryStream();
-            global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeBaseWithDeserializationCallback(ms, model);
+            global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, model);
             var bytes = ms.ToArray();
 
             // Populate on existing instance — Populate method has full callback support

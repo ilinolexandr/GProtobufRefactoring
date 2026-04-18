@@ -20,7 +20,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -62,7 +62,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var deserialized = ProtoBuf.Serializer.Deserialize<ExtendedTupleModel>(ms);
@@ -86,7 +86,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -130,7 +130,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var deserialized = ProtoBuf.Serializer.Deserialize<ExtendedTupleModel>(ms);
@@ -155,7 +155,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -178,7 +178,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -202,7 +202,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -234,7 +234,7 @@ namespace GProtobuf.CrossTests
 //             };
 // 
 //             using var ms = new MemoryStream();
-//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 //             ms.Position = 0;
 // 
 //             var bytes = ms.ToArray();
@@ -257,7 +257,7 @@ namespace GProtobuf.CrossTests
 //             };
 // 
 //             using var ms = new MemoryStream();
-//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 //             ms.Position = 0;
 // 
 //             var bytes = ms.ToArray();
@@ -280,7 +280,7 @@ namespace GProtobuf.CrossTests
 //             };
 // 
 //             using var ms = new MemoryStream();
-//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 //             ms.Position = 0;
 // 
 //             var bytes = ms.ToArray();
@@ -305,7 +305,7 @@ namespace GProtobuf.CrossTests
 //             };
 // 
 //             using var ms = new MemoryStream();
-//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 //             ms.Position = 0;
 // 
 //             var bytes = ms.ToArray();
@@ -332,7 +332,7 @@ namespace GProtobuf.CrossTests
 //             };
 // 
 //             using var ms = new MemoryStream();
-//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 //             ms.Position = 0;
 // 
 //             var bytes = ms.ToArray();
@@ -382,7 +382,7 @@ namespace GProtobuf.CrossTests
 //             };
 // 
 //             using var ms = new MemoryStream();
-//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 //             ms.Position = 0;
 // 
 //             var deserialized = ProtoBuf.Serializer.Deserialize<ExtendedTupleModel>(ms);
@@ -409,7 +409,7 @@ namespace GProtobuf.CrossTests
 //             };
 // 
 //             using var ms = new MemoryStream();
-//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 //             ms.Position = 0;
 // 
 //             var bytes = ms.ToArray();
@@ -437,7 +437,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -468,7 +468,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -497,7 +497,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -529,7 +529,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -557,7 +557,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -587,7 +587,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -608,7 +608,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -633,7 +633,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -661,7 +661,7 @@ namespace GProtobuf.CrossTests
 //             };
 // 
 //             using var ms = new MemoryStream();
-//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 //             ms.Position = 0;
 // 
 //             var bytes = ms.ToArray();
@@ -686,7 +686,7 @@ namespace GProtobuf.CrossTests
 //             };
 // 
 //             using var ms = new MemoryStream();
-//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+//             global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
 //             ms.Position = 0;
 // 
 //             var bytes = ms.ToArray();
@@ -724,7 +724,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var bytes = ms.ToArray();
@@ -782,7 +782,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeExtendedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             ms.Position = 0;
 
             var deserialized = ProtoBuf.Serializer.Deserialize<ExtendedTupleModel>(ms);

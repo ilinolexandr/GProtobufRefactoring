@@ -27,7 +27,7 @@ namespace GProtobuf.Benchmark.Scalars
         protected override byte[] PreSerialize(PrimitiveTypesModel model)
         {
             using var ms = new MemoryStream();
-            Models.Serialization.Serializers.SerializePrimitiveTypesModel(ms, model);
+            Models.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -53,7 +53,7 @@ namespace GProtobuf.Benchmark.Scalars
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Serialization.Serializers.SerializePrimitiveTypesModel(Stream, Model);
+            Models.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 

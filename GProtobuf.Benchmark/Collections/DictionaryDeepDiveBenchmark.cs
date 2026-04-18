@@ -49,7 +49,7 @@ namespace GProtobuf.Benchmark.Collections
         protected override byte[] PreSerialize(DictionaryIntIntModel model)
         {
             using var ms = new MemoryStream();
-            Models.Collections.Serialization.Serializers.SerializeDictionaryIntIntModel(ms, model);
+            Models.Collections.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -73,7 +73,7 @@ namespace GProtobuf.Benchmark.Collections
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Collections.Serialization.Serializers.SerializeDictionaryIntIntModel(Stream, Model);
+            Models.Collections.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
@@ -117,7 +117,7 @@ namespace GProtobuf.Benchmark.Collections
         protected override byte[] PreSerialize(DictionaryIntStringModel model)
         {
             using var ms = new MemoryStream();
-            Models.Collections.Serialization.Serializers.SerializeDictionaryIntStringModel(ms, model);
+            Models.Collections.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -141,7 +141,7 @@ namespace GProtobuf.Benchmark.Collections
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Collections.Serialization.Serializers.SerializeDictionaryIntStringModel(Stream, Model);
+            Models.Collections.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
@@ -192,7 +192,7 @@ namespace GProtobuf.Benchmark.Collections
         protected override byte[] PreSerialize(DictionaryStringStringModel model)
         {
             using var ms = new MemoryStream();
-            Models.Collections.Serialization.Serializers.SerializeDictionaryStringStringModel(ms, model);
+            Models.Collections.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -216,7 +216,7 @@ namespace GProtobuf.Benchmark.Collections
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Collections.Serialization.Serializers.SerializeDictionaryStringStringModel(Stream, Model);
+            Models.Collections.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
@@ -264,7 +264,7 @@ namespace GProtobuf.Benchmark.Collections
         protected override byte[] PreSerialize(DictionaryLongBytesModel model)
         {
             using var ms = new MemoryStream();
-            Models.Collections.Serialization.Serializers.SerializeDictionaryLongBytesModel(ms, model);
+            Models.Collections.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -288,7 +288,7 @@ namespace GProtobuf.Benchmark.Collections
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Collections.Serialization.Serializers.SerializeDictionaryLongBytesModel(Stream, Model);
+            Models.Collections.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 

@@ -51,7 +51,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void InitOnlyPrimitives_GG()
     {
         var model = CreatePrimitivesModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeInitOnlyPrimitivesModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeInitOnlyPrimitivesModel(bytes));
         AssertPrimitivesModel(deserialized);
@@ -61,7 +61,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void InitOnlyPrimitives_GP()
     {
         var model = CreatePrimitivesModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeInitOnlyPrimitivesModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<InitOnlyPrimitivesModel>(data);
         AssertPrimitivesModel(deserialized);
     }
@@ -70,7 +70,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void InitOnlyPrimitives_GG_Stream()
     {
         var model = CreatePrimitivesModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeInitOnlyPrimitivesModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModelDeserializers.DeserializeInitOnlyPrimitivesModel(stream));
         AssertPrimitivesModel(deserialized);
@@ -121,7 +121,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void MixedInitAndSet_GG()
     {
         var model = CreateMixedModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeMixedInitAndSetModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeMixedInitAndSetModel(bytes));
         AssertMixedModel(deserialized);
@@ -131,7 +131,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void MixedInitAndSet_GP()
     {
         var model = CreateMixedModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeMixedInitAndSetModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<MixedInitAndSetModel>(data);
         AssertMixedModel(deserialized);
     }
@@ -181,7 +181,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void InitWithNested_GG()
     {
         var model = CreateNestedModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeInitWithNestedModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeInitWithNestedModel(bytes));
         AssertNestedModel(deserialized);
@@ -191,7 +191,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void InitWithNested_GP()
     {
         var model = CreateNestedModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeInitWithNestedModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<InitWithNestedModel>(data);
         AssertNestedModel(deserialized);
     }
@@ -227,7 +227,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void InitWithCollection_GG()
     {
         var model = CreateCollectionModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeInitWithCollectionModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeInitWithCollectionModel(bytes));
         AssertCollectionModel(deserialized);
@@ -237,7 +237,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void InitWithCollection_GP()
     {
         var model = CreateCollectionModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeInitWithCollectionModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<InitWithCollectionModel>(data);
         AssertCollectionModel(deserialized);
     }
@@ -246,7 +246,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void InitWithCollection_GG_Stream()
     {
         var model = CreateCollectionModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeInitWithCollectionModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModelDeserializers.DeserializeInitWithCollectionModel(stream));
         AssertCollectionModel(deserialized);
@@ -256,7 +256,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void InitWithNested_GG_Stream()
     {
         var model = CreateNestedModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeInitWithNestedModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModelDeserializers.DeserializeInitWithNestedModel(stream));
         AssertNestedModel(deserialized);
@@ -266,7 +266,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void MixedInitAndSet_GG_Stream()
     {
         var model = CreateMixedModel();
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeMixedInitAndSetModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModelDeserializers.DeserializeMixedInitAndSetModel(stream));
         AssertMixedModel(deserialized);
@@ -309,7 +309,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void BaseInitDerivedNormal_GG()
     {
         var model = CreateBaseInitDerivedNormalModel();
-        var data = SerializeWithGProtobuf<BaseInitDerivedNormalRoot>(model, TestModelSerializers.SerializeBaseInitDerivedNormalRoot);
+        var data = SerializeWithGProtobuf<BaseInitDerivedNormalRoot>(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeBaseInitDerivedNormalRoot(bytes));
         AssertBaseInitDerivedNormalModel(deserialized);
@@ -319,7 +319,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void BaseInitDerivedNormal_GP()
     {
         var model = CreateBaseInitDerivedNormalModel();
-        var data = SerializeWithGProtobuf<BaseInitDerivedNormalRoot>(model, TestModelSerializers.SerializeBaseInitDerivedNormalRoot);
+        var data = SerializeWithGProtobuf<BaseInitDerivedNormalRoot>(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<BaseInitDerivedNormalRoot>(data);
         AssertBaseInitDerivedNormalModel(deserialized);
     }
@@ -328,7 +328,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void BaseInitDerivedNormal_GG_Stream()
     {
         var model = CreateBaseInitDerivedNormalModel();
-        var data = SerializeWithGProtobuf<BaseInitDerivedNormalRoot>(model, TestModelSerializers.SerializeBaseInitDerivedNormalRoot);
+        var data = SerializeWithGProtobuf<BaseInitDerivedNormalRoot>(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModelDeserializers.DeserializeBaseInitDerivedNormalRoot(stream));
         AssertBaseInitDerivedNormalModel(deserialized);
@@ -381,7 +381,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void BaseNormalDerivedInit_GG()
     {
         var model = CreateBaseNormalDerivedInitModel();
-        var data = SerializeWithGProtobuf<BaseNormalDerivedInitRoot>(model, TestModelSerializers.SerializeBaseNormalDerivedInitRoot);
+        var data = SerializeWithGProtobuf<BaseNormalDerivedInitRoot>(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeBaseNormalDerivedInitRoot(bytes));
         AssertBaseNormalDerivedInitModel(deserialized);
@@ -391,7 +391,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void BaseNormalDerivedInit_GP()
     {
         var model = CreateBaseNormalDerivedInitModel();
-        var data = SerializeWithGProtobuf<BaseNormalDerivedInitRoot>(model, TestModelSerializers.SerializeBaseNormalDerivedInitRoot);
+        var data = SerializeWithGProtobuf<BaseNormalDerivedInitRoot>(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<BaseNormalDerivedInitRoot>(data);
         AssertBaseNormalDerivedInitModel(deserialized);
     }
@@ -400,7 +400,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void BaseNormalDerivedInit_GG_Stream()
     {
         var model = CreateBaseNormalDerivedInitModel();
-        var data = SerializeWithGProtobuf<BaseNormalDerivedInitRoot>(model, TestModelSerializers.SerializeBaseNormalDerivedInitRoot);
+        var data = SerializeWithGProtobuf<BaseNormalDerivedInitRoot>(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModelDeserializers.DeserializeBaseNormalDerivedInitRoot(stream));
         AssertBaseNormalDerivedInitModel(deserialized);
@@ -453,7 +453,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void BaseInitDerivedInit_GG()
     {
         var model = CreateBaseInitDerivedInitModel();
-        var data = SerializeWithGProtobuf<BaseInitDerivedInitRoot>(model, TestModelSerializers.SerializeBaseInitDerivedInitRoot);
+        var data = SerializeWithGProtobuf<BaseInitDerivedInitRoot>(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeBaseInitDerivedInitRoot(bytes));
         AssertBaseInitDerivedInitModel(deserialized);
@@ -463,7 +463,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void BaseInitDerivedInit_GP()
     {
         var model = CreateBaseInitDerivedInitModel();
-        var data = SerializeWithGProtobuf<BaseInitDerivedInitRoot>(model, TestModelSerializers.SerializeBaseInitDerivedInitRoot);
+        var data = SerializeWithGProtobuf<BaseInitDerivedInitRoot>(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<BaseInitDerivedInitRoot>(data);
         AssertBaseInitDerivedInitModel(deserialized);
     }
@@ -472,7 +472,7 @@ public sealed class InitPropertyTests : BaseSerializationTest
     public void BaseInitDerivedInit_GG_Stream()
     {
         var model = CreateBaseInitDerivedInitModel();
-        var data = SerializeWithGProtobuf<BaseInitDerivedInitRoot>(model, TestModelSerializers.SerializeBaseInitDerivedInitRoot);
+        var data = SerializeWithGProtobuf<BaseInitDerivedInitRoot>(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModelDeserializers.DeserializeBaseInitDerivedInitRoot(stream));
         AssertBaseInitDerivedInitModel(deserialized);

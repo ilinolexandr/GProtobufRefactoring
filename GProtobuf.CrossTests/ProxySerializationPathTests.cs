@@ -69,7 +69,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void SerializeToArray_SingleProxy_RoundTrip()
     {
         var model = CreateTestMessage();
-        var data = Serializers.SerializeToArrayProxyTestMessage(model);
+        var data = Serializers.SerializeToArray(model);
         var result = Deserializers.DeserializeProxyTestMessage(data);
         AssertTestMessage(result);
     }
@@ -78,7 +78,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void SerializeToArray_Collection_RoundTrip()
     {
         var model = CreateCollectionMessage();
-        var data = Serializers.SerializeToArrayProxyCollectionTestMessage(model);
+        var data = Serializers.SerializeToArray(model);
         var result = Deserializers.DeserializeProxyCollectionTestMessage(data);
         AssertCollectionMessage(result);
     }
@@ -87,7 +87,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void SerializeToArray_MultiField_RoundTrip()
     {
         var model = CreateMultiFieldMessage();
-        var data = Serializers.SerializeToArrayProxyMultiFieldTestMessage(model);
+        var data = Serializers.SerializeToArray(model);
         var result = Deserializers.DeserializeProxyMultiFieldTestMessage(data);
         AssertMultiFieldMessage(result);
     }
@@ -99,7 +99,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     {
         var model = CreateTestMessage();
         var bufferWriter = new ArrayBufferWriter<byte>();
-        Serializers.SerializeProxyTestMessage(bufferWriter, model);
+        Serializers.Serialize(bufferWriter, model);
         var data = bufferWriter.WrittenSpan.ToArray();
         var result = Deserializers.DeserializeProxyTestMessage(data);
         AssertTestMessage(result);
@@ -110,7 +110,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     {
         var model = CreateCollectionMessage();
         var bufferWriter = new ArrayBufferWriter<byte>();
-        Serializers.SerializeProxyCollectionTestMessage(bufferWriter, model);
+        Serializers.Serialize(bufferWriter, model);
         var data = bufferWriter.WrittenSpan.ToArray();
         var result = Deserializers.DeserializeProxyCollectionTestMessage(data);
         AssertCollectionMessage(result);
@@ -121,7 +121,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     {
         var model = CreateMultiFieldMessage();
         var bufferWriter = new ArrayBufferWriter<byte>();
-        Serializers.SerializeProxyMultiFieldTestMessage(bufferWriter, model);
+        Serializers.Serialize(bufferWriter, model);
         var data = bufferWriter.WrittenSpan.ToArray();
         var result = Deserializers.DeserializeProxyMultiFieldTestMessage(data);
         AssertMultiFieldMessage(result);
@@ -134,7 +134,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     {
         var model = CreateTestMessage();
         Span<byte> buffer = stackalloc byte[512];
-        var written = Serializers.SerializeToProxyTestMessage(buffer, model);
+        var written = Serializers.SerializeTo(buffer, model);
         var data = buffer.Slice(0, written).ToArray();
         var result = Deserializers.DeserializeProxyTestMessage(data);
         AssertTestMessage(result);
@@ -145,7 +145,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     {
         var model = CreateMultiFieldMessage();
         Span<byte> buffer = stackalloc byte[512];
-        var written = Serializers.SerializeToProxyMultiFieldTestMessage(buffer, model);
+        var written = Serializers.SerializeTo(buffer, model);
         var data = buffer.Slice(0, written).ToArray();
         var result = Deserializers.DeserializeProxyMultiFieldTestMessage(data);
         AssertMultiFieldMessage(result);
@@ -157,7 +157,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void StreamReader_SingleProxy_RoundTrip()
     {
         var model = CreateTestMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         using var stream = new MemoryStream(data);
         var result = Deserializers.DeserializeProxyTestMessage(stream);
         AssertTestMessage(result);
@@ -167,7 +167,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void StreamReader_Collection_RoundTrip()
     {
         var model = CreateCollectionMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyCollectionTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         using var stream = new MemoryStream(data);
         var result = Deserializers.DeserializeProxyCollectionTestMessage(stream);
         AssertCollectionMessage(result);
@@ -177,7 +177,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void StreamReader_MultiField_RoundTrip()
     {
         var model = CreateMultiFieldMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyMultiFieldTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         using var stream = new MemoryStream(data);
         var result = Deserializers.DeserializeProxyMultiFieldTestMessage(stream);
         AssertMultiFieldMessage(result);
@@ -187,7 +187,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void StreamReader_WithCustomBuffer_SingleProxy_RoundTrip()
     {
         var model = CreateTestMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         using var stream = new MemoryStream(data);
         Span<byte> buffer = stackalloc byte[256];
         var result = Deserializers.DeserializeProxyTestMessage(stream, buffer);
@@ -200,7 +200,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void Populate_SpanReader_ExistingInstance()
     {
         var model = CreateTestMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
 
         var existing = new ProxyTestMessage { Name = "old", Position = new ExternalVector3(0, 0, 0) };
         var result = Deserializers.DeserializeProxyTestMessage((ReadOnlySpan<byte>)data, existing);
@@ -212,7 +212,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void Populate_StreamReader_ExistingInstance()
     {
         var model = CreateTestMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
 
         var existing = new ProxyTestMessage { Name = "old", Position = new ExternalVector3(0, 0, 0) };
         using var stream = new MemoryStream(data);
@@ -225,7 +225,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void Populate_Explicit_SpanReader()
     {
         var model = CreateTestMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
 
         var instance = new ProxyTestMessage();
         Deserializers.PopulateProxyTestMessage((ReadOnlySpan<byte>)data, instance);
@@ -237,7 +237,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void Populate_Explicit_StreamReader()
     {
         var model = CreateTestMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
 
         var instance = new ProxyTestMessage();
         using var stream = new MemoryStream(data);
@@ -250,7 +250,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void Populate_Explicit_StreamReader_WithBuffer()
     {
         var model = CreateTestMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
 
         var instance = new ProxyTestMessage();
         using var stream = new MemoryStream(data);
@@ -266,7 +266,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void SerializeToArray_DeserializeStream_CrossPath()
     {
         var model = CreateTestMessage();
-        var data = Serializers.SerializeToArrayProxyTestMessage(model);
+        var data = Serializers.SerializeToArray(model);
         using var stream = new MemoryStream(data);
         var result = Deserializers.DeserializeProxyTestMessage(stream);
         AssertTestMessage(result);
@@ -277,7 +277,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     {
         var model = CreateMultiFieldMessage();
         var bufferWriter = new ArrayBufferWriter<byte>();
-        Serializers.SerializeProxyMultiFieldTestMessage(bufferWriter, model);
+        Serializers.Serialize(bufferWriter, model);
         using var stream = new MemoryStream(bufferWriter.WrittenSpan.ToArray());
         var result = Deserializers.DeserializeProxyMultiFieldTestMessage(stream);
         AssertMultiFieldMessage(result);
@@ -337,7 +337,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
         var model = new ProxyCollectionTestMessage { Positions = positions };
 
         // Stream serialize → SpanReader deserialize
-        var dataStream = SerializeWithGProtobuf(model, Serializers.SerializeProxyCollectionTestMessage);
+        var dataStream = SerializeWithGProtobuf(model, Serializers.Serialize);
         var result1 = Deserializers.DeserializeProxyCollectionTestMessage(dataStream);
         result1.Positions.Should().HaveCount(1000);
         result1.Positions![0].X.Should().Be(0f);
@@ -345,7 +345,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
         result1.Positions[500].Y.Should().Be(1000f);
 
         // SerializeToArray → StreamReader deserialize
-        var dataArray = Serializers.SerializeToArrayProxyCollectionTestMessage(model);
+        var dataArray = Serializers.SerializeToArray(model);
         using var stream = new MemoryStream(dataArray);
         var result2 = Deserializers.DeserializeProxyCollectionTestMessage(stream);
         result2.Positions.Should().HaveCount(1000);
@@ -369,7 +369,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
             Extra = new List<ExternalVector3> { new(10f, 20f, 30f) }
         };
 
-        var data = Serializers.SerializeToArrayLargeProxyContainer(model);
+        var data = Serializers.SerializeToArray(model);
         var result = Deserializers.DeserializeLargeProxyContainer(data);
 
         result.P1.X.Should().Be(1f);
@@ -394,7 +394,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
             }
         };
 
-        var data = Serializers.SerializeToArrayProxyDictStructTestMessage(model);
+        var data = Serializers.SerializeToArray(model);
         var result = Deserializers.DeserializeProxyDictStructTestMessage(data);
 
         result.Positions.Should().HaveCount(2);
@@ -413,7 +413,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyDictClassTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         using var stream = new MemoryStream(data);
         var result = Deserializers.DeserializeProxyDictClassTestMessage(stream);
 
@@ -430,7 +430,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
         Vector3Proxy.ReturnCallCount = 0;
         var model = CreateTestMessage();
 
-        Serializers.SerializeToArrayProxyTestMessage(model);
+        Serializers.SerializeToArray(model);
 
         Vector3Proxy.ReturnCallCount.Should().BeGreaterThan(0,
             "[ProxyReturn] має бути викликаний в SerializeToArray path");
@@ -440,7 +440,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
     public void ProxyReturn_StreamReader_Deserialization_CallCount()
     {
         var model = CreateTestMessage();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeProxyTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
 
         Vector3Proxy.ReturnCallCount = 0;
         using var stream = new MemoryStream(data);
@@ -464,7 +464,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
             Tag = 42
         };
 
-        var data = Serializers.SerializeToArrayProxyNullableTestMessage(model);
+        var data = Serializers.SerializeToArray(model);
         var result = Deserializers.DeserializeProxyNullableTestMessage(data);
 
         result.MaybePosition.Should().NotBeNull();
@@ -484,7 +484,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
             Points = new List<ExternalVector3> { new(7f, 8f, 9f), new(10f, 11f, 12f) }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeDerivedWithProxy);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         using var stream = new MemoryStream(data);
         var result = Deserializers.DeserializeBaseWithProxy(stream);
 
@@ -506,7 +506,7 @@ public sealed class ProxySerializationPathTests : BaseSerializationTest
             Sizes = new List<ExternalSize> { new(2560, 1440), new(3840, 2160) }
         };
 
-        var data = Serializers.SerializeToArrayProxyPoolingTestMessage(model);
+        var data = Serializers.SerializeToArray(model);
         var result = Deserializers.DeserializeProxyPoolingTestMessage(data);
 
         result.Size.Width.Should().Be(1920);

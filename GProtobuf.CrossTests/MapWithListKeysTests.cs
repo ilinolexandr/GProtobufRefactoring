@@ -47,7 +47,7 @@ namespace GProtobuf.CrossTests
             };
             
             // Act - Serialize with GProtobuf
-            var gprotobufBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithListKeysModel);
+            var gprotobufBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Serialize with protobuf-net for comparison
             var protobufNetBytes = SerializeWithProtobufNet(model);
@@ -149,7 +149,7 @@ namespace GProtobuf.CrossTests
             };
             
             // Act - Serialize with GProtobuf
-            var gprotobufBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapWithListKeysModel);
+            var gprotobufBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Serialize with protobuf-net for comparison
             var protobufNetBytes = SerializeWithProtobufNet(model);

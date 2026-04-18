@@ -115,5 +115,18 @@ namespace GProtobuf.Core
         /// - Short-lived processes (pool never warms up)
         /// </remarks>
         public bool UseStringPooling { get; set; } = false;
+
+        /// <summary>
+        /// Emit the old typed entry-point names on the Serializers class
+        /// (e.g. SerializeFoo, SerializeFooOnePass, SerializeToArrayFoo) instead of overloads.
+        /// Default: false — new API emits Serialize / SerializeTo / SerializeToArray overloads,
+        /// with the OnePass suffix kept only when both 2-pass and 1-pass stream writers are
+        /// generated in the same assembly (otherwise the sigs collide).
+        /// </summary>
+        /// <remarks>
+        /// Set this to true as an escape hatch if the new overloaded API breaks downstream
+        /// call sites and you cannot rewrite them immediately.
+        /// </remarks>
+        public bool UseTypedSerializerNames { get; set; } = false;
     }
 }

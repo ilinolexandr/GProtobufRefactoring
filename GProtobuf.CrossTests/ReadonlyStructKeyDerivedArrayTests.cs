@@ -158,7 +158,7 @@ public sealed class ReadonlyStructKeyDerivedArrayTests : BaseSerializationTest
         // Serialize with GProtobuf, deserialize with protobuf-net
         var model = CreateTestModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyDerivedArrayModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         _output.WriteLine($"GProtobuf serialized size: {data.Length} bytes");
         _output.WriteLine($"GProtobuf hex: {System.BitConverter.ToString(data)}");
 
@@ -192,7 +192,7 @@ public sealed class ReadonlyStructKeyDerivedArrayTests : BaseSerializationTest
         // Serialize and deserialize with GProtobuf
         var model = CreateTestModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyDerivedArrayModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeReadonlyStructKeyDerivedArrayModel(bytes));
 
@@ -212,7 +212,7 @@ public sealed class ReadonlyStructKeyDerivedArrayTests : BaseSerializationTest
     {
         var model = CreateTestModel();
 
-        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyDerivedArrayModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var protobufNetData = SerializeWithProtobufNet(model);
 
         _output.WriteLine($"GProtobuf size: {gprotobufData.Length} bytes");
@@ -269,7 +269,7 @@ public sealed class ReadonlyStructKeyDerivedArrayTests : BaseSerializationTest
         var model = CreateTestModel();
 
         // Serialize with GProtobuf
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyDerivedArrayModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
 
         // The bug caused this to fail or produce wrong values
         var deserialized = DeserializeWithProtobufNet<ReadonlyStructKeyDerivedArrayModel>(data);

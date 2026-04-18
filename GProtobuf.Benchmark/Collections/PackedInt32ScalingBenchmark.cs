@@ -44,7 +44,7 @@ namespace GProtobuf.Benchmark.Collections
         protected override byte[] PreSerialize(Int32FixedListModel model)
         {
             using var ms = new MemoryStream();
-            Models.Scalars.Serialization.Serializers.SerializeInt32FixedListModel(ms, model);
+            Models.Scalars.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -86,7 +86,7 @@ namespace GProtobuf.Benchmark.Collections
             for (int i = 0; i < Ops; i++)
             {
                 Stream.SetLength(0);
-                Models.Scalars.Serialization.Serializers.SerializeInt32FixedListModel(Stream, Model);
+                Models.Scalars.Serialization.Serializers.Serialize(Stream, Model);
                 last = Stream.Length;
             }
             return last;

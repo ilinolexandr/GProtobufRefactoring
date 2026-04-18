@@ -44,6 +44,14 @@ namespace GProtobuf.Generator.CodeGeneration
         public bool UseStringPooling { get; init; } = false;
 
         /// <summary>
+        /// If true, emit the old typed entry-point names (e.g. SerializeFoo, SerializeToArrayFoo).
+        /// If false (default), emit overloaded names (Serialize, SerializeTo, SerializeToArray) with
+        /// the OnePass suffix kept only when both 2-pass and 1-pass stream writers are generated
+        /// (otherwise the two OnePass entry points would collide with the 2-pass overloads).
+        /// </summary>
+        public bool UseTypedSerializerNames { get; init; } = false;
+
+        /// <summary>
         /// Default options with all generators enabled.
         /// </summary>
         public static GeneratorOptions Default { get; } = new();

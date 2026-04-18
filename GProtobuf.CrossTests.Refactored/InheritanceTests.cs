@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using GProtobuf.CrossTests.Refactored.Serialization;
 
 namespace GProtobuf.CrossTests.Refactored;
@@ -13,7 +13,7 @@ public sealed class InheritanceTests : BaseSerializationTest
             StringA = "StringA",
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeA);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => Deserializers.DeserializeA(bytes));
 
         data.Should().NotBeNull();
@@ -30,7 +30,7 @@ public sealed class InheritanceTests : BaseSerializationTest
             StringB = "StringB"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeB);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => Deserializers.DeserializeB(bytes));
 
         data.Should().NotBeNull();
@@ -48,7 +48,7 @@ public sealed class InheritanceTests : BaseSerializationTest
             StringC = "StringC"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeC);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => Deserializers.DeserializeC(bytes));
 
         data.Should().NotBeNull();
@@ -67,7 +67,7 @@ public sealed class InheritanceTests : BaseSerializationTest
             StringD = "StringD"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeD);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => Deserializers.DeserializeD(bytes));
 
         data.Should().NotBeNull();
@@ -86,7 +86,7 @@ public sealed class InheritanceTests : BaseSerializationTest
             StringD = "StringD"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeD);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => Deserializers.DeserializeA(bytes));
 
         data.Should().NotBeNull();
@@ -102,7 +102,7 @@ public sealed class InheritanceTests : BaseSerializationTest
     {
         var model = new D();
         
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeD);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => Deserializers.DeserializeD(bytes));
 
         data.Should().NotBeNull();
@@ -121,7 +121,7 @@ public sealed class InheritanceTests : BaseSerializationTest
             StringE = "StringE"
         };
         
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeE);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => Deserializers.DeserializeE(bytes));
 
         data.Should().NotBeNull();

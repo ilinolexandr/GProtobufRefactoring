@@ -40,21 +40,21 @@ namespace GProtobuf.Benchmark.TwoPassSpecific
         protected override byte[] PreSerialize(Int32DefaultListModel model)
         {
             using var ms = new MemoryStream();
-            Models.Scalars.Serialization.Serializers.SerializeInt32DefaultListModel(ms, model);
+            Models.Scalars.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
         [Benchmark(Baseline = true), BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Scalars.Serialization.Serializers.SerializeInt32DefaultListModel(Stream, Model);
+            Models.Scalars.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_BufferWriter_Ser()
         {
-            Models.Scalars.Serialization.Serializers.SerializeInt32DefaultListModel(BufferWriter, Model);
+            Models.Scalars.Serialization.Serializers.Serialize(BufferWriter, Model);
             return BufferWriter.WrittenCount;
         }
     }

@@ -53,7 +53,7 @@ namespace GProtobuf.Benchmark.Messages
         protected override byte[] PreSerialize(NestedMessagesModel model)
         {
             using var ms = new MemoryStream();
-            Models.Serialization.Serializers.SerializeNestedMessagesModel(ms, model);
+            Models.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -79,7 +79,7 @@ namespace GProtobuf.Benchmark.Messages
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Serialization.Serializers.SerializeNestedMessagesModel(Stream, Model);
+            Models.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 

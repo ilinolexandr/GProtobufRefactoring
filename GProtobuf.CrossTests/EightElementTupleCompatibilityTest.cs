@@ -78,7 +78,7 @@ namespace GProtobuf.CrossTests
 
             // Act: Serialize with GProtobuf
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeNestedTupleModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             // Debug: Print wire format
@@ -123,7 +123,7 @@ namespace GProtobuf.CrossTests
 
             // Serialize with GProtobuf
             using var msGProto = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeNestedTupleModel(msGProto, model);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(msGProto, model);
             var gprotoBytes = msGProto.ToArray();
 
             // Print comparison

@@ -52,7 +52,7 @@ public class StreamReaderTests : BaseSerializationTest
             CharValue = 'X'
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeBasicTypesModel(stream));
 
@@ -100,7 +100,7 @@ public class StreamReaderTests : BaseSerializationTest
             DoubleValue = 123.456
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
         var spanResult = DeserializeWithGProtobuf(data,
             bytes => TestModel.Serialization.Deserializers.DeserializeBasicTypesModel(bytes));
@@ -123,7 +123,7 @@ public class StreamReaderTests : BaseSerializationTest
             LongValue = -9999999999L
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesZigZagModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeBasicTypesZigZagModel(stream));
 
@@ -161,7 +161,7 @@ public class StreamReaderTests : BaseSerializationTest
             BoolArray = new[] { true, false, true }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(stream));
 
@@ -194,7 +194,7 @@ public class StreamReaderTests : BaseSerializationTest
             BasicStringArray = new[] { "Hello", "World", "Test", "Array" }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeStringArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeStringArraysTestModel(stream));
 
@@ -210,7 +210,7 @@ public class StreamReaderTests : BaseSerializationTest
         };
         new Random(42).NextBytes(model.BasicByteArray);
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
         // Use custom buffer larger than data size (default 4KB is too small for 10KB data)
         using var ms = new MemoryStream(data);
@@ -232,7 +232,7 @@ public class StreamReaderTests : BaseSerializationTest
             StringList = new List<string> { "a", "b", "c" }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeCollectionTypesTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeCollectionTypesTestModel(stream));
 
@@ -248,7 +248,7 @@ public class StreamReaderTests : BaseSerializationTest
             UniqueTags = new HashSet<string> { "tag1", "tag2", "tag3" }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeHashSetTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeHashSetTestModel(stream));
 
@@ -290,7 +290,7 @@ public class StreamReaderTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeDictionaryModel(stream));
 
@@ -329,7 +329,7 @@ public class StreamReaderTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeGuidMapTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeGuidMapTestModel(stream));
 
@@ -348,7 +348,7 @@ public class StreamReaderTests : BaseSerializationTest
             StringDoubleMap = new Dictionary<string, double> { { "pi", 3.14159 } }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeComprehensiveDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeComprehensiveDictionaryTestModel(stream));
 
@@ -368,7 +368,7 @@ public class StreamReaderTests : BaseSerializationTest
             DoubleTuple = Tuple.Create(3.14, 2.71)
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeTupleModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeTupleModel(stream));
 
@@ -399,7 +399,7 @@ public class StreamReaderTests : BaseSerializationTest
             SimpleNested = Tuple.Create(1, Tuple.Create("nested", true))
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeNestedTupleModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeNestedTupleModel(stream));
 
@@ -414,7 +414,7 @@ public class StreamReaderTests : BaseSerializationTest
             SixElementTuple = Tuple.Create("one", 2, 3.0, true, 5.0f, 6L)
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeExtendedTupleModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeExtendedTupleModel(stream));
 
@@ -435,7 +435,7 @@ public class StreamReaderTests : BaseSerializationTest
             UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeDateTimeTypesModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeDateTimeTypesModel(stream));
 
@@ -455,7 +455,7 @@ public class StreamReaderTests : BaseSerializationTest
             AnotherGuidValue = Guid.NewGuid()
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeGuidTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeGuidTypesModel(stream));
 
@@ -493,7 +493,7 @@ public class StreamReaderTests : BaseSerializationTest
             SignedValue = SignedEnum.NegativeOne
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeEnumTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeEnumTypesModel(stream));
 
@@ -531,7 +531,7 @@ public class StreamReaderTests : BaseSerializationTest
             StringC = "MostDerived"
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeA);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeA(stream));
 
@@ -566,7 +566,7 @@ public class StreamReaderTests : BaseSerializationTest
             StringB = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeA);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeA(stream));
 
@@ -589,7 +589,7 @@ public class StreamReaderTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMessageArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeMessageArraysTestModel(stream));
 
@@ -613,7 +613,7 @@ public class StreamReaderTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeRecursiveNode);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => TestModel.Serialization.Deserializers.DeserializeRecursiveNode(stream));
 
@@ -635,7 +635,7 @@ public class StreamReaderTests : BaseSerializationTest
         };
         new Random(42).NextBytes(model.BytesValue);
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         _output.WriteLine($"Serialized size: {data.Length} bytes");
 
         // Use custom buffer larger than data size (default 4KB is too small)
@@ -660,7 +660,7 @@ public class StreamReaderTests : BaseSerializationTest
         for (int i = 0; i < model.FloatArray.Length; i++)
             model.FloatArray[i] = i * 1.5f;
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         _output.WriteLine($"Serialized size: {data.Length} bytes");
 
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
@@ -682,7 +682,7 @@ public class StreamReaderTests : BaseSerializationTest
             model.Dictionary[i] = $"value_{i}";
         }
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictionaryModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         _output.WriteLine($"Serialized size: {data.Length} bytes");
 
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
@@ -710,7 +710,7 @@ public class StreamReaderTests : BaseSerializationTest
         for (int i = 0; i < arraySize; i++)
             model.LongArray[i] = i;
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
         var spanResult = DeserializeWithGProtobuf(data,
             bytes => TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(bytes));
@@ -732,7 +732,7 @@ public class StreamReaderTests : BaseSerializationTest
             StringDoubleMap = new Dictionary<string, double> { { "val", 123.456 } }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeComprehensiveDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var spanResult = DeserializeWithGProtobuf(data,
             bytes => CrossTestModel.Serialization.Deserializers.DeserializeComprehensiveDictionaryTestModel(bytes));
@@ -755,7 +755,7 @@ public class StreamReaderTests : BaseSerializationTest
             StringValue = "Custom buffer test"
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
         // Test with custom buffer size
         using var ms = new MemoryStream(data);

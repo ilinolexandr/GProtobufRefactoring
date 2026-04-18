@@ -51,7 +51,7 @@ namespace GProtobuf.Benchmark.Messages
         protected override byte[] PreSerialize(InheritBase model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeInheritBase(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -77,7 +77,7 @@ namespace GProtobuf.Benchmark.Messages
         [Benchmark(Baseline = true), BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeInheritBase(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 

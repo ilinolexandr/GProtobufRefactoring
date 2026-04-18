@@ -119,7 +119,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "Short[] Non-Packed");
 
@@ -140,7 +140,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "Short[] Packed (Default/VarInt)");
 
@@ -160,7 +160,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "Short[] Packed ZigZag");
 
@@ -180,7 +180,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "Short[] Packed FixedSize ⚠️ FAILING TEST");
 
@@ -205,7 +205,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "UShort[] Non-Packed");
         }
@@ -219,7 +219,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "UShort[] Packed (Default/VarInt)");
         }
@@ -233,7 +233,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "UShort[] Packed FixedSize");
 
@@ -256,7 +256,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "Long[] Packed FixedSize (reference)");
         }
@@ -274,7 +274,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "Float[] Packed (Fixed32)");
         }
@@ -292,7 +292,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "Double[] Packed (Fixed64)");
         }
@@ -310,7 +310,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "SByte[] Packed (Default/VarInt)");
         }
@@ -324,7 +324,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "SByte[] Packed ZigZag");
         }
@@ -343,7 +343,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             CompareWireFormats(pnetData, gprotoData, "Empty Arrays");
 
@@ -408,7 +408,7 @@ namespace GProtobuf.Tests.DiagnosticTests
             };
 
             var pnetData = SerializeWithProtobufNet(model);
-            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+            var gprotoData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
             _output.WriteLine($"TOTAL SIZE: protobuf-net={pnetData.Length} bytes, GProtobuf={gprotoData.Length} bytes");
             _output.WriteLine($"MATCH: {pnetData.SequenceEqual(gprotoData)}");

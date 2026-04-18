@@ -37,14 +37,14 @@ namespace GProtobuf.Benchmark.OnePassSpecific
         protected override byte[] PreSerialize(DeepNestedNode model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeDeepNestedNode(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
         [Benchmark(Baseline = true), BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeDeepNestedNode(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 

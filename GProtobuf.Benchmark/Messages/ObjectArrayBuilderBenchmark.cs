@@ -39,7 +39,7 @@ namespace GProtobuf.Benchmark.Messages
         protected override byte[] PreSerialize(ObjectArrayBuilderTestModel model)
         {
             using var ms = new MemoryStream();
-            Models.Serialization.Serializers.SerializeObjectArrayBuilderTestModel(ms, model);
+            Models.Serialization.Serializers.Serialize(ms, model);
 
             // POC parity check: verify the hand-written pre-calc OnePass path
             // produces byte-identical output. Fails loudly at GlobalSetup time
@@ -79,7 +79,7 @@ namespace GProtobuf.Benchmark.Messages
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Serialization.Serializers.SerializeObjectArrayBuilderTestModel(Stream, Model);
+            Models.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 

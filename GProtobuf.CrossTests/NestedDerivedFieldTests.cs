@@ -203,7 +203,7 @@ public sealed class NestedDerivedFieldTests : BaseSerializationTest
 
         // Act - Serialize with GProtobuf
         var data = SerializeWithGProtobuf(model,
-            (stream, obj) => Serializers.SerializeTriggerContainer(stream, obj));
+            (stream, obj) => Serializers.Serialize(stream, obj));
 
         // Deserialize with GProtobuf
         var deserialized = DeserializeWithGProtobuf(data,
@@ -230,7 +230,7 @@ public sealed class NestedDerivedFieldTests : BaseSerializationTest
 
         // Act - Serialize with GProtobuf
         var data = SerializeWithGProtobuf(model,
-            (stream, obj) => Serializers.SerializeTriggerContainer(stream, obj));
+            (stream, obj) => Serializers.Serialize(stream, obj));
 
         // Deserialize with protobuf-net
         var deserialized = DeserializeWithProtobufNet<TriggerContainer>(data);

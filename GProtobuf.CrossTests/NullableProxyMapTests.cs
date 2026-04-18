@@ -61,7 +61,7 @@ public sealed class NullableProxyMapTests : BaseSerializationTest
     public void NullableProxyMap_StreamWriter_RoundTrip()
     {
         var model = MakeModel();
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeNullableProxyMapTestMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeNullableProxyMapTestMessage(data);
         AssertModel(deserialized);
     }
@@ -71,7 +71,7 @@ public sealed class NullableProxyMapTests : BaseSerializationTest
     {
         var model = MakeModel();
         using var ms = new MemoryStream();
-        Serializers.SerializeNullableProxyMapTestMessageOnePass(ms, model);
+        Serializers.SerializeOnePass(ms, model);
         var data = ms.ToArray();
         var deserialized = Deserializers.DeserializeNullableProxyMapTestMessage(data);
         AssertModel(deserialized);

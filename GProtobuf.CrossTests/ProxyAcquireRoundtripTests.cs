@@ -127,7 +127,7 @@ public sealed class ProxyAcquireRoundtripTests : BaseSerializationTest
             Tag = "single"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeAcquireSingleMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeAcquireSingleMessage(data);
 
         deserialized.Point.X.Should().Be(11);
@@ -153,7 +153,7 @@ public sealed class ProxyAcquireRoundtripTests : BaseSerializationTest
             Tag = "pool"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeAcquireSingleMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         Deserializers.DeserializeAcquireSingleMessage(data);
 
         // Sentinel мав бути взятий з пулу під час десеріалізації, заповнений, потім
@@ -175,7 +175,7 @@ public sealed class ProxyAcquireRoundtripTests : BaseSerializationTest
             Tag = "stream"
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeAcquireSingleMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         using var ms = new System.IO.MemoryStream(data);
         var deserialized = Deserializers.DeserializeAcquireSingleMessage(ms);
 
@@ -203,7 +203,7 @@ public sealed class ProxyAcquireRoundtripTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeAcquireCollectionMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeAcquireCollectionMessage(data);
 
         deserialized.Points.Should().HaveCount(3);
@@ -229,7 +229,7 @@ public sealed class ProxyAcquireRoundtripTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeAcquireNestedOuter);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
         var deserialized = Deserializers.DeserializeAcquireNestedOuter(data);
 
         deserialized.Inner.Should().NotBeNull();
@@ -250,7 +250,7 @@ public sealed class ProxyAcquireRoundtripTests : BaseSerializationTest
             Point = new AcquireExternalPoint(123, 456)
         };
 
-        var data = SerializeWithGProtobuf(model, Serializers.SerializeAcquireSingleMessage);
+        var data = SerializeWithGProtobuf(model, Serializers.Serialize);
 
         // Reset після серіалізації, бо Wrap і ще щось могли інкрементуватися під час write-path.
         AcquirePointProxy.AcquireCallCount = 0;

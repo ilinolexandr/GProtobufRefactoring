@@ -24,7 +24,7 @@ namespace GProtobuf.Tests
         public void Inheritance_BaseType_GG_Stream()
         {
             var original = new ModelBase { Id = 42 };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeModelBase);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeModelBase(stream));
@@ -41,7 +41,7 @@ namespace GProtobuf.Tests
                 Description = "Test Description",
                 Guid = Guid.NewGuid()
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeModelBase);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeModelBase(stream));
@@ -62,7 +62,7 @@ namespace GProtobuf.Tests
                 Description1 = "Desc1",
                 Guid1 = Guid.NewGuid()
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeModelBase);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeModelBase(stream));
@@ -83,7 +83,7 @@ namespace GProtobuf.Tests
                 Description2 = "Desc2",
                 Guid2 = Guid.NewGuid()
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeModelBase);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeModelBase(stream));
@@ -110,7 +110,7 @@ namespace GProtobuf.Tests
                 Description15 = "Level 3 Desc",
                 Guid15 = Guid.NewGuid()
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeModelBase);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeModelBase(stream));
@@ -143,7 +143,7 @@ namespace GProtobuf.Tests
                     DerivedValue = 200
                 }
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeTriggerContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeTriggerContainer(stream));
@@ -207,7 +207,7 @@ namespace GProtobuf.Tests
                     DerivedValue = 40
                 }
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMultiDerivedContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeMultiDerivedContainer(stream));
@@ -237,7 +237,7 @@ namespace GProtobuf.Tests
                     DerivedValue = 60
                 }
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeBaseTriggerContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeBaseTriggerContainer(stream));
@@ -267,7 +267,7 @@ namespace GProtobuf.Tests
                     }
                 }
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeDeepNestingContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeDeepNestingContainer(stream));
@@ -294,7 +294,7 @@ namespace GProtobuf.Tests
                     [2] = new DerivedActionParams { BaseName = "Item2Base", DerivedName = "Item2Derived", BaseValue = 20, DerivedValue = 200 }
                 }
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMapWithDerivedValue);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeMapWithDerivedValue(stream));
@@ -320,7 +320,7 @@ namespace GProtobuf.Tests
                     [key2] = 200
                 }
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMapWithDerivedKey);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeMapWithDerivedKey(stream));
@@ -344,7 +344,7 @@ namespace GProtobuf.Tests
             original.Items[1] = new DerivedActionParams { BaseName = "Base1", DerivedName = "Derived1", BaseValue = 10, DerivedValue = 100 };
             original.Items[2] = new DerivedActionParams { BaseName = "Base2", DerivedName = "Derived2", BaseValue = 20, DerivedValue = 200 };
 
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeConcurrentMapWithDerivedValue);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentMapWithDerivedValue(stream));
@@ -368,7 +368,7 @@ namespace GProtobuf.Tests
             original.Items[key1] = 100;
             original.Items[key2] = 200;
 
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeConcurrentMapWithDerivedKey);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentMapWithDerivedKey(stream));
@@ -395,7 +395,7 @@ namespace GProtobuf.Tests
                 new DerivedActionParams { BaseName = "Item2A", DerivedName = "Derived2A" }
             };
 
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeConcurrentMapWithListValue);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentMapWithListValue(stream));
@@ -428,7 +428,7 @@ namespace GProtobuf.Tests
             level2[key1] = level3;
             original.Connections[1000] = level2;
 
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeDeepAggregatedConnection);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeDeepAggregatedConnection(stream));
@@ -552,7 +552,7 @@ namespace GProtobuf.Tests
                 Priority = 1,
                 ActionParameters = null
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeTriggerContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeTriggerContainer(stream));
@@ -569,7 +569,7 @@ namespace GProtobuf.Tests
             {
                 Items = new Dictionary<int, DerivedActionParams>()
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMapWithDerivedValue);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeMapWithDerivedValue(stream));
@@ -599,7 +599,7 @@ namespace GProtobuf.Tests
                     DerivedValue = -999999
                 }
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMultiDerivedContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeMultiDerivedContainer(stream));
@@ -628,7 +628,7 @@ namespace GProtobuf.Tests
                 },
                 Secondary = null
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMultiDerivedContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeMultiDerivedContainer(stream));
@@ -654,7 +654,7 @@ namespace GProtobuf.Tests
                 },
                 Secondary = null
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMultiDerivedContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeMultiDerivedContainer(stream));
@@ -679,7 +679,7 @@ namespace GProtobuf.Tests
                 },
                 Secondary = null
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMultiDerivedContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeMultiDerivedContainer(stream));
@@ -703,7 +703,7 @@ namespace GProtobuf.Tests
                 },
                 Secondary = null
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMultiDerivedContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeMultiDerivedContainer(stream));
@@ -727,7 +727,7 @@ namespace GProtobuf.Tests
                 },
                 Secondary = null
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeMultiDerivedContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             // Use larger buffer to test if that's the issue
             using var stream = new MemoryStream(bytes);
@@ -755,7 +755,7 @@ namespace GProtobuf.Tests
                     [2] = new Dictionary<int, string> { [30] = "C" }
                 }
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeNestedMapContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeNestedMapContainer(stream));
@@ -778,7 +778,7 @@ namespace GProtobuf.Tests
             inner1[200] = "Value200";
             original.NestedMap[1] = inner1;
 
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeNestedConcurrentMap);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeNestedConcurrentMap(stream));
@@ -798,7 +798,7 @@ namespace GProtobuf.Tests
             original.Items[1] = new Dictionary<int, string> { [10] = "Mixed1" };
             original.Items[2] = new Dictionary<int, string> { [20] = "Mixed2", [30] = "Mixed3" };
 
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeConcurrentMapWithDictionaryValue);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentMapWithDictionaryValue(stream));
@@ -820,7 +820,7 @@ namespace GProtobuf.Tests
             inner[2] = "ConcurrentValue2";
             original.Items[100] = inner;
 
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeDictionaryWithConcurrentMapValue);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeDictionaryWithConcurrentMapValue(stream));
@@ -845,7 +845,7 @@ namespace GProtobuf.Tests
             inner[1] = new HashSet<int> { 10, 20, 30 };
             original.Items[ConnectionStatus.Pending] = inner;
 
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeConcurrentMapWithEnumKey);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentMapWithEnumKey(stream));
@@ -872,7 +872,7 @@ namespace GProtobuf.Tests
             };
             original.Items[1] = inner;
 
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeConcurrentMapWithEnumArray);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             var deserialized = DeserializeWithGProtobufStreamFromBytes(bytes,
                 stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentMapWithEnumArray(stream));
@@ -901,7 +901,7 @@ namespace GProtobuf.Tests
                     DerivedValue = 200
                 }
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeTriggerContainer);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             // Deserialize with SpanReader
             var spanResult = CrossTestModel.Serialization.Deserializers.DeserializeTriggerContainer(bytes);
@@ -930,7 +930,7 @@ namespace GProtobuf.Tests
                 Description15 = "Desc15",
                 Guid15 = Guid.NewGuid()
             };
-            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.SerializeModelBase);
+            var bytes = SerializeWithGProtobuf(original, CrossTestModel.Serialization.Serializers.Serialize);
 
             // Deserialize with SpanReader
             var spanResult = (Model15)CrossTestModel.Serialization.Deserializers.DeserializeModelBase(bytes);

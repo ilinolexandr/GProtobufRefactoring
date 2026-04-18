@@ -45,7 +45,7 @@ namespace GProtobuf.Benchmark.OnePassSpecific
         protected override byte[] PreSerialize(Int32DefaultListModel model)
         {
             using var ms = new MemoryStream();
-            Models.Scalars.Serialization.Serializers.SerializeInt32DefaultListModel(ms, model);
+            Models.Scalars.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -72,7 +72,7 @@ namespace GProtobuf.Benchmark.OnePassSpecific
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser_Reference()
         {
-            Models.Scalars.Serialization.Serializers.SerializeInt32DefaultListModel(Stream, Model);
+            Models.Scalars.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
     }

@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using GProtobuf.Tests.TestModel;
 //using GProtobuf.Generator;
 using Microsoft.CodeAnalysis;
@@ -48,7 +48,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             StringC = "StringC"
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeA);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeA(bytes));
 
         data.Should().NotBeNull();
@@ -64,7 +64,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             StringC = "StringC"
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeA);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeA(bytes));
 
         data.Should().NotBeNull();
@@ -80,7 +80,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             StringA = "StringA"
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeA);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeA(bytes));
 
         data.Should().NotBeNull();
@@ -98,7 +98,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             StringA = "StringA"
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeC);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeA(bytes));
 
         data.Should().NotBeNull();
@@ -121,7 +121,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
         }
         model.StringC = sb.ToString();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeC);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeA(bytes));
 
         data.Should().NotBeNull();
@@ -150,7 +150,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             CharValue = 'A'
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeBasicTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -163,7 +163,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
     {
         var model = new BasicTypesModel(); // All default values
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeBasicTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -191,7 +191,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             CharValue = char.MaxValue
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeBasicTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -213,7 +213,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             CharValue = 'Z'
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeBasicTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -241,7 +241,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             BytesValue = new byte[] { 1, 2, 3, 4, 5, 255, 0, 127 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesZigZagModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeBasicTypesZigZagModel(bytes));
 
         data.Should().NotBeNull();
@@ -265,7 +265,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             BytesValue = new byte[] { 255, 128, 0 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesZigZagModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeBasicTypesZigZagModel(bytes));
 
         data.Should().NotBeNull();
@@ -286,7 +286,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             StringValue = "Min/Max values test"
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeBasicTypesZigZagModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeBasicTypesZigZagModel(bytes));
 
         data.Should().NotBeNull();
@@ -303,7 +303,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             LongValue = long.MinValue // -9223372036854775808
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeSimpleTypesZigZag);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeSimpleTypesZigZag(bytes));
 
         data.Should().NotBeNull();
@@ -340,7 +340,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             AnotherGuidValue = Guid.NewGuid()
         };
 
-        var data = SerializeWithGProtobuf(model, GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeGuidTypesModel);
+        var data = SerializeWithGProtobuf(model, GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeGuidTypesModel(bytes));
 
         deserialized.Should().NotBeNull();
@@ -362,7 +362,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             AnotherGuidValue = Guid.Empty
         };
 
-        var data = SerializeWithGProtobuf(model, GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeGuidTypesModel);
+        var data = SerializeWithGProtobuf(model, GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize);
 
         // All fields are Guid.Empty, so the serialized data should be minimal (just empty message)
         data.Should().NotBeNull();
@@ -383,7 +383,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             AnotherGuidValue = Guid.Empty
         };
 
-        var gprotobufData = SerializeWithGProtobuf(model, GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeGuidTypesModel);
+        var gprotobufData = SerializeWithGProtobuf(model, GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize);
         var protobufNetData = SerializeWithProtobufNet(model);
 
         // The serialized data should match between GProtobuf and protobuf-net
@@ -402,7 +402,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
     {
         var model = new TestModel.NullableTypesModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -428,7 +428,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableFloatValue = 0.0f
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -461,7 +461,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableSByteValue = -128
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -483,7 +483,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableFloatValue = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -505,7 +505,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableZigZagLongValue = -123456789L
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -522,7 +522,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableFixedSizeIntValue = 987654321
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -538,7 +538,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableGuidValue = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -556,7 +556,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableGuidValue = testGuid
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -573,7 +573,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableGuidValue = Guid.Empty
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -592,7 +592,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayNonPacked = new[] { 1, 2, 3, 100, 1000 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -608,7 +608,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayNonPackedZigZag = new[] { -1, -100, 0, 50, -50 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -623,7 +623,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayNonPackedFixed = new[] { int.MaxValue, int.MinValue, 0, 42 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -638,7 +638,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayPacked = new[] { 1, 2, 3, 100, 1000 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -654,7 +654,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayPackedZigZag = new[] { -1, -100, 0, 50, -50 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         Console.WriteLine(String.Join(',',data));
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
@@ -670,7 +670,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayPackedFixed = new[] { int.MaxValue, int.MinValue, 0, 42 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -689,7 +689,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ByteArray = new byte[] { 0, 1, 255, 128, 42 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -704,7 +704,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ByteArray = new byte[0]
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -720,7 +720,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ByteArray = largeByteArray
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -740,7 +740,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayPackedNull = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -758,7 +758,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayPackedEmpty = new int[0]
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -774,7 +774,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ByteArray = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -796,7 +796,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayNonPackedLarge = largeArray
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         data.Should().NotBeNull();
@@ -814,7 +814,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             IntArrayPackedFixed = new[] { int.MinValue, int.MaxValue, 0, -1, 1 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         deserialized.IntArrayPacked.Should().Equal(int.MinValue, int.MaxValue, 0, -1, 1);
@@ -834,7 +834,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             BasicByteArray = new byte[] { 0, 1, 2, 127, 128, 254, 255 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -849,7 +849,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             EmptyByteArray = new byte[0]
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -865,7 +865,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullByteArray = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -887,7 +887,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             LargeByteArray = largeArray
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -910,7 +910,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             AllPossibleBytes = allBytes
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -945,7 +945,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             BinaryData = binaryData
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -969,7 +969,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             model.LargeByteArray[i] = (byte)(i % 100);
         }
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -991,7 +991,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             SegmentField = new ArraySegment<byte>(new byte[] { 1, 2, 3, 4, 5 })
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1006,7 +1006,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             MemoryField = new Memory<byte>(new byte[] { 10, 20, 30 })
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1021,7 +1021,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ReadOnlyMemoryField = new ReadOnlyMemory<byte>(new byte[] { 100, 200, 255 })
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1039,7 +1039,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ByteArrayField = new byte[] { 7, 8 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
 
         deserialized.SegmentField.ToArray().Should().Equal(1, 2);
@@ -1053,7 +1053,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
     {
         var model = new ByteWrapperTypesModel();
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1073,7 +1073,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             SegmentField = new ArraySegment<byte>(bigArray, 2, 3)
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
 
         deserialized.SegmentField.ToArray().Should().Equal(10, 20, 30);
@@ -1093,7 +1093,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ReadOnlyMemoryField = new ReadOnlyMemory<byte>((byte[])largeData.Clone())
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
 
         deserialized.SegmentField.ToArray().Should().Equal(largeData);
@@ -1111,7 +1111,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ReadOnlyMemoryField = new ReadOnlyMemory<byte>(new byte[] { 7, 8, 9 })
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data, s => TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(s));
 
         deserialized.SegmentField.ToArray().Should().Equal(1, 2, 3);
@@ -1128,7 +1128,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             BasicByteArray = new byte[] { 42, 43, 44 }
         };
 
-        var data = SerializeWithGProtobuf(byteArrayModel, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(byteArrayModel, TestModel.Serialization.Serializers.Serialize);
 
         // Deserialize the same wire data into ByteWrapperTypesModel — field 1 maps to SegmentField
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
@@ -1146,7 +1146,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ReadOnlyMemoryField = new ReadOnlyMemory<byte>(new byte[] { 0x80 })
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
 
         deserialized.SegmentField.ToArray().Should().Equal(0xFF);
@@ -1165,7 +1165,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ReadOnlyMemoryField = new ReadOnlyMemory<byte>(bigArray, 2, 3)
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data);
 
         deserialized.MemoryField.ToArray().Should().Equal(42, 43, 44);
@@ -1185,8 +1185,8 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
         };
 
         // SerializeToArray uses SizeCalculator then StackBufferWriter — if sizes mismatch, it will throw
-        var arrayData = TestModel.Serialization.Serializers.SerializeToArrayByteWrapperTypesModel(model);
-        var streamData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var arrayData = TestModel.Serialization.Serializers.SerializeToArray(model);
+        var streamData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
         arrayData.Should().Equal(streamData);
     }
@@ -1203,7 +1203,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             SegmentField = new ArraySegment<byte>(bigArray, 50, 3) // only 3 bytes
         };
 
-        var arrayData = TestModel.Serialization.Serializers.SerializeToArrayByteWrapperTypesModel(model);
+        var arrayData = TestModel.Serialization.Serializers.SerializeToArray(model);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(arrayData);
 
         deserialized.SegmentField.ToArray().Should().Equal(50, 51, 52);
@@ -1221,9 +1221,9 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ReadOnlyMemoryField = new ReadOnlyMemory<byte>(new byte[] { 6 })
         };
 
-        var data1 = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data1 = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized1 = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data1);
-        var data2 = SerializeWithGProtobuf(deserialized1, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var data2 = SerializeWithGProtobuf(deserialized1, TestModel.Serialization.Serializers.Serialize);
         var deserialized2 = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel(data2);
 
         data2.Should().Equal(data1);
@@ -1244,7 +1244,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ReadOnlyMemoryField = new ReadOnlyMemory<byte>(new byte[] { 10, 20, 30 })
         };
 
-        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
         // Deserialize via SpanReader.FromMemory — zero-copy path
         ReadOnlyMemory<byte> sourceMemory = serialized;
@@ -1267,7 +1267,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ReadOnlyMemoryField = new ReadOnlyMemory<byte>(sourceArray)
         };
 
-        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
 
         // Deserialize via span (non-zero-copy path)
         var deserialized = TestModel.Serialization.Deserializers.DeserializeByteWrapperTypesModel((ReadOnlySpan<byte>)serialized);
@@ -1289,7 +1289,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ByteArrayField = new byte[] { 7, 8 }
         };
 
-        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         ReadOnlyMemory<byte> sourceMemory = serialized;
         var reader = GProtobuf.Core.SpanReader.FromMemory(sourceMemory);
         var deserialized = TestModel.Serialization.SpanReaders.ReadByteWrapperTypesModel(ref reader);
@@ -1314,7 +1314,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
     {
         var model = new ByteWrapperTypesModel();
 
-        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         ReadOnlyMemory<byte> sourceMemory = serialized;
         var reader = GProtobuf.Core.SpanReader.FromMemory(sourceMemory);
         var deserialized = TestModel.Serialization.SpanReaders.ReadByteWrapperTypesModel(ref reader);
@@ -1339,7 +1339,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ByteArrayField = data2 // field 4, sits between in wire order
         };
 
-        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteWrapperTypesModel);
+        var serialized = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         ReadOnlyMemory<byte> sourceMemory = serialized;
         var reader = GProtobuf.Core.SpanReader.FromMemory(sourceMemory);
         var deserialized = TestModel.Serialization.SpanReaders.ReadByteWrapperTypesModel(ref reader);
@@ -1366,7 +1366,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             FloatArrayPacked = new float[] { 3.14f, 2.71f, -1.0f, 100.5f }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1383,7 +1383,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             DoubleArrayPacked = new double[] { Math.PI, Math.E, -1.0, 1000.123456789 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1402,7 +1402,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             LongArrayPackedFixed = new long[] { 12345L, 67890L, -11111L, 0L, 99999L }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1421,7 +1421,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             BoolArrayPacked = new bool[] { false, true, false, true }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1440,7 +1440,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             DoubleArrayPackedNull = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1459,7 +1459,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             DoubleArrayWithSpecialValues = new double[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity, 0.0, -0.0 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1487,7 +1487,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             BoolArrayMixed = new bool[] { true, false, false, true, true, false, true }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1505,7 +1505,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             SByteArrayPackedZigZag = new sbyte[] { -100, -1, 0, 1, 100 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1525,7 +1525,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ShortArrayPackedFixed = new short[] { 1000, 2000, 3000, -1000 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1545,7 +1545,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             UShortArrayPackedFixed = new ushort[] { 1000, 2000, 3000, 4000 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1564,7 +1564,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             UIntArrayPackedFixed = new uint[] { 1000000, 2000000, 3000000 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1583,7 +1583,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ULongArrayPackedFixed = new ulong[] { 1000000000UL, 2000000000UL, 3000000000UL }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1603,7 +1603,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             UIntArrayPackedNull = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1624,7 +1624,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ULongArrayExtremes = new ulong[] { ulong.MinValue, ulong.MaxValue, 0, 1 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1646,7 +1646,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             BasicStringArray = new string[] { "Hello", "World", "Test", "Array" }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeStringArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeStringArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1662,7 +1662,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullStringArray = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeStringArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeStringArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1679,7 +1679,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
         };
 
         // GProtobuf should throw exception when trying to serialize null elements
-        var act = () => SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeStringArraysTestModel);
+        var act = () => SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         act.Should().Throw<InvalidOperationException>()
            .WithMessage("*element of type string was null*");
     }
@@ -1702,7 +1702,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeStringArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeStringArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1725,7 +1725,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeStringArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeStringArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1745,7 +1745,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             LongStringArray = new string[] { longString1, longString2, longString3 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeStringArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeStringArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1769,7 +1769,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMessageArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeMessageArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1805,7 +1805,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMessageArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeMessageArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1834,7 +1834,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullMessageArray = null
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMessageArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeMessageArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1857,7 +1857,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
         };
 
         // GProtobuf should throw exception when trying to serialize null elements
-        var act = () => SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMessageArraysTestModel);
+        var act = () => SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         act.Should().Throw<InvalidOperationException>()
            .WithMessage("*element of type SimpleMessage was null*");
     }
@@ -1890,7 +1890,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMessageArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = TestModel.Serialization.Deserializers.DeserializeMessageArraysTestModel(data);
 
         deserialized.Should().NotBeNull();
@@ -1913,7 +1913,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableBoolValue = true
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         deserialized.NullableIntValue.Should().Be(42);
@@ -1931,7 +1931,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             NullableGuidValue = testGuid
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeNullableTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeNullableTypesModel(bytes));
 
         deserialized.NullableGuidValue.Should().Be(testGuid);
@@ -1947,7 +1947,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ByteArray = new byte[] { 0, 1, 255, 128, 42 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeArrayTypesModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeArrayTypesModel(bytes));
 
         deserialized.IntArrayPacked.Should().Equal(1, 2, 3, 100, 1000);
@@ -1971,9 +1971,9 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
         };
 
         // GProtobuf serialize -> GProtobuf deserialize -> GProtobuf serialize -> GProtobuf deserialize
-        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var gprotobufDeserialized = DeserializeWithGProtobuf(gprotobufData, bytes => TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(bytes));
-        var gprotobufData2 = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var gprotobufData2 = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.Serialize);
         var finalDeserialized = DeserializeWithGProtobuf(gprotobufData2, bytes => TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(bytes));
 
         finalDeserialized.Should().NotBeNull();
@@ -1991,7 +1991,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             EdgeCaseBytes = new byte[] { 10, 20, 30 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(bytes));
 
         deserialized.Should().NotBeNull();
@@ -2012,9 +2012,9 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
         };
 
         // GProtobuf serialize -> GProtobuf deserialize -> GProtobuf serialize -> GProtobuf deserialize
-        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var gprotobufDeserialized = DeserializeWithGProtobuf(gprotobufData, bytes => TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(bytes));
-        var gprotobufData2 = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var gprotobufData2 = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.Serialize);
         var finalDeserialized = DeserializeWithGProtobuf(gprotobufData2, bytes => TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(bytes));
 
         finalDeserialized.Should().NotBeNull();
@@ -2038,9 +2038,9 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
         };
 
         // GProtobuf bidirectional consistency test
-        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var gprotobufDeserialized = DeserializeWithGProtobuf(gprotobufData, bytes => TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(bytes));
-        var gprotobufData2 = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var gprotobufData2 = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.Serialize);
         var finalDeserialized = DeserializeWithGProtobuf(gprotobufData2, bytes => TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(bytes));
 
         finalDeserialized.Should().NotBeNull();
@@ -2060,7 +2060,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             UnicodeStringArray = new string[] { "Ľubomír", "Žitný", "Košice", "Bratislava", "ťŠčÝáé" }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeStringArraysTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeStringArraysTestModel(bytes));
 
         deserialized.Should().NotBeNull();
@@ -2113,7 +2113,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeCollectionTypesTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeCollectionTypesTestModel(bytes));
 
         // Test List<SimpleMessage>
@@ -2175,7 +2175,7 @@ public sealed class GProtobufToGProtobufTests : BaseSerializationTest
             ByteIEnumerable = new List<byte> { 42 }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializePrimitiveCollectionsTestModel);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializePrimitiveCollectionsTestModel(bytes));
 
         deserialized.Should().NotBeNull();

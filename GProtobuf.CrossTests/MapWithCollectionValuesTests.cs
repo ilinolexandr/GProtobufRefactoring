@@ -25,7 +25,7 @@ namespace GProtobuf.CrossTests
             };
 
             // Act - Serialize
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapCollectionModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapCollectionModel(bytes));
@@ -54,7 +54,7 @@ namespace GProtobuf.CrossTests
             };
 
             // Act - Serialize
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapCollectionModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapCollectionModel(bytes));
@@ -84,7 +84,7 @@ namespace GProtobuf.CrossTests
             };
 
             // Act - Serialize
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapCollectionModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapCollectionModel(bytes));
@@ -110,7 +110,7 @@ namespace GProtobuf.CrossTests
             };
 
             // Act - Serialize
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapCollectionModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapCollectionModel(bytes));
@@ -155,7 +155,7 @@ namespace GProtobuf.CrossTests
             };
 
             // Act - Serialize
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapCollectionModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapCollectionModel(bytes));
@@ -203,7 +203,7 @@ namespace GProtobuf.CrossTests
             };
 
             // Test GProtobuf -> protobuf-net
-            var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapCollectionModel);
+            var gprotobufData = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             //var protobufNetData = SerializeWithProtobufNet(model);
             
             var fromGProtobuf = DeserializeWithProtobufNet<MapCollectionModel>(gprotobufData);
@@ -258,7 +258,7 @@ namespace GProtobuf.CrossTests
             };
 
             // Act - Serialize
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeMapCollectionModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             
             // Act - Deserialize
             var result = DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeMapCollectionModel(bytes));

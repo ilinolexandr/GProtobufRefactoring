@@ -30,7 +30,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeBasicCustomBufferModel(bytes);
 
@@ -54,7 +54,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeBasicCustomBufferModel(bytes);
 
@@ -78,7 +78,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeBasicCustomBufferModel(bytes);
 
@@ -102,7 +102,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeBasicCustomBufferModel(bytes);
 
@@ -129,7 +129,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeMultipleCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeMultipleCustomBufferModel(bytes);
 
@@ -154,7 +154,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeMultipleCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeMultipleCustomBufferModel(bytes);
 
@@ -180,7 +180,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeMultipleCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeMultipleCustomBufferModel(bytes);
 
@@ -208,7 +208,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeCompressedDataModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeCompressedDataModel(bytes);
 
@@ -231,7 +231,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeCompressedDataModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeCompressedDataModel(bytes);
 
@@ -253,7 +253,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeCompressedDataModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeCompressedDataModel(bytes);
 
@@ -277,7 +277,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeOnlyCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeOnlyCustomBufferModel(bytes);
 
@@ -298,7 +298,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeOnlyCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeOnlyCustomBufferModel(bytes);
 
@@ -323,7 +323,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeEmptyCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeEmptyCustomBufferModel(bytes);
 
@@ -344,7 +344,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeEmptyCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeEmptyCustomBufferModel(bytes);
 
@@ -372,7 +372,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeLargeCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeLargeCustomBufferModel(bytes);
 
@@ -396,7 +396,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeLargeCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeLargeCustomBufferModel(bytes);
 
@@ -420,7 +420,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeLargeCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeLargeCustomBufferModel(bytes);
 
@@ -446,7 +446,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeTransformedBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeTransformedBufferModel(bytes);
 
@@ -470,7 +470,7 @@ namespace GProtobuf.CrossTests
 
                 // Act
                 using var ms = new MemoryStream();
-                global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeTransformedBufferModel(ms, original);
+                global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
                 var bytes = ms.ToArray();
                 var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeTransformedBufferModel(bytes);
 
@@ -492,7 +492,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeTransformedBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeTransformedBufferModel(bytes);
 
@@ -520,7 +520,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeInterleavedFieldsModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeInterleavedFieldsModel(bytes);
 
@@ -547,7 +547,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeInterleavedFieldsModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeInterleavedFieldsModel(bytes);
 
@@ -572,7 +572,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeInterleavedFieldsModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeInterleavedFieldsModel(bytes);
 
@@ -598,7 +598,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             // Assert - verify data can be deserialized (size calculation was correct)
@@ -623,7 +623,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeBasicCustomBufferModel(bytes);
 
@@ -643,7 +643,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeBasicCustomBufferModel(bytes);
 
@@ -664,7 +664,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeBasicCustomBufferModel(bytes);
 
@@ -693,7 +693,7 @@ namespace GProtobuf.CrossTests
 
                 // Act
                 using var ms = new MemoryStream();
-                global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, original);
+                global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
                 var bytes = ms.ToArray();
                 var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeBasicCustomBufferModel(bytes);
 
@@ -722,7 +722,7 @@ namespace GProtobuf.CrossTests
             for (int i = 0; i < 10; i++)
             {
                 using var ms = new MemoryStream();
-                global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeBasicCustomBufferModel(ms, current);
+                global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, current);
                 var bytes = ms.ToArray();
                 current = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeBasicCustomBufferModel(bytes);
             }

@@ -26,7 +26,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeSimpleProtoVarintModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeSimpleProtoVarintModel(bytes);
 
@@ -52,7 +52,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeSimpleProtoVarintModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeSimpleProtoVarintModel(bytes);
 
@@ -81,7 +81,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeMultipleProtoVarintModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeMultipleProtoVarintModel(bytes);
 
@@ -112,7 +112,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeMultipleProtoVarintModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeMultipleProtoVarintModel(bytes);
 
@@ -135,7 +135,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeMultipleProtoVarintModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeMultipleProtoVarintModel(bytes);
 
@@ -163,7 +163,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeMixedProtoVarintModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeMixedProtoVarintModel(bytes);
 
@@ -193,7 +193,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeOnlyProtoVarintModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeOnlyProtoVarintModel(bytes);
 
@@ -220,7 +220,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDefaultValueProtoVarintModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeDefaultValueProtoVarintModel(bytes);
 
@@ -247,7 +247,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDeviceIdModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeDeviceIdModel(bytes);
 
@@ -270,7 +270,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDeviceIdModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeDeviceIdModel(bytes);
 
@@ -293,7 +293,7 @@ namespace GProtobuf.CrossTests
 
             // Act
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeDeviceIdModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
             var deserialized = global::GProtobuf.CrossTests.TestModel.Serialization.Deserializers.DeserializeDeviceIdModel(bytes);
 
@@ -319,7 +319,7 @@ namespace GProtobuf.CrossTests
             };
 
             using var ms = new MemoryStream();
-            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.SerializeSimpleProtoVarintModel(ms, original);
+            global::GProtobuf.CrossTests.TestModel.Serialization.Serializers.Serialize(ms, original);
             var bytes = ms.ToArray();
 
             // The Address field (field 2) should be serialized as:

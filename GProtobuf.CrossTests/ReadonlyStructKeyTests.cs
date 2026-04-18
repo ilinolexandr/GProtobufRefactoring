@@ -118,7 +118,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
     {
         var model = CreateSimpleModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeReadonlyStructKeyModel(bytes));
 
@@ -133,7 +133,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
     {
         var model = CreateSimpleModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<ReadonlyStructKeyModel>(data);
 
         deserialized.Descriptions.Should().HaveCount(3);
@@ -166,7 +166,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
     {
         var model = CreateSimpleModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeReadonlyStructKeyModel(bytes));
 
@@ -180,7 +180,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
     {
         var model = CreateSimpleModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<ReadonlyStructKeyModel>(data);
 
         deserialized.ValuesByName.Should().HaveCount(2);
@@ -213,7 +213,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
     {
         var model = CreateSimpleModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeReadonlyStructKeyModel(bytes));
 
@@ -228,7 +228,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
     {
         var model = CreateSimpleModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<ReadonlyStructKeyModel>(data);
 
         deserialized.ValueTypeKeys.Should().HaveCount(3);
@@ -283,7 +283,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
     {
         var model = CreateComplexModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeReadonlyStructKeyModel(bytes));
 
@@ -300,7 +300,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
     {
         var model = CreateComplexModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<ReadonlyStructKeyModel>(data);
 
         // Verify all fields preserved
@@ -320,7 +320,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
     {
         var model = CreateSimpleModel();
 
-        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var protobufNetData = SerializeWithProtobufNet(model);
 
         _output.WriteLine($"GProtobuf size: {gprotobufData.Length} bytes");
@@ -343,7 +343,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
         var model = CreateComplexModel();
 
         // GG roundtrip
-        var ggData = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var ggData = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var ggResult = DeserializeWithGProtobuf(ggData,
             bytes => TestModelDeserializers.DeserializeReadonlyStructKeyModel(bytes));
 
@@ -353,7 +353,7 @@ public sealed class ReadonlyStructKeyTests : BaseSerializationTest
             bytes => TestModelDeserializers.DeserializeReadonlyStructKeyModel(bytes));
 
         // GP roundtrip
-        var gpData = SerializeWithGProtobuf(model, TestModelSerializers.SerializeReadonlyStructKeyModel);
+        var gpData = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var gpResult = DeserializeWithProtobufNet<ReadonlyStructKeyModel>(gpData);
 
         // All results should be equivalent

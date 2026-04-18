@@ -13,7 +13,7 @@ namespace GProtobuf.CrossTests
         private HashSetTestModel RoundTripTestGG(HashSetTestModel model)
         {
             // GProtobuf -> GProtobuf
-            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeHashSetTestModel);
+            var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
             return DeserializeWithGProtobuf(data, bytes => TestModel.Serialization.Deserializers.DeserializeHashSetTestModel(bytes));
         }
         
@@ -27,7 +27,7 @@ namespace GProtobuf.CrossTests
             
             // Test GP: GProtobuf -> protobuf-net
             var gprotobufData = SerializeWithGProtobuf(model, 
-                TestModel.Serialization.Serializers.SerializeHashSetTestModel);
+                TestModel.Serialization.Serializers.Serialize);
             var protobufResult = DeserializeWithProtobufNet<HashSetTestModel>(gprotobufData);
             assertions(protobufResult);
         }

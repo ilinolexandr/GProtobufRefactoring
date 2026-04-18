@@ -49,7 +49,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryTestModel(stream));
 
@@ -70,7 +70,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryTestModel(stream));
 
@@ -91,7 +91,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryTestModel(stream));
 
@@ -115,7 +115,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 new Dictionary<string, bool> { { "flag", true } })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryTestModel(stream));
 
@@ -135,7 +135,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var spanResult = DeserializeWithGProtobuf(data,
             bytes => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryTestModel(bytes));
@@ -162,7 +162,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryWithCollectionsModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryWithCollectionsModel(stream));
 
@@ -184,7 +184,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryWithCollectionsModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryWithCollectionsModel(stream));
 
@@ -206,7 +206,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryWithCollectionsModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryWithCollectionsModel(stream));
 
@@ -233,7 +233,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeNestedConcurrentDictionaryModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeNestedConcurrentDictionaryModel(stream));
 
@@ -254,7 +254,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeNestedConcurrentDictionaryModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeNestedConcurrentDictionaryModel(stream));
 
@@ -279,7 +279,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryEnumKeyModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryEnumKeyModel(stream));
 
@@ -300,7 +300,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryEnumKeyModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryEnumKeyModel(stream));
 
@@ -323,7 +323,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
                 new Dictionary<int, string> { { 2, "concurrent" } })
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMixedDictionaryTypesModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMixedDictionaryTypesModel(stream));
 
@@ -344,7 +344,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMixedDictionaryTypesModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMixedDictionaryTypesModel(stream));
 
@@ -368,7 +368,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapCollectionModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMapCollectionModel(stream));
 
@@ -389,7 +389,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapCollectionModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMapCollectionModel(stream));
 
@@ -410,7 +410,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapCollectionModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMapCollectionModel(stream));
 
@@ -431,7 +431,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             IntDoubleArrayMap = new Dictionary<int, double[]> { { 3, new[] { 1.5 } } }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapCollectionModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMapCollectionModel(stream));
 
@@ -449,7 +449,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapCollectionModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var spanResult = DeserializeWithGProtobuf(data,
             bytes => CrossTestModel.Serialization.Deserializers.DeserializeMapCollectionModel(bytes));
@@ -475,7 +475,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeNestedDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeNestedDictionaryTestModel(stream));
 
@@ -495,7 +495,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeNestedDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var spanResult = DeserializeWithGProtobuf(data,
             bytes => CrossTestModel.Serialization.Deserializers.DeserializeNestedDictionaryTestModel(bytes));
@@ -523,7 +523,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
 
         var model = new ConcurrentDictionaryTestModel { IntStringConcurrentMap = dict };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         _output.WriteLine($"Size {size}: Serialized to {data.Length} bytes");
 
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
@@ -549,7 +549,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapCollectionModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         _output.WriteLine($"Collection size {collectionSize}: Serialized to {data.Length} bytes");
 
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
@@ -570,7 +570,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             IntStringConcurrentMap = new ConcurrentDictionary<int, string>()
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryTestModel(stream));
 
@@ -590,7 +590,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapCollectionModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMapCollectionModel(stream));
 
@@ -610,7 +610,7 @@ public class StreamReaderComprehensiveTests : BaseSerializationTest
             IntStringConcurrentMap = null
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeConcurrentDictionaryTestModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         var deserialized = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeConcurrentDictionaryTestModel(stream));
 

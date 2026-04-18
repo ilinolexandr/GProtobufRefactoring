@@ -69,7 +69,7 @@ namespace GProtobuf.Benchmark.Messages
         protected override byte[] PreSerialize(ArrayIntOnlyModel model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeArrayIntOnlyModel(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -93,7 +93,7 @@ namespace GProtobuf.Benchmark.Messages
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeArrayIntOnlyModel(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
@@ -141,7 +141,7 @@ namespace GProtobuf.Benchmark.Messages
         protected override byte[] PreSerialize(ArrayFivePrimitiveModel model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeArrayFivePrimitiveModel(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -165,7 +165,7 @@ namespace GProtobuf.Benchmark.Messages
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeArrayFivePrimitiveModel(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
@@ -210,7 +210,7 @@ namespace GProtobuf.Benchmark.Messages
         protected override byte[] PreSerialize(ArrayNestedSubmessageModel model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeArrayNestedSubmessageModel(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -234,7 +234,7 @@ namespace GProtobuf.Benchmark.Messages
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeArrayNestedSubmessageModel(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
@@ -282,7 +282,7 @@ namespace GProtobuf.Benchmark.Messages
         protected override byte[] PreSerialize(ArrayOfArraysModel model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeArrayOfArraysModel(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -306,7 +306,7 @@ namespace GProtobuf.Benchmark.Messages
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeArrayOfArraysModel(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 

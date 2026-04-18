@@ -26,7 +26,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize with GProtobuf
             var stream = new MemoryStream();
-            TestModel.Serialization.Serializers.SerializeBaseWithGuid(stream, model);
+            TestModel.Serialization.Serializers.Serialize(stream, model);
             var bytes = stream.ToArray();
 
             // Act - deserialize with protobuf-net
@@ -54,7 +54,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize with GProtobuf (as base type to include ProtoInclude wrapper)
             var stream = new MemoryStream();
-            TestModel.Serialization.Serializers.SerializeBaseWithGuid(stream, model);
+            TestModel.Serialization.Serializers.Serialize(stream, model);
             var bytes = stream.ToArray();
 
             // Act - deserialize with protobuf-net
@@ -101,7 +101,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize with GProtobuf
             var stream = new MemoryStream();
-            TestModel.Serialization.Serializers.SerializeContainerWithGuidItems(stream, model);
+            TestModel.Serialization.Serializers.Serialize(stream, model);
             var bytes = stream.ToArray();
 
             // Act - deserialize with protobuf-net
@@ -171,7 +171,7 @@ namespace GProtobuf.CrossTests
 
             // GProtobuf -> protobuf-net -> GProtobuf
             var stream1 = new MemoryStream();
-            TestModel.Serialization.Serializers.SerializeBaseWithGuid(stream1, original);
+            TestModel.Serialization.Serializers.Serialize(stream1, original);
             stream1.Position = 0;
 
             var protobufNetDeserialized = ProtoBuf.Serializer.Deserialize<BaseWithGuid>(stream1);
@@ -206,7 +206,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize with GProtobuf
             var stream = new MemoryStream();
-            TestModel.Serialization.Serializers.SerializeBaseWithGuid(stream, model);
+            TestModel.Serialization.Serializers.Serialize(stream, model);
             var bytes = stream.ToArray();
 
             // Act - deserialize with protobuf-net

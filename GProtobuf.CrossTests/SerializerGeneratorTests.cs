@@ -165,7 +165,7 @@
 //        };
 
 //        using var stream = new MemoryStream();
-//        Model.Serialization.Serializers.SerializeClassWithCollections(stream, obj);
+//        Model.Serialization.Serializers.Serialize(stream, obj);
 //        var deserialized = Model.Serialization.Deserializers.DeserializeClassWithCollections(stream.ToArray());
 //        Assert.NotNull(deserialized);
 //        Assert.IsType<Model.ClassWithCollections>(deserialized);
@@ -195,7 +195,7 @@
 //        };
 
 //        using var stream = new MemoryStream();
-//        Model.Serialization.Serializers.SerializeModelClass(stream, obj);
+//        Model.Serialization.Serializers.Serialize(stream, obj);
 
 //        var deserialized = Model.Serialization.Deserializers.DeserializeModelClass(stream.ToArray());
 
@@ -229,7 +229,7 @@
 //        };
 
 //        using var stream = new MemoryStream();
-//        Model.Serialization.Serializers.SerializeModelClassBase(stream, obj);
+//        Model.Serialization.Serializers.Serialize(stream, obj);
 
 //        // todo failure because of buffer overrun
 //        var deserialized = Model.Serialization.Deserializers.DeserializeModelClassBase(stream.ToArray());
@@ -262,7 +262,7 @@
 //        };
         
 //        using var streamGenerated = new MemoryStream();
-//        Model.Serialization.Serializers.SerializeClassWithCollections(streamGenerated, clazzWithCollections);
+//        Model.Serialization.Serializers.Serialize(streamGenerated, clazzWithCollections);
 //        var generatedBytes = streamGenerated.ToArray();
 
 //        using var streamProtoBuf = new MemoryStream();
@@ -290,7 +290,7 @@
 //        };
 
 //        using var streamGenerated = new MemoryStream();
-//        Model.Serialization.Serializers.SerializeModelClassBase(streamGenerated, obj);
+//        Model.Serialization.Serializers.Serialize(streamGenerated, obj);
 //        var generatedBytes = streamGenerated.ToArray();
 
 //        using var streamProtoBuf = new MemoryStream();

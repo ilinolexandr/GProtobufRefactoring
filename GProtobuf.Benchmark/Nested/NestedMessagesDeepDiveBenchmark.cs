@@ -47,7 +47,7 @@ namespace GProtobuf.Benchmark.Nested
         protected override byte[] PreSerialize(WideFanoutRoot model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeWideFanoutRoot(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -71,7 +71,7 @@ namespace GProtobuf.Benchmark.Nested
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeWideFanoutRoot(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
@@ -114,7 +114,7 @@ namespace GProtobuf.Benchmark.Nested
         protected override byte[] PreSerialize(WideFanoutRoot model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeWideFanoutRoot(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -138,7 +138,7 @@ namespace GProtobuf.Benchmark.Nested
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeWideFanoutRoot(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
@@ -183,7 +183,7 @@ namespace GProtobuf.Benchmark.Nested
         protected override byte[] PreSerialize(WideFanoutRoot model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeWideFanoutRoot(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -207,7 +207,7 @@ namespace GProtobuf.Benchmark.Nested
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeWideFanoutRoot(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 
@@ -250,7 +250,7 @@ namespace GProtobuf.Benchmark.Nested
         protected override byte[] PreSerialize(SingleFrameRoot model)
         {
             using var ms = new MemoryStream();
-            Models.Messages.Serialization.Serializers.SerializeSingleFrameRoot(ms, model);
+            Models.Messages.Serialization.Serializers.Serialize(ms, model);
             return ms.ToArray();
         }
 
@@ -274,7 +274,7 @@ namespace GProtobuf.Benchmark.Nested
         [Benchmark, BenchmarkCategory("Serialize")]
         public long GProtobuf_TwoPass_Stream_Ser()
         {
-            Models.Messages.Serialization.Serializers.SerializeSingleFrameRoot(Stream, Model);
+            Models.Messages.Serialization.Serializers.Serialize(Stream, Model);
             return Stream.Length;
         }
 

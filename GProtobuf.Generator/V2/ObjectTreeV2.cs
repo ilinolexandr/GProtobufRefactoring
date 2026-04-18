@@ -854,28 +854,29 @@ namespace GProtobuf.Generator.V2
                 if (_proxyRegistry != null && _proxyRegistry.HasProxy(type.FullName)) continue;
 
                 var className = TypeNameHelper.GetClassName(type.FullName);
+                var (serializeName, serializeOnePassName, serializeToName, serializeToArrayName) = GetSerializerEntryPointNames(className);
 
                 if (_options.GenerateStreamWriter)
                 {
-                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}(Stream stream, global::{type.FullName} obj)");
+                    sb.AppendIndentedLine($"public static unsafe void {serializeName}(Stream stream, global::{type.FullName} obj)");
                     sb.AppendIndentedLine($"    => SerializeStream(stream, obj, &StreamWriters.Write{className});");
                     sb.AppendNewLine();
                 }
 
                 if (_options.GenerateBufferWriter)
                 {
-                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}(IBufferWriter<byte> buffer, global::{type.FullName} obj)");
+                    sb.AppendIndentedLine($"public static unsafe void {serializeName}(IBufferWriter<byte> buffer, global::{type.FullName} obj)");
                     sb.AppendIndentedLine($"    => SerializeBuffer(buffer, obj, &BufferWriters.Write{className});");
                     sb.AppendNewLine();
                 }
 
                 if (_options.GenerateOnePassStreamWriter)
                 {
-                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}OnePass(Stream stream, global::{type.FullName} obj)");
+                    sb.AppendIndentedLine($"public static unsafe void {serializeOnePassName}(Stream stream, global::{type.FullName} obj)");
                     sb.AppendIndentedLine($"    => SerializeOnePass(stream, obj, &OnePassStreamWriters.Write{className});");
                     sb.AppendNewLine();
 
-                    sb.AppendIndentedLine($"public static unsafe void Serialize{className}OnePass(Stream stream, global::{type.FullName} obj, global::GProtobuf.Core.BufferChainPoolCache pool)");
+                    sb.AppendIndentedLine($"public static unsafe void {serializeOnePassName}(Stream stream, global::{type.FullName} obj, global::GProtobuf.Core.BufferChainPoolCache pool)");
                     sb.AppendIndentedLine($"    => SerializeOnePassWithPool(stream, obj, pool, &OnePassStreamWriters.Write{className});");
                     sb.AppendNewLine();
                 }
@@ -888,7 +889,7 @@ namespace GProtobuf.Generator.V2
                     sb.AppendIndentedLine("/// Zero-allocation serialization directly to Span&lt;byte&gt;. Ideal for IoT devices.");
                     sb.AppendIndentedLine("/// </summary>");
                     sb.AppendIndentedLine("/// <returns>Number of bytes written.</returns>");
-                    sb.AppendIndentedLine($"public static int SerializeTo{className}(Span<byte> buffer, global::{type.FullName} obj)");
+                    sb.AppendIndentedLine($"public static int {serializeToName}(Span<byte> buffer, global::{type.FullName} obj)");
                     sb.StartNewBlock();
                     sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StackBufferWriter(buffer);");
                     sb.AppendIndentedLine($"StackBufferWriters.Write{className}(ref writer, obj);");
@@ -900,7 +901,7 @@ namespace GProtobuf.Generator.V2
                     sb.AppendIndentedLine("/// <summary>");
                     sb.AppendIndentedLine("/// Serializes to a new byte array. Uses stack buffer for small messages.");
                     sb.AppendIndentedLine("/// </summary>");
-                    sb.AppendIndentedLine($"public static byte[] SerializeToArray{className}(global::{type.FullName} obj)");
+                    sb.AppendIndentedLine($"public static byte[] {serializeToArrayName}(global::{type.FullName} obj)");
                     sb.StartNewBlock();
 
                     // Add null check for reference types
@@ -1003,10 +1004,11 @@ namespace GProtobuf.Generator.V2
 
                     var originalClassName = TypeNameHelper.GetClassName(proxy.OriginalTypeFullName);
                     var proxyPrefix = ProxyCodeHelper.GetQualifiedPrefix(proxy);
+                    var (proxySerializeName, proxySerializeOnePassName, _, _) = GetSerializerEntryPointNames(originalClassName);
 
                     if (_options.GenerateStreamWriter)
                     {
-                        sb.AppendIndentedLine($"public static void Serialize{originalClassName}(Stream stream, global::{proxy.OriginalTypeFullName} obj)");
+                        sb.AppendIndentedLine($"public static void {proxySerializeName}(Stream stream, global::{proxy.OriginalTypeFullName} obj)");
                         sb.StartNewBlock();
                         sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(obj{proxy.WrapExtraArgs});");
                         sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
@@ -1020,7 +1022,7 @@ namespace GProtobuf.Generator.V2
 
                     if (_options.GenerateBufferWriter)
                     {
-                        sb.AppendIndentedLine($"public static void Serialize{originalClassName}(IBufferWriter<byte> buffer, global::{proxy.OriginalTypeFullName} obj)");
+                        sb.AppendIndentedLine($"public static void {proxySerializeName}(IBufferWriter<byte> buffer, global::{proxy.OriginalTypeFullName} obj)");
                         sb.StartNewBlock();
                         sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(obj{proxy.WrapExtraArgs});");
                         sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
@@ -1034,11 +1036,11 @@ namespace GProtobuf.Generator.V2
 
                     if (_options.GenerateOnePassStreamWriter)
                     {
-                        sb.AppendIndentedLine($"public static void Serialize{originalClassName}OnePass(Stream stream, global::{proxy.OriginalTypeFullName} obj)");
-                        sb.AppendIndentedLine($"    => Serialize{originalClassName}OnePass(stream, obj, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
+                        sb.AppendIndentedLine($"public static void {proxySerializeOnePassName}(Stream stream, global::{proxy.OriginalTypeFullName} obj)");
+                        sb.AppendIndentedLine($"    => {proxySerializeOnePassName}(stream, obj, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
                         sb.AppendNewLine();
 
-                        sb.AppendIndentedLine($"public static void Serialize{originalClassName}OnePass(Stream stream, global::{proxy.OriginalTypeFullName} obj, global::GProtobuf.Core.BufferChainPoolCache pool)");
+                        sb.AppendIndentedLine($"public static void {proxySerializeOnePassName}(Stream stream, global::{proxy.OriginalTypeFullName} obj, global::GProtobuf.Core.BufferChainPoolCache pool)");
                         sb.StartNewBlock();
                         sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(obj{proxy.WrapExtraArgs});");
                         sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
@@ -1062,6 +1064,22 @@ namespace GProtobuf.Generator.V2
 
             sb.EndBlock();
             sb.AppendNewLine();
+        }
+
+        // Overload ambiguity through implicit conversions cannot arise for [ProtoContract]
+        // reference/struct types — C# does not allow user-defined conversion operators between
+        // unrelated user types, so each (param-kind, Type) pair is unique across overloads.
+        private (string serialize, string serializeOnePass, string serializeTo, string serializeToArray)
+            GetSerializerEntryPointNames(string className)
+        {
+            if (_options.UseTypedSerializerNames)
+            {
+                return ($"Serialize{className}", $"Serialize{className}OnePass", $"SerializeTo{className}", $"SerializeToArray{className}");
+            }
+
+            bool bothStreamWriters = _options.GenerateStreamWriter && _options.GenerateOnePassStreamWriter;
+            var onePassSuffix = bothStreamWriters ? "OnePass" : "";
+            return ("Serialize", $"Serialize{onePassSuffix}", "SerializeTo", "SerializeToArray");
         }
 
         private void GenerateSerializerHelpers(StringBuilderWithIndent sb)

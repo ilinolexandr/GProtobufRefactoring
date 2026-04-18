@@ -28,7 +28,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize
             var stream = new MemoryStream();
-            TestModel.Serialization.Serializers.SerializeGuidMapTestModel(stream, original);
+            TestModel.Serialization.Serializers.Serialize(stream, original);
             var bytes = stream.ToArray();
 
             // Act - deserialize
@@ -63,7 +63,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize with GProtobuf
             var stream = new MemoryStream();
-            TestModel.Serialization.Serializers.SerializeGuidMapTestModel(stream, original);
+            TestModel.Serialization.Serializers.Serialize(stream, original);
             var gprotobufBytes = stream.ToArray();
 
             // Act - deserialize with protobuf-net
@@ -125,7 +125,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize
             var stream = new MemoryStream();
-            TestModel.Serialization.Serializers.SerializeGuidMapTestModel(stream, original);
+            TestModel.Serialization.Serializers.Serialize(stream, original);
             var bytes = stream.ToArray();
 
             // Act - deserialize
@@ -147,7 +147,7 @@ namespace GProtobuf.CrossTests
 
             // Act - serialize
             var stream = new MemoryStream();
-            TestModel.Serialization.Serializers.SerializeGuidMapTestModel(stream, original);
+            TestModel.Serialization.Serializers.Serialize(stream, original);
             var bytes = stream.ToArray();
 
             // Act - deserialize

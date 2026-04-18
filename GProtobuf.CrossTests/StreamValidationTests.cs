@@ -485,7 +485,7 @@ public class StreamValidationTests : BaseSerializationTest
             BoolValues = new List<bool> { false, true }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMixedPackingModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var result = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMixedPackingModel(stream));
@@ -513,7 +513,7 @@ public class StreamValidationTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapWithCollectionValuesModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         _output.WriteLine($"Map with HashSet values bytes: {data.Length}");
 
         var result = DeserializeWithGProtobufStreamFromBytes(data,
@@ -565,7 +565,7 @@ public class StreamValidationTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapWithCollectionValuesModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var result = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMapWithCollectionValuesModel(stream));
@@ -590,7 +590,7 @@ public class StreamValidationTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapWithCollectionValuesModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var result = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMapWithCollectionValuesModel(stream));
@@ -620,7 +620,7 @@ public class StreamValidationTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapWithEmptyCollectionsModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var result = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMapWithEmptyCollectionsModel(stream));
@@ -655,7 +655,7 @@ public class StreamValidationTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapWithSingleElementCollectionsModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var result = DeserializeWithGProtobufStreamFromBytes(data,
             stream => CrossTestModel.Serialization.Deserializers.DeserializeMapWithSingleElementCollectionsModel(stream));
@@ -696,7 +696,7 @@ public class StreamValidationTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeComplexMapCollectionsModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
         _output.WriteLine($"Complex map collections bytes: {data.Length}");
 
         var result = DeserializeWithGProtobufStreamFromBytes(data,
@@ -832,7 +832,7 @@ public class StreamValidationTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.SerializeMapWithCollectionValuesModel);
+        var data = SerializeWithGProtobuf(model, CrossTestModel.Serialization.Serializers.Serialize);
 
         var spanResult = DeserializeWithGProtobuf(data,
             bytes => CrossTestModel.Serialization.Deserializers.DeserializeMapWithCollectionValuesModel(bytes));

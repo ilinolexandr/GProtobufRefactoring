@@ -62,7 +62,7 @@ namespace GProtobuf.Tests
                 Tag = 7
             };
 
-            var data = SerializeWithGProtobuf(model, TestMessages.Serialization.Serializers.SerializeCrossNsTestMessage);
+            var data = SerializeWithGProtobuf(model, TestMessages.Serialization.Serializers.Serialize);
             var deserialized = TestMessages.Serialization.Deserializers.DeserializeCrossNsTestMessage(data);
 
             deserialized.Position.X.Should().Be(42);

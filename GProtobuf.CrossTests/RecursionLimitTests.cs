@@ -23,7 +23,7 @@ namespace GProtobuf.CrossTests
             byte[] serialized;
             using (var ms = new MemoryStream())
             {
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeRecursiveNode(ms, root);
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, root);
                 serialized = ms.ToArray();
             }
 
@@ -46,7 +46,7 @@ namespace GProtobuf.CrossTests
             byte[] serialized10;
             using (var ms = new MemoryStream())
             {
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeRecursiveNode(ms, chain10);
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, chain10);
                 serialized10 = ms.ToArray();
             }
             var result10 = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeRecursiveNode(serialized10);
@@ -56,7 +56,7 @@ namespace GProtobuf.CrossTests
             byte[] serialized20;
             using (var ms = new MemoryStream())
             {
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeRecursiveNode(ms, chain8);
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, chain8);
                 serialized20 = ms.ToArray();
             }
             var result8 = global::GProtobuf.Tests.TestModel.Serialization.Deserializers.DeserializeRecursiveNode(serialized20);
@@ -76,7 +76,7 @@ namespace GProtobuf.CrossTests
             byte[] serialized;
             using (var ms = new MemoryStream())
             {
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeTreeNode(ms, root);
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, root);
                 serialized = ms.ToArray();
             }
 
@@ -97,7 +97,7 @@ namespace GProtobuf.CrossTests
             byte[] serialized;
             using (var ms = new MemoryStream())
             {
-                global::GProtobuf.Tests.TestModel.Serialization.Serializers.SerializeRecursiveNode(ms, root);
+                global::GProtobuf.Tests.TestModel.Serialization.Serializers.Serialize(ms, root);
                 serialized = ms.ToArray();
             }
 

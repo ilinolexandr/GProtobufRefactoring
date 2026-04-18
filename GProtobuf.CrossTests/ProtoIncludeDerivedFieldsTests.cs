@@ -155,7 +155,7 @@ public sealed class ProtoIncludeDerivedFieldsTests : BaseSerializationTest
     {
         var model = CreateLinearInterpolationModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeProtoIncludeDerivedFieldsModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeProtoIncludeDerivedFieldsModel(bytes));
 
@@ -172,7 +172,7 @@ public sealed class ProtoIncludeDerivedFieldsTests : BaseSerializationTest
     {
         var model = CreateLinearInterpolationModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeProtoIncludeDerivedFieldsModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<ProtoIncludeDerivedFieldsModel>(data);
 
         deserialized.Id.Should().Be(12345);
@@ -216,7 +216,7 @@ public sealed class ProtoIncludeDerivedFieldsTests : BaseSerializationTest
     {
         var model = CreateMixedConversionsModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeProtoIncludeDerivedFieldsModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeProtoIncludeDerivedFieldsModel(bytes));
 
@@ -231,7 +231,7 @@ public sealed class ProtoIncludeDerivedFieldsTests : BaseSerializationTest
     {
         var model = CreateMixedConversionsModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeProtoIncludeDerivedFieldsModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<ProtoIncludeDerivedFieldsModel>(data);
 
         deserialized.Conversions.Should().HaveCount(3);
@@ -265,7 +265,7 @@ public sealed class ProtoIncludeDerivedFieldsTests : BaseSerializationTest
     {
         var model = CreateDefaultValuesModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeProtoIncludeDerivedFieldsModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithGProtobuf(data,
             bytes => TestModelDeserializers.DeserializeProtoIncludeDerivedFieldsModel(bytes));
 
@@ -281,7 +281,7 @@ public sealed class ProtoIncludeDerivedFieldsTests : BaseSerializationTest
     {
         var model = CreateDefaultValuesModel();
 
-        var data = SerializeWithGProtobuf(model, TestModelSerializers.SerializeProtoIncludeDerivedFieldsModel);
+        var data = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var deserialized = DeserializeWithProtobufNet<ProtoIncludeDerivedFieldsModel>(data);
 
         var conversion = deserialized.Conversions[0].Should().BeOfType<LinearInterpolationConversion>().Subject;
@@ -300,7 +300,7 @@ public sealed class ProtoIncludeDerivedFieldsTests : BaseSerializationTest
     {
         var model = CreateLinearInterpolationModel();
 
-        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.SerializeProtoIncludeDerivedFieldsModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var protobufNetData = SerializeWithProtobufNet(model);
 
         _output.WriteLine($"GProtobuf size: {gprotobufData.Length} bytes");
@@ -323,7 +323,7 @@ public sealed class ProtoIncludeDerivedFieldsTests : BaseSerializationTest
     {
         var model = CreateMixedConversionsModel();
 
-        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.SerializeProtoIncludeDerivedFieldsModel);
+        var gprotobufData = SerializeWithGProtobuf(model, TestModelSerializers.Serialize);
         var protobufNetData = SerializeWithProtobufNet(model);
 
         _output.WriteLine($"GProtobuf size: {gprotobufData.Length} bytes");

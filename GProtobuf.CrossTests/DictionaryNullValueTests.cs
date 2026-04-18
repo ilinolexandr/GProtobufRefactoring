@@ -63,7 +63,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithStringNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -84,7 +84,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithStringNullValues);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var result = DeserializeWithGProtobuf(data, DeserializeDictWithStringNullValues);
 
         result.Items.Should().HaveCount(2);
@@ -127,7 +127,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithStringNullValues);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var result = DeserializeWithProtobufNet<DictWithStringNullValues>(data);
 
         result.Items.Should().HaveCount(2);
@@ -149,7 +149,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithStringNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -170,7 +170,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithStringNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -195,7 +195,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithObjectNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -216,7 +216,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithObjectNullValues);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var result = DeserializeWithGProtobuf(data, DeserializeDictWithObjectNullValues);
 
         result.Items.Should().HaveCount(2);
@@ -257,7 +257,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithObjectNullValues);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var result = DeserializeWithProtobufNet<DictWithObjectNullValues>(data);
 
         result.Items.Should().HaveCount(2);
@@ -282,7 +282,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
         model.Items[1] = "val";
         model.Items[2] = null;
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeConcurrentDictWithStringNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -301,7 +301,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
         model.Items["a"] = new NullValueNestedObject { Name = "X", Value = 1 };
         model.Items["b"] = null;
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeConcurrentDictWithObjectNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -326,7 +326,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictStringKeyStringNullValue);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -347,7 +347,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictStringKeyStringNullValue);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var result = DeserializeWithGProtobuf(data, DeserializeDictStringKeyStringNullValue);
 
         result.Items.Should().HaveCount(2);
@@ -372,7 +372,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithNullableIntNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -393,7 +393,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithNullableLongNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -418,7 +418,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithByteArrayNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -439,7 +439,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithByteArrayNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -464,7 +464,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictLevel2NullValues_IntStringString);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -484,7 +484,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictLevel2NullValues_IntStringString);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -509,7 +509,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictLevel2NullValues_StringIntObject);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -530,7 +530,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictLevel2NullValues_IntStringString);
+        var data = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var result = DeserializeWithGProtobuf(data, DeserializeDictLevel2NullValues_IntStringString);
 
         result.Items.Should().HaveCount(2);
@@ -566,7 +566,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDeepNestedNullTestModel);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -603,7 +603,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDeepNestedNullTestModel);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -648,7 +648,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDeepNestedNullTestModel);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -673,7 +673,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithListNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -694,7 +694,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
             }
         };
 
-        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.SerializeDictWithListOfObjectsNullValues);
+        var gpBytes = SerializeWithGProtobuf(model, TestModel.Serialization.Serializers.Serialize);
         var pbBytes = SerializeWithProtobufNet(model);
 
         LogBytes("GProtobuf", gpBytes);
@@ -725,7 +725,7 @@ public sealed class DictionaryNullValueTests : BaseSerializationTest
         var gpResult = DeserializeWithGProtobuf(pbData, DeserializeDictWithStringNullValues);
 
         // GProtobuf -> protobuf-net
-        var gpData = SerializeWithGProtobuf(gpResult, TestModel.Serialization.Serializers.SerializeDictWithStringNullValues);
+        var gpData = SerializeWithGProtobuf(gpResult, TestModel.Serialization.Serializers.Serialize);
         var pbResult = DeserializeWithProtobufNet<DictWithStringNullValues>(gpData);
 
         pbResult.Items.Should().HaveCount(3);

@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using GProtobuf.Tests.TestModel;
 //using GProtobuf.Generator;
 using Microsoft.CodeAnalysis;
@@ -1553,7 +1553,7 @@ public sealed class ProtobufNetToGProtobufTests : BaseSerializationTest
         // protobuf-net serialize -> GProtobuf deserialize -> GProtobuf serialize -> protobuf-net deserialize
         var protobufNetData = SerializeWithProtobufNet(model);
         var gprotobufDeserialized = TestModel.Serialization.Deserializers.DeserializeByteArrayTestModel(protobufNetData);
-        var gprotobufData = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.SerializeByteArrayTestModel);
+        var gprotobufData = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.Serialize);
         var finalDeserialized = DeserializeWithProtobufNet<ByteArrayTestModel>(gprotobufData);
 
         finalDeserialized.Should().NotBeNull();
@@ -1599,7 +1599,7 @@ public sealed class ProtobufNetToGProtobufTests : BaseSerializationTest
         // protobuf-net serialize -> GProtobuf deserialize -> GProtobuf serialize -> protobuf-net deserialize
         var protobufNetData = SerializeWithProtobufNet(model);
         var gprotobufDeserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(protobufNetData);
-        var gprotobufData = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var gprotobufData = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.Serialize);
         var finalDeserialized = DeserializeWithProtobufNet<PrimitiveArraysTestModel>(gprotobufData);
 
         finalDeserialized.Should().NotBeNull();
@@ -1625,7 +1625,7 @@ public sealed class ProtobufNetToGProtobufTests : BaseSerializationTest
         // protobuf-net serialize -> GProtobuf deserialize -> GProtobuf serialize -> protobuf-net deserialize
         var protobufNetData = SerializeWithProtobufNet(model);
         var gprotobufDeserialized = TestModel.Serialization.Deserializers.DeserializePrimitiveArraysTestModel(protobufNetData);
-        var gprotobufData = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.SerializePrimitiveArraysTestModel);
+        var gprotobufData = SerializeWithGProtobuf(gprotobufDeserialized, TestModel.Serialization.Serializers.Serialize);
         var finalDeserialized = DeserializeWithProtobufNet<PrimitiveArraysTestModel>(gprotobufData);
 
         finalDeserialized.Should().NotBeNull();
