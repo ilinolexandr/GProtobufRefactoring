@@ -911,7 +911,11 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
         }
 
-        private static string GetOnePassMethodName(string methodName) => methodName + "OnePass";
+        private string GetOnePassMethodName(string methodName)
+        {
+            bool bothStreamWriters = _options.GenerateStreamWriter && _options.GenerateOnePassStreamWriter;
+            return bothStreamWriters ? methodName + "OnePass" : methodName;
+        }
 
         private void GenerateListSerializer(StandaloneTypeInfo info, string methodName)
         {
