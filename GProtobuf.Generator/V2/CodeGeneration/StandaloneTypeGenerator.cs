@@ -25,18 +25,65 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private readonly TypeRegistry _registry;
         private readonly GeneratorOptions _options;
         private readonly ProxyCodeHelper _proxyHelper;
+        private readonly AmbientHandlerEmitter _ambientHandlerEmitter;
 
-        public StandaloneTypeGenerator(StringBuilderWithIndent sb, TypeRegistry registry, GeneratorOptions options = null, ProxyRegistry proxyRegistry = null)
+        public StandaloneTypeGenerator(StringBuilderWithIndent sb, TypeRegistry registry, GeneratorOptions options = null, ProxyRegistry proxyRegistry = null, AmbientHandlerEmitter ambientHandlerEmitter = null)
         {
             _sb = sb;
             _registry = registry;
             _options = options ?? GeneratorOptions.Default;
             _proxyHelper = new ProxyCodeHelper(sb, proxyRegistry, registry);
+            _ambientHandlerEmitter = ambientHandlerEmitter;
         }
 
         private ProxyDefinition GetProxy(string typeName) => _proxyHelper.GetProxy(typeName);
 
         private string GetWriteMethodSuffix(string typeName) => _proxyHelper.GetWriteMethodSuffix(typeName);
+
+        /// <summary>Prologue state for one standalone entry-point; for Dictionary holds key (primary) + value (secondary) handles in LIFO order.</summary>
+        private readonly struct StandalonePrologueHandle
+        {
+            public readonly HandlerEmissionHandle Primary;
+            public readonly HandlerEmissionHandle Secondary;
+            public StandalonePrologueHandle(HandlerEmissionHandle primary, HandlerEmissionHandle secondary)
+            {
+                Primary = primary;
+                Secondary = secondary;
+            }
+        }
+
+        private StandalonePrologueHandle EmitAmbientPrologue(StandaloneTypeInfo info, bool forSerialization)
+        {
+            if (_ambientHandlerEmitter == null) return default;
+
+            switch (info.Kind)
+            {
+                case StandaloneTypeKind.List:
+                case StandaloneTypeKind.Array:
+                    if (string.IsNullOrEmpty(info.ElementType)) return default;
+                    return new StandalonePrologueHandle(
+                        _ambientHandlerEmitter.EmitPrologueByTypeName(_sb, info.ElementType, forSerialization),
+                        default);
+                case StandaloneTypeKind.Dictionary:
+                    var keyHandle = string.IsNullOrEmpty(info.KeyType)
+                        ? default
+                        : _ambientHandlerEmitter.EmitPrologueByTypeName(_sb, info.KeyType, forSerialization);
+                    int valueStartIndex = keyHandle.IsEmpty ? 0 : keyHandle.Slots.Count;
+                    var valueHandle = string.IsNullOrEmpty(info.ValueType)
+                        ? default
+                        : _ambientHandlerEmitter.EmitPrologueByTypeName(_sb, info.ValueType, forSerialization, valueStartIndex);
+                    return new StandalonePrologueHandle(keyHandle, valueHandle);
+                default:
+                    return default;
+            }
+        }
+
+        private void EmitAmbientEpilogue(StandalonePrologueHandle handle)
+        {
+            if (_ambientHandlerEmitter == null) return;
+            _ambientHandlerEmitter.EmitEpilogue(_sb, handle.Secondary);
+            _ambientHandlerEmitter.EmitEpilogue(_sb, handle.Primary);
+        }
 
         #region Deserializers
 
@@ -101,6 +148,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
             _sb.AppendIndentedLine($"public static {returnType} {methodName}(ReadOnlySpan<byte> data)");
             _sb.StartNewBlock();
+            var hListSpan = EmitAmbientPrologue(info, forSerialization: false);
 
             if (info.IsPacked)
             {
@@ -205,6 +253,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.AppendIndentedLine(returnStatement);
             }
 
+            EmitAmbientEpilogue(hListSpan);
             _sb.EndBlock();
             _sb.AppendNewLine();
             }
@@ -236,6 +285,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // Stream overload with custom buffer
             _sb.AppendIndentedLine($"public static {returnType} {methodName}(Stream stream, Span<byte> buffer)");
             _sb.StartNewBlock();
+            var hListStream = EmitAmbientPrologue(info, forSerialization: false);
             _sb.AppendIndentedLine($"var list = new {listType}();");
             _sb.AppendIndentedLine("var reader = new global::GProtobuf.Core.StreamReader(stream, buffer);");
             _sb.AppendIndentedLine("while (!reader.IsEnd)");
@@ -311,6 +361,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
             _sb.EndBlock();
             _sb.AppendIndentedLine(returnStatement);
+            EmitAmbientEpilogue(hListStream);
             _sb.EndBlock();
             _sb.AppendNewLine();
         }
@@ -404,6 +455,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // ReadOnlySpan<byte> overload
             _sb.AppendIndentedLine($"public static {returnType} {methodName}(ReadOnlySpan<byte> data)");
             _sb.StartNewBlock();
+            var hDictSpan = EmitAmbientPrologue(info, forSerialization: false);
             _sb.AppendIndentedLine($"var dict = new {dictInstantiation}();");
             _sb.AppendIndentedLine("var reader = new SpanReader(data);");
             _sb.AppendIndentedLine("while (!reader.IsEnd)");
@@ -470,6 +522,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.EndBlock(); // while outer
 
             _sb.AppendIndentedLine("return dict;");
+            EmitAmbientEpilogue(hDictSpan);
             _sb.EndBlock();
             _sb.AppendNewLine();
         }
@@ -951,6 +1004,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 {
                     _sb.AppendIndentedLine($"public static void {methodName}(Stream stream, {paramType} {varName})");
                     _sb.StartNewBlock();
+                    var hUnpStream = EmitAmbientPrologue(info, forSerialization: true);
                     _sb.AppendIndentedLine($"if ({varName} == null) return;");
                     _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
                     _sb.AppendIndentedLine($"foreach (var item in {varName})");
@@ -958,6 +1012,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     GenerateElementWrite(elementType, info.ElementIsPrimitive, info.ElementIsEnum, "item", "writer", false);
                     _sb.EndBlock();
                     _sb.AppendIndentedLine("writer.Flush();");
+                    EmitAmbientEpilogue(hUnpStream);
                     _sb.EndBlock();
                     _sb.AppendNewLine();
                 }
@@ -967,6 +1022,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 {
                     _sb.AppendIndentedLine($"public static void {methodName}(IBufferWriter<byte> buffer, {paramType} {varName})");
                     _sb.StartNewBlock();
+                    var hUnpBuf = EmitAmbientPrologue(info, forSerialization: true);
                     _sb.AppendIndentedLine($"if ({varName} == null) return;");
                     _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
                     _sb.AppendIndentedLine($"foreach (var item in {varName})");
@@ -974,6 +1030,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     GenerateElementWrite(elementType, info.ElementIsPrimitive, info.ElementIsEnum, "item", "writer", true);
                     _sb.EndBlock();
                     _sb.AppendIndentedLine("writer.Flush();");
+                    EmitAmbientEpilogue(hUnpBuf);
                     _sb.EndBlock();
                     _sb.AppendNewLine();
                 }
@@ -988,6 +1045,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
                     _sb.AppendIndentedLine($"public static void {onePassName}(Stream stream, {paramType} {varName}, global::GProtobuf.Core.BufferChainPoolCache pool)");
                     _sb.StartNewBlock();
+                    var hUnpOnePass = EmitAmbientPrologue(info, forSerialization: true);
                     _sb.AppendIndentedLine($"if ({varName} == null) return;");
                     _sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
                     _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], scope.Pool);");
@@ -996,6 +1054,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     GenerateElementWriteOnePass(elementType, info.ElementIsPrimitive, info.ElementIsEnum, "item");
                     _sb.EndBlock();
                     _sb.AppendIndentedLine("writer.Flush();");
+                    EmitAmbientEpilogue(hUnpOnePass);
                     _sb.EndBlock();
                     _sb.AppendNewLine();
                 }
@@ -1016,6 +1075,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 _sb.AppendIndentedLine($"public static void {methodName}(Stream stream, {paramType} {varName})");
                 _sb.StartNewBlock();
+                var hPkStream = EmitAmbientPrologue(info, forSerialization: true);
                 _sb.AppendIndentedLine($"if ({varName} == null) return;");
                 _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
 
@@ -1037,6 +1097,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.EndBlock();
 
                 _sb.AppendIndentedLine("writer.Flush();");
+                EmitAmbientEpilogue(hPkStream);
                 _sb.EndBlock();
                 _sb.AppendNewLine();
             }
@@ -1046,6 +1107,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 _sb.AppendIndentedLine($"public static void {methodName}(IBufferWriter<byte> buffer, {paramType} {varName})");
                 _sb.StartNewBlock();
+                var hPkBuf = EmitAmbientPrologue(info, forSerialization: true);
                 _sb.AppendIndentedLine($"if ({varName} == null) return;");
                 _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
 
@@ -1067,6 +1129,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.EndBlock();
 
                 _sb.AppendIndentedLine("writer.Flush();");
+                EmitAmbientEpilogue(hPkBuf);
                 _sb.EndBlock();
                 _sb.AppendNewLine();
             }
@@ -1081,6 +1144,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
                 _sb.AppendIndentedLine($"public static void {onePassName}(Stream stream, {paramType} {varName}, global::GProtobuf.Core.BufferChainPoolCache pool)");
                 _sb.StartNewBlock();
+                var hPkOnePass = EmitAmbientPrologue(info, forSerialization: true);
                 _sb.AppendIndentedLine($"if ({varName} == null) return;");
                 _sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
                 _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], scope.Pool);");
@@ -1094,6 +1158,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 _sb.AppendIndentedLine("writer.EndSubMessage();");
 
                 _sb.AppendIndentedLine("writer.Flush();");
+                EmitAmbientEpilogue(hPkOnePass);
                 _sb.EndBlock();
                 _sb.AppendNewLine();
             }
@@ -1299,6 +1364,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 _sb.AppendIndentedLine($"public static void {methodName}(Stream stream, {paramType} dict)");
                 _sb.StartNewBlock();
+                var hDictStream = EmitAmbientPrologue(info, forSerialization: true);
                 _sb.AppendIndentedLine("if (dict == null) return;");
                 _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
                 _sb.AppendIndentedLine("foreach (var kvp in dict)");
@@ -1306,6 +1372,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 GenerateMapEntryWrite(info, "StreamWriters");
                 _sb.EndBlock();
                 _sb.AppendIndentedLine("writer.Flush();");
+                EmitAmbientEpilogue(hDictStream);
                 _sb.EndBlock();
                 _sb.AppendNewLine();
             }
@@ -1315,6 +1382,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             {
                 _sb.AppendIndentedLine($"public static void {methodName}(IBufferWriter<byte> buffer, {paramType} dict)");
                 _sb.StartNewBlock();
+                var hDictBuf = EmitAmbientPrologue(info, forSerialization: true);
                 _sb.AppendIndentedLine("if (dict == null) return;");
                 _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
                 _sb.AppendIndentedLine("foreach (var kvp in dict)");
@@ -1322,6 +1390,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 GenerateMapEntryWrite(info, "BufferWriters");
                 _sb.EndBlock();
                 _sb.AppendIndentedLine("writer.Flush();");
+                EmitAmbientEpilogue(hDictBuf);
                 _sb.EndBlock();
                 _sb.AppendNewLine();
             }
@@ -1336,6 +1405,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
                 _sb.AppendIndentedLine($"public static void {onePassName}(Stream stream, {paramType} dict, global::GProtobuf.Core.BufferChainPoolCache pool)");
                 _sb.StartNewBlock();
+                var hDictOnePass = EmitAmbientPrologue(info, forSerialization: true);
                 _sb.AppendIndentedLine("if (dict == null) return;");
                 _sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
                 _sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], scope.Pool);");
@@ -1344,6 +1414,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 GenerateMapEntryWriteOnePass(info);
                 _sb.EndBlock();
                 _sb.AppendIndentedLine("writer.Flush();");
+                EmitAmbientEpilogue(hDictOnePass);
                 _sb.EndBlock();
                 _sb.AppendNewLine();
             }

@@ -7,6 +7,7 @@ using GProtobuf.Generator.Diagnostics;
 using GProtobuf.Generator.V2;
 using GProtobuf.Generator.V2.CodeGeneration;
 using GProtobuf.Generator.V2.Handlers.Core;
+using GProtobuf.Generator.V2.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -315,6 +316,35 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                 return result.ToImmutableArray();
             });
 
+        // Pipeline 6: Ambient serialization handlers from [assembly: AmbientSerializationHandler(marker, handler)]
+        // Wraps generated entry-points whose graph reaches the marker with user-supplied
+        // Before/After hooks. See Analysis/AmbientHandlerReachabilityAnalyzer + V2/Helpers/AmbientHandlerEmitter.
+        var ambientHandlerPipeline = context.CompilationProvider
+            .Select(static (compilation, ct) =>
+            {
+                var result = new List<AmbientHandlerDefinition>();
+                var attrType = compilation.GetTypeByMetadataName("GProtobuf.AmbientSerializationHandlerAttribute");
+                if (attrType == null)
+                    return result.ToImmutableArray();
+
+                foreach (var attr in compilation.Assembly.GetAttributes())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attrType))
+                        continue;
+
+                    if (attr.ConstructorArguments.Length < 2 ||
+                        attr.ConstructorArguments[0].Value is not INamedTypeSymbol markerType ||
+                        attr.ConstructorArguments[1].Value is not INamedTypeSymbol handlerType)
+                    {
+                        continue;
+                    }
+
+                    result.Add(AnalyzeAmbientHandler(markerType, handlerType, attr.NamedArguments));
+                }
+                return result.ToImmutableArray();
+            });
+
         // Combine ProtoContract and ProtoInclude pipelines
         var combinedPipeline = protoContractPipeline
             .Collect()
@@ -333,14 +363,16 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                 .Combine(standaloneTypesPipeline)
                 .Combine(optionsPipeline)
                 .Combine(proxyPipeline)
+                .Combine(ambientHandlerPipeline)
                 .Combine(context.CompilationProvider),
             static (context, provider) =>
             {
-                var typeDefinitions = provider.Left.Left.Left.Left.Left; // ProtoContract + ProtoInclude types
-                var enumTypes = provider.Left.Left.Left.Left.Right;
-                var standaloneTypes = provider.Left.Left.Left.Right; // Types from [GenerateSerializer]
-                var options = provider.Left.Left.Right; // Generator options from [GProtobufOptions]
-                var proxyDefinitions = provider.Left.Right; // Serialization proxy mappings
+                var typeDefinitions = provider.Left.Left.Left.Left.Left.Left; // ProtoContract + ProtoInclude types
+                var enumTypes = provider.Left.Left.Left.Left.Left.Right;
+                var standaloneTypes = provider.Left.Left.Left.Left.Right; // Types from [GenerateSerializer]
+                var options = provider.Left.Left.Left.Right; // Generator options from [GProtobufOptions]
+                var proxyDefinitions = provider.Left.Left.Right; // Serialization proxy mappings
+                var ambientHandlers = provider.Left.Right; // AmbientSerializationHandler declarations
                 var compilation = provider.Right;
 
 
@@ -403,10 +435,74 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                         }
                     }
 
-                    var objectTree = new ObjectTreeV2(enumTypes, compilation, standaloneTypes, options, proxyRegistry);
+                    // Surface AmbientSerializationHandler diagnostics (GPROTO021-028) and build registry
+                    // from valid declarations. Invalid entries are dropped so the emitter only sees usable
+                    // handlers; the diagnostics still appear in the IDE.
+                    //
+                    // GPROTO026 (dead-marker warning) needs the full TypeRegistry to run the reachability
+                    // walker, so we defer it until after ObjectTreeV2 is populated.
+                    AmbientHandlerRegistry ambientHandlerRegistry = null;
+                    if (!ambientHandlers.IsEmpty)
+                    {
+                        // GPROTO025: flag duplicate declarations keyed by (marker, handler, before-method).
+                        // Deterministic — we mark every occurrence after the first so users see all conflicts.
+                        var seenKeys = new HashSet<string>();
+                        foreach (var handler in ambientHandlers)
+                        {
+                            var key = $"{handler.MarkerFullName}|{handler.HandlerTypeFullName}|{handler.BeforeMethodName}";
+                            if (!seenKeys.Add(key))
+                            {
+                                handler.Diagnostics.Add(("GPROTO025",
+                                    $"Duplicate AmbientSerializationHandler declaration for marker '{handler.MarkerFullName}', handler '{handler.HandlerTypeFullName}', before-method '{handler.BeforeMethodName}'. Remove the redundant [assembly: AmbientSerializationHandler(...)] attribute."));
+                            }
+                        }
+
+                        // Report 021-025, 027, 028 now. 026 is reported later once ObjectTreeV2 is built
+                        // (it needs the reachability walker, which needs a populated TypeRegistry).
+                        ReportAmbientHandlerDiagnostics(context, ambientHandlers);
+
+                        // GPROTO025/027 are non-fatal — don't drop handlers that only have those.
+                        // Fatal diagnostics (021/022/023/024) drop the handler from the registry.
+                        var validHandlers = ambientHandlers.Where(h =>
+                            h.Diagnostics.All(d =>
+                                d.Id == "GPROTO025" ||
+                                d.Id == "GPROTO027")).ToList();
+                        if (validHandlers.Count > 0)
+                        {
+                            ambientHandlerRegistry = new AmbientHandlerRegistry();
+                            foreach (var h in validHandlers)
+                                ambientHandlerRegistry.Register(h);
+                        }
+                    }
+
+                    var objectTree = new ObjectTreeV2(enumTypes, compilation, standaloneTypes, options, proxyRegistry, ambientHandlerRegistry);
                     foreach (var (namespaceName, typeDefinition) in typeDefinitions)
                     {
                         objectTree.AddType(namespaceName, typeDefinition);
+                    }
+
+                    // GPROTO026: now that every root is registered, ask the walker whether each
+                    // live handler's marker is actually reachable. Drops false positives from the
+                    // old substring check (e.g. marker 'Foo' matching 'FooBar') and catches cases
+                    // the substring heuristic missed (marker is an interface/base class reached
+                    // only via a derived field type).
+                    if (ambientHandlerRegistry != null)
+                    {
+                        foreach (var handler in ambientHandlerRegistry.GetAllSorted())
+                        {
+                            if (!objectTree.IsMarkerReachableFromAnyRoot(handler.MarkerFullName))
+                            {
+                                context.ReportDiagnostic(Diagnostic.Create(
+                                    new DiagnosticDescriptor(
+                                        "GPROTO026",
+                                        "GProtobuf Ambient Serialization Handler",
+                                        $"AmbientSerializationHandler marker '{handler.MarkerFullName}' is not reachable from any ProtoContract graph known to the generator — this handler will never run.",
+                                        "GProtobuf",
+                                        DiagnosticSeverity.Warning,
+                                        true),
+                                    Location.None));
+                            }
+                        }
                     }
 
                     var codeFiles = objectTree.GenerateCode();
@@ -415,6 +511,18 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                     {
                         context.AddSource(f.FileName, f.FileCode);
                         filesGenerated++;
+                    }
+
+                    // Emit the shared ambient-handler guard types. One internal static
+                    // class per unique handler, depth-counter based, in a reserved namespace.
+                    if (ambientHandlerRegistry != null)
+                    {
+                        var guardsSource = AmbientHandlerGuardGenerator.Generate(ambientHandlerRegistry);
+                        if (!string.IsNullOrEmpty(guardsSource))
+                        {
+                            context.AddSource(AmbientHandlerGuardGenerator.GeneratedFileName, guardsSource);
+                            filesGenerated++;
+                        }
                     }
 
                     // Report success
@@ -1705,5 +1813,163 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         }
 
         return proxy;
+    }
+
+    /// <summary>Fully-qualified symbol format without the <c>global::</c> prefix.</summary>
+    private static readonly SymbolDisplayFormat FullyQualifiedNoGlobalPrefix =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(
+            SymbolDisplayGlobalNamespaceStyle.Omitted);
+
+    /// <summary>Reports every ambient-handler diagnostic except GPROTO026, which runs later against the populated type registry.</summary>
+    private static void ReportAmbientHandlerDiagnostics(
+        SourceProductionContext context,
+        ImmutableArray<AmbientHandlerDefinition> handlers)
+    {
+        foreach (var handler in handlers)
+        {
+            foreach (var (diagId, diagMsg) in handler.Diagnostics)
+            {
+                var severity = diagId == "GPROTO027"
+                    ? DiagnosticSeverity.Warning
+                    : DiagnosticSeverity.Error;
+                context.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        diagId,
+                        "GProtobuf Ambient Serialization Handler",
+                        diagMsg,
+                        "GProtobuf",
+                        severity,
+                        true),
+                    Location.None));
+            }
+        }
+    }
+
+    /// <summary>Resolves one <c>[assembly: AmbientSerializationHandler]</c> attribute into a definition with GPROTO021-024/027 diagnostics attached.</summary>
+    private static AmbientHandlerDefinition AnalyzeAmbientHandler(
+        INamedTypeSymbol markerType,
+        INamedTypeSymbol handlerType,
+        System.Collections.Immutable.ImmutableArray<KeyValuePair<string, TypedConstant>> namedArgs)
+    {
+        var def = new AmbientHandlerDefinition
+        {
+            MarkerFullName = markerType.ToDisplayString(FullyQualifiedNoGlobalPrefix),
+            HandlerTypeFullName = handlerType.ToDisplayString(FullyQualifiedNoGlobalPrefix),
+            BeforeMethodName = "Before",
+            AfterMethodName = "After",
+            AutoReentrancyGuard = false,
+            IncludeSerialization = true,
+            IncludeDeserialization = true,
+        };
+
+        bool afterWasExplicitlyNamed = false;
+        bool afterWasExplicitlyNull = false;
+
+        foreach (var named in namedArgs)
+        {
+            switch (named.Key)
+            {
+                case "BeforeMethod":
+                    if (named.Value.Value is string bm && !string.IsNullOrEmpty(bm))
+                        def.BeforeMethodName = bm;
+                    break;
+                case "AfterMethod":
+                    if (named.Value.IsNull)
+                    {
+                        def.AfterMethodName = null;
+                        afterWasExplicitlyNull = true;
+                    }
+                    else if (named.Value.Value is string am && !string.IsNullOrEmpty(am))
+                    {
+                        def.AfterMethodName = am;
+                        afterWasExplicitlyNamed = true;
+                    }
+                    break;
+                case "AutoReentrancyGuard":
+                    if (named.Value.Value is bool arg) def.AutoReentrancyGuard = arg;
+                    break;
+                case "IncludeSerialization":
+                    if (named.Value.Value is bool incSer) def.IncludeSerialization = incSer;
+                    break;
+                case "IncludeDeserialization":
+                    if (named.Value.Value is bool incDeser) def.IncludeDeserialization = incDeser;
+                    break;
+            }
+        }
+
+        // GPROTO028 used to warn on AutoReentrancyGuard=false + non-null After. The flag is now
+        // false by default, so this would fire on virtually every registration — pure noise.
+        // Re-entrancy safety is now documented as the user's responsibility; the decision to opt
+        // into the guard is explicit and intentional.
+
+        // GPROTO027: handler shape sanity check — static class is the intended shape.
+        if (handlerType.IsRefLikeType)
+        {
+            def.Diagnostics.Add(("GPROTO027",
+                $"AmbientSerializationHandler '{def.HandlerTypeFullName}' is a ref struct. Use a static class with public static Before/After methods instead."));
+        }
+        else if (handlerType.IsValueType &&
+                 handlerType.GetMembers("Dispose").Any(m => m is IMethodSymbol ms && ms.Parameters.Length == 0))
+        {
+            def.Diagnostics.Add(("GPROTO027",
+                $"AmbientSerializationHandler '{def.HandlerTypeFullName}' is a struct with Dispose — looks like a scope type. Use a static class with public static Before/After methods instead."));
+        }
+
+        // Before-method validation (GPROTO021/022).
+        var beforeMatches = handlerType.GetMembers(def.BeforeMethodName)
+            .OfType<IMethodSymbol>()
+            .Where(m => m.MethodKind == MethodKind.Ordinary)
+            .ToList();
+
+        if (beforeMatches.Count == 0)
+        {
+            def.Diagnostics.Add(("GPROTO021",
+                $"AmbientSerializationHandler '{def.HandlerTypeFullName}' has no method named '{def.BeforeMethodName}'."));
+        }
+        else if (!beforeMatches.Any(IsValidHookMethod))
+        {
+            def.Diagnostics.Add(("GPROTO022",
+                $"'{def.HandlerTypeFullName}.{def.BeforeMethodName}' must be 'public static void {def.BeforeMethodName}()' with no parameters."));
+        }
+
+        // After-method validation (GPROTO023/024) with soft opt-out for the default name.
+        if (afterWasExplicitlyNull)
+        {
+            // Explicit opt-out — no validation, no emission.
+        }
+        else if (def.AfterMethodName != null)
+        {
+            var afterMatches = handlerType.GetMembers(def.AfterMethodName)
+                .OfType<IMethodSymbol>()
+                .Where(m => m.MethodKind == MethodKind.Ordinary)
+                .ToList();
+
+            if (afterMatches.Count == 0)
+            {
+                if (afterWasExplicitlyNamed)
+                {
+                    def.Diagnostics.Add(("GPROTO023",
+                        $"AmbientSerializationHandler '{def.HandlerTypeFullName}' has no method named '{def.AfterMethodName}'. Set AfterMethod = null to opt out."));
+                }
+                else
+                {
+                    // Default "After" absent — soft opt-out, no diagnostic.
+                    def.AfterMethodName = null;
+                }
+            }
+            else if (!afterMatches.Any(IsValidHookMethod))
+            {
+                def.Diagnostics.Add(("GPROTO024",
+                    $"'{def.HandlerTypeFullName}.{def.AfterMethodName}' must be 'public static void {def.AfterMethodName}()' with no parameters."));
+            }
+        }
+
+        return def;
+
+        static bool IsValidHookMethod(IMethodSymbol m) =>
+            m.IsStatic &&
+            m.DeclaredAccessibility == Accessibility.Public &&
+            m.Parameters.Length == 0 &&
+            m.ReturnsVoid;
     }
 }

@@ -54,6 +54,7 @@ namespace GProtobuf.Generator.V2
         private readonly Dictionary<string, List<StandaloneTypeInfo>> _standaloneTypesByNamespace = new();
         private readonly GeneratorOptions _options;
         private readonly ProxyRegistry _proxyRegistry;
+        private readonly AmbientHandlerEmitter _ambientHandlerEmitter;
 
         /// <summary>
         /// The namespace where virtual types (map entries, tuples) are generated.
@@ -79,11 +80,12 @@ namespace GProtobuf.Generator.V2
         /// <param name="options">
         /// Generator options from [assembly: GProtobufOptions(...)]. Controls which generators are enabled.
         /// </param>
-        public ObjectTreeV2(HashSet<string> enumTypes, Microsoft.CodeAnalysis.Compilation compilation = null, ImmutableArray<(ITypeSymbol Type, bool IsPacked)> standaloneTypes = default, GeneratorOptions options = null, ProxyRegistry proxyRegistry = null)
+        public ObjectTreeV2(HashSet<string> enumTypes, Microsoft.CodeAnalysis.Compilation compilation = null, ImmutableArray<(ITypeSymbol Type, bool IsPacked)> standaloneTypes = default, GeneratorOptions options = null, ProxyRegistry proxyRegistry = null, AmbientHandlerRegistry ambientHandlerRegistry = null)
         {
             _compilation = compilation;
             _options = options ?? GeneratorOptions.Default;
             _proxyRegistry = proxyRegistry;
+            _ambientHandlerEmitter = new AmbientHandlerEmitter(ambientHandlerRegistry, _registry, proxyRegistry);
 
             // Register all enum types in the TypeRegistry
             if (enumTypes != null)
@@ -122,6 +124,19 @@ namespace GProtobuf.Generator.V2
         public void AddType(string @namespace, TypeDefinition type)
         {
             _registry.Register(@namespace, type);
+        }
+
+        /// <summary>True if the marker is reachable from any registered ProtoContract root; call only after all <see cref="AddType"/> calls have completed.</summary>
+        public bool IsMarkerReachableFromAnyRoot(string markerFullName)
+        {
+            if (string.IsNullOrEmpty(markerFullName)) return false;
+
+            foreach (var type in _registry.GetAllTypes())
+            {
+                if (AmbientHandlerReachabilityAnalyzer.ContainsMarker(_registry, _proxyRegistry, type.FullName, markerFullName))
+                    return true;
+            }
+            return false;
         }
 
         #endregion
@@ -634,20 +649,22 @@ namespace GProtobuf.Generator.V2
                     // Reference types with optional instance parameter - unified API
                     // Deserialize(data) - creates new instance (for method group compatibility)
                     // Deserialize(data, existingInstance) - populates existing instance
-
                     if (_options.GenerateSpanReader)
                     {
                         // Simple overload for method group compatibility (Func<ReadOnlySpan<byte>, T>)
                         sb.AppendIndentedLine($"public static global::{type.FullName} Deserialize{className}(ReadOnlySpan<byte> data)");
                         sb.StartNewBlock();
+                        var hSpanNew = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new SpanReader(data);");
                         sb.AppendIndentedLine($"return SpanReaders.Read{className}(ref reader);");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hSpanNew);
                         sb.EndBlock();
                         sb.AppendNewLine();
 
                         // Overload with existingInstance for populating existing objects
                         sb.AppendIndentedLine($"public static global::{type.FullName} Deserialize{className}(ReadOnlySpan<byte> data, global::{type.FullName} existingInstance)");
                         sb.StartNewBlock();
+                        var hSpanExist = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new SpanReader(data);");
                         sb.AppendIndentedLine("if (!(existingInstance is null))");
                         sb.StartNewBlock();
@@ -655,13 +672,14 @@ namespace GProtobuf.Generator.V2
                         sb.AppendIndentedLine("return existingInstance;");
                         sb.EndBlock();
                         sb.AppendIndentedLine($"return SpanReaders.Read{className}(ref reader);");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hSpanExist);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
 
                     if (_options.GenerateStreamReader)
                     {
-                        // Stream overload (allocates default buffer)
+                        // Stream overload (allocates default buffer) — forwards, no wrap needed.
                         sb.AppendIndentedLine($"public static global::{type.FullName} Deserialize{className}(Stream stream)");
                         sb.StartNewBlock();
                         sb.AppendIndentedLine("Span<byte> buffer = stackalloc byte[global::GProtobuf.Core.StreamReader.DefaultBufferSize];");
@@ -669,7 +687,7 @@ namespace GProtobuf.Generator.V2
                         sb.EndBlock();
                         sb.AppendNewLine();
 
-                        // Stream overload with existingInstance
+                        // Stream overload with existingInstance — forwards, no wrap needed.
                         sb.AppendIndentedLine($"public static global::{type.FullName} Deserialize{className}(Stream stream, global::{type.FullName} existingInstance)");
                         sb.StartNewBlock();
                         sb.AppendIndentedLine("Span<byte> buffer = stackalloc byte[global::GProtobuf.Core.StreamReader.DefaultBufferSize];");
@@ -680,14 +698,17 @@ namespace GProtobuf.Generator.V2
                         // Stream overload with buffer - true streaming using PushLimit/PopLimit
                         sb.AppendIndentedLine($"public static global::{type.FullName} Deserialize{className}(Stream stream, Span<byte> buffer)");
                         sb.StartNewBlock();
+                        var hStreamBuf = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new global::GProtobuf.Core.StreamReader(stream, buffer);");
                         sb.AppendIndentedLine($"return StreamReaders.Read{className}(ref reader);");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hStreamBuf);
                         sb.EndBlock();
                         sb.AppendNewLine();
 
                         // Stream overload with buffer and existingInstance - true streaming using PushLimit/PopLimit
                         sb.AppendIndentedLine($"public static global::{type.FullName} Deserialize{className}(Stream stream, Span<byte> buffer, global::{type.FullName} existingInstance)");
                         sb.StartNewBlock();
+                        var hStreamBufExist = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new global::GProtobuf.Core.StreamReader(stream, buffer);");
                         sb.AppendIndentedLine("if (!(existingInstance is null))");
                         sb.StartNewBlock();
@@ -695,6 +716,7 @@ namespace GProtobuf.Generator.V2
                         sb.AppendIndentedLine("return existingInstance;");
                         sb.EndBlock();
                         sb.AppendIndentedLine($"return StreamReaders.Read{className}(ref reader);");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hStreamBufExist);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
@@ -705,15 +727,17 @@ namespace GProtobuf.Generator.V2
                     {
                         sb.AppendIndentedLine($"public static global::{type.FullName} Deserialize{className}(ReadOnlySpan<byte> data)");
                         sb.StartNewBlock();
+                        var hValSpan = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new SpanReader(data);");
                         sb.AppendIndentedLine($"return SpanReaders.Read{className}(ref reader);");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hValSpan);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
 
                     if (_options.GenerateStreamReader)
                     {
-                        // Deserialize method - Stream overload (allocates default buffer)
+                        // Deserialize method - Stream overload (allocates default buffer) — forwards, no wrap.
                         sb.AppendIndentedLine($"public static global::{type.FullName} Deserialize{className}(Stream stream)");
                         sb.StartNewBlock();
                         sb.AppendIndentedLine("Span<byte> buffer = stackalloc byte[global::GProtobuf.Core.StreamReader.DefaultBufferSize];");
@@ -724,8 +748,10 @@ namespace GProtobuf.Generator.V2
                         // Deserialize method - Stream overload with buffer - true streaming using PushLimit/PopLimit
                         sb.AppendIndentedLine($"public static global::{type.FullName} Deserialize{className}(Stream stream, Span<byte> buffer)");
                         sb.StartNewBlock();
+                        var hValStreamBuf = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new global::GProtobuf.Core.StreamReader(stream, buffer);");
                         sb.AppendIndentedLine($"return StreamReaders.Read{className}(ref reader);");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hValStreamBuf);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
@@ -741,15 +767,17 @@ namespace GProtobuf.Generator.V2
                     {
                         sb.AppendIndentedLine($"public static void Populate{className}(ReadOnlySpan<byte> data, {GeneratorHelpers.GetPopulateInstanceParameter(type)})");
                         sb.StartNewBlock();
+                        var hPopSpan = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new SpanReader(data);");
                         sb.AppendIndentedLine($"SpanReaders.Populate{className}(ref reader, {GeneratorHelpers.GetPopulateInstanceArgument(type, "instance")});");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hPopSpan);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
 
                     if (_options.GenerateStreamReader)
                     {
-                        // Populate method - Stream overload (allocates default buffer)
+                        // Populate method - Stream overload (allocates default buffer) — forwards, no wrap.
                         sb.AppendIndentedLine($"public static void Populate{className}(Stream stream, {GeneratorHelpers.GetPopulateInstanceParameter(type)})");
                         sb.StartNewBlock();
                         sb.AppendIndentedLine("Span<byte> buffer = stackalloc byte[global::GProtobuf.Core.StreamReader.DefaultBufferSize];");
@@ -760,8 +788,10 @@ namespace GProtobuf.Generator.V2
                         // Populate method - Stream overload with custom buffer - true streaming using PushLimit/PopLimit
                         sb.AppendIndentedLine($"public static void Populate{className}(Stream stream, Span<byte> buffer, {GeneratorHelpers.GetPopulateInstanceParameter(type)})");
                         sb.StartNewBlock();
+                        var hPopStreamBuf = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new global::GProtobuf.Core.StreamReader(stream, buffer);");
                         sb.AppendIndentedLine($"StreamReaders.Populate{className}(ref reader, {GeneratorHelpers.GetPopulateInstanceArgument(type, "instance")});");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hPopStreamBuf);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
@@ -783,18 +813,21 @@ namespace GProtobuf.Generator.V2
                     {
                         sb.AppendIndentedLine($"public static global::{proxy.OriginalTypeFullName} Deserialize{originalClassName}(ReadOnlySpan<byte> data)");
                         sb.StartNewBlock();
+                        var hProxySpan = _ambientHandlerEmitter.EmitPrologueByTypeName(sb, proxy.OriginalTypeFullName, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new SpanReader(data);");
                         sb.AppendIndentedLine($"var proxy = {proxyPrefix}SpanReaders.Read{proxy.ProxyClassName}Content(ref reader);");
                         sb.AppendIndentedLine($"var result = proxy.{proxy.ConvertMethodName}();");
                         if (proxy.ReturnMethodName != null)
                             sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
                         sb.AppendIndentedLine("return result;");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hProxySpan);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
 
                     if (_options.GenerateStreamReader)
                     {
+                        // Stream forwards to (Stream, Span<byte>), which is wrapped — no extra wrap needed here.
                         sb.AppendIndentedLine($"public static global::{proxy.OriginalTypeFullName} Deserialize{originalClassName}(Stream stream)");
                         sb.StartNewBlock();
                         sb.AppendIndentedLine("Span<byte> buffer = stackalloc byte[global::GProtobuf.Core.StreamReader.DefaultBufferSize];");
@@ -804,12 +837,14 @@ namespace GProtobuf.Generator.V2
 
                         sb.AppendIndentedLine($"public static global::{proxy.OriginalTypeFullName} Deserialize{originalClassName}(Stream stream, Span<byte> buffer)");
                         sb.StartNewBlock();
+                        var hProxyStreamBuf = _ambientHandlerEmitter.EmitPrologueByTypeName(sb, proxy.OriginalTypeFullName, forSerialization: false);
                         sb.AppendIndentedLine("var reader = new global::GProtobuf.Core.StreamReader(stream, buffer);");
                         sb.AppendIndentedLine($"var proxy = {proxyPrefix}StreamReaders.Read{proxy.ProxyClassName}Content(ref reader);");
                         sb.AppendIndentedLine($"var result = proxy.{proxy.ConvertMethodName}();");
                         if (proxy.ReturnMethodName != null)
                             sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
                         sb.AppendIndentedLine("return result;");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, hProxyStreamBuf);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
@@ -819,7 +854,7 @@ namespace GProtobuf.Generator.V2
             // Generate deserializers for standalone types (List<T>, T[], Dictionary<K,V>)
             if (standaloneTypes.Count > 0)
             {
-                var standaloneGenerator = new StandaloneTypeGenerator(sb, _registry, _options, _proxyRegistry);
+                var standaloneGenerator = new StandaloneTypeGenerator(sb, _registry, _options, _proxyRegistry, _ambientHandlerEmitter);
                 standaloneGenerator.GenerateDeserializers(standaloneTypes);
             }
 
@@ -859,25 +894,29 @@ namespace GProtobuf.Generator.V2
                 if (_options.GenerateStreamWriter)
                 {
                     sb.AppendIndentedLine($"public static unsafe void {serializeName}(Stream stream, global::{type.FullName} obj)");
-                    sb.AppendIndentedLine($"    => SerializeStream(stream, obj, &StreamWriters.Write{className});");
+                    _ambientHandlerEmitter.EmitEntryPointBody(sb, type, forSerialization: true,
+                        $"SerializeStream(stream, obj, &StreamWriters.Write{className});");
                     sb.AppendNewLine();
                 }
 
                 if (_options.GenerateBufferWriter)
                 {
                     sb.AppendIndentedLine($"public static unsafe void {serializeName}(IBufferWriter<byte> buffer, global::{type.FullName} obj)");
-                    sb.AppendIndentedLine($"    => SerializeBuffer(buffer, obj, &BufferWriters.Write{className});");
+                    _ambientHandlerEmitter.EmitEntryPointBody(sb, type, forSerialization: true,
+                        $"SerializeBuffer(buffer, obj, &BufferWriters.Write{className});");
                     sb.AppendNewLine();
                 }
 
                 if (_options.GenerateOnePassStreamWriter)
                 {
                     sb.AppendIndentedLine($"public static unsafe void {serializeOnePassName}(Stream stream, global::{type.FullName} obj)");
-                    sb.AppendIndentedLine($"    => SerializeOnePass(stream, obj, &OnePassStreamWriters.Write{className});");
+                    _ambientHandlerEmitter.EmitEntryPointBody(sb, type, forSerialization: true,
+                        $"SerializeOnePass(stream, obj, &OnePassStreamWriters.Write{className});");
                     sb.AppendNewLine();
 
                     sb.AppendIndentedLine($"public static unsafe void {serializeOnePassName}(Stream stream, global::{type.FullName} obj, global::GProtobuf.Core.BufferChainPoolCache pool)");
-                    sb.AppendIndentedLine($"    => SerializeOnePassWithPool(stream, obj, pool, &OnePassStreamWriters.Write{className});");
+                    _ambientHandlerEmitter.EmitEntryPointBody(sb, type, forSerialization: true,
+                        $"SerializeOnePassWithPool(stream, obj, pool, &OnePassStreamWriters.Write{className});");
                     sb.AppendNewLine();
                 }
 
@@ -891,9 +930,11 @@ namespace GProtobuf.Generator.V2
                     sb.AppendIndentedLine("/// <returns>Number of bytes written.</returns>");
                     sb.AppendIndentedLine($"public static int {serializeToName}(Span<byte> buffer, global::{type.FullName} obj)");
                     sb.StartNewBlock();
+                    var serializeToHandle = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: true);
                     sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StackBufferWriter(buffer);");
                     sb.AppendIndentedLine($"StackBufferWriters.Write{className}(ref writer, obj);");
                     sb.AppendIndentedLine("return writer.Written;");
+                    _ambientHandlerEmitter.EmitEpilogue(sb, serializeToHandle);
                     sb.EndBlock();
                     sb.AppendNewLine();
 
@@ -903,6 +944,8 @@ namespace GProtobuf.Generator.V2
                     sb.AppendIndentedLine("/// </summary>");
                     sb.AppendIndentedLine($"public static byte[] {serializeToArrayName}(global::{type.FullName} obj)");
                     sb.StartNewBlock();
+
+                    var serializeToArrayHandle = _ambientHandlerEmitter.EmitPrologue(sb, type, forSerialization: true);
 
                     // Add null check for reference types
                     if (!type.IsStruct)
@@ -989,6 +1032,8 @@ namespace GProtobuf.Generator.V2
                         sb.EndBlock(); // finally
                     }
 
+                    _ambientHandlerEmitter.EmitEpilogue(sb, serializeToArrayHandle);
+
                     sb.EndBlock();
                     sb.AppendNewLine();
                 }
@@ -1010,12 +1055,14 @@ namespace GProtobuf.Generator.V2
                     {
                         sb.AppendIndentedLine($"public static void {proxySerializeName}(Stream stream, global::{proxy.OriginalTypeFullName} obj)");
                         sb.StartNewBlock();
+                        var proxyStreamHandle = _ambientHandlerEmitter.EmitPrologueByTypeName(sb, proxy.OriginalTypeFullName, forSerialization: true);
                         sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(obj{proxy.WrapExtraArgs});");
                         sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.StreamWriter(stream, stackalloc byte[256]);");
                         sb.AppendIndentedLine($"{proxyPrefix}StreamWriters.Write{proxy.ProxyClassName}(ref writer, proxy);");
                         sb.AppendIndentedLine("writer.Flush();");
                         if (proxy.ReturnMethodName != null)
                             sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, proxyStreamHandle);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
@@ -1024,24 +1071,28 @@ namespace GProtobuf.Generator.V2
                     {
                         sb.AppendIndentedLine($"public static void {proxySerializeName}(IBufferWriter<byte> buffer, global::{proxy.OriginalTypeFullName} obj)");
                         sb.StartNewBlock();
+                        var proxyBufferHandle = _ambientHandlerEmitter.EmitPrologueByTypeName(sb, proxy.OriginalTypeFullName, forSerialization: true);
                         sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(obj{proxy.WrapExtraArgs});");
                         sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.BufferWriter(buffer);");
                         sb.AppendIndentedLine($"{proxyPrefix}BufferWriters.Write{proxy.ProxyClassName}(ref writer, proxy);");
                         sb.AppendIndentedLine("writer.Flush();");
                         if (proxy.ReturnMethodName != null)
                             sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, proxyBufferHandle);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
 
                     if (_options.GenerateOnePassStreamWriter)
                     {
+                        // Thin forward — hooks fire via the block-body overload below through the guard.
                         sb.AppendIndentedLine($"public static void {proxySerializeOnePassName}(Stream stream, global::{proxy.OriginalTypeFullName} obj)");
                         sb.AppendIndentedLine($"    => {proxySerializeOnePassName}(stream, obj, global::GProtobuf.Core.BufferChainPoolCache.Shared);");
                         sb.AppendNewLine();
 
                         sb.AppendIndentedLine($"public static void {proxySerializeOnePassName}(Stream stream, global::{proxy.OriginalTypeFullName} obj, global::GProtobuf.Core.BufferChainPoolCache pool)");
                         sb.StartNewBlock();
+                        var proxyOnePassHandle = _ambientHandlerEmitter.EmitPrologueByTypeName(sb, proxy.OriginalTypeFullName, forSerialization: true);
                         sb.AppendIndentedLine($"var proxy = global::{proxy.ProxyTypeFullName}.{proxy.WrapMethodName}(obj{proxy.WrapExtraArgs});");
                         sb.AppendIndentedLine("using var scope = new global::GProtobuf.Core.OnePassScope(pool);");
                         sb.AppendIndentedLine("var writer = new global::GProtobuf.Core.OnePassStreamWriter(stream, stackalloc byte[256], scope.Pool);");
@@ -1049,6 +1100,7 @@ namespace GProtobuf.Generator.V2
                         sb.AppendIndentedLine("writer.Flush();");
                         if (proxy.ReturnMethodName != null)
                             sb.AppendIndentedLine($"proxy.{proxy.ReturnMethodName}();");
+                        _ambientHandlerEmitter.EmitEpilogue(sb, proxyOnePassHandle);
                         sb.EndBlock();
                         sb.AppendNewLine();
                     }
@@ -1058,7 +1110,7 @@ namespace GProtobuf.Generator.V2
             // Generate serializers for standalone types (List<T>, T[], Dictionary<K,V>)
             if (standaloneTypes.Count > 0)
             {
-                var standaloneGenerator = new StandaloneTypeGenerator(sb, _registry, _options, _proxyRegistry);
+                var standaloneGenerator = new StandaloneTypeGenerator(sb, _registry, _options, _proxyRegistry, _ambientHandlerEmitter);
                 standaloneGenerator.GenerateSerializers(standaloneTypes);
             }
 
