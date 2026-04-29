@@ -40,7 +40,18 @@ namespace GProtobuf.Generator.Analysis
 
             var def = types.GetByFullName(fieldSourceTypeName);
             if (def == null)
+            {
+              
+                if (TransparentContainerClassifier.TryGetTypeArguments(fieldSourceTypeName, out var typeArguments))
+                {
+                    foreach (var arg in typeArguments)
+                    {
+                        if (Descend(types, proxies, arg, markerFullName, visited))
+                            return true;
+                    }
+                }
                 return false;
+            }
 
             if (def.ProtoMembers != null)
             {

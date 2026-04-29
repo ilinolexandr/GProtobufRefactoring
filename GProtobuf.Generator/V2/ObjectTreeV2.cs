@@ -54,6 +54,7 @@ namespace GProtobuf.Generator.V2
         private readonly Dictionary<string, List<StandaloneTypeInfo>> _standaloneTypesByNamespace = new();
         private readonly GeneratorOptions _options;
         private readonly ProxyRegistry _proxyRegistry;
+        private readonly MarkerReachabilityChecker _reachabilityChecker;
         private readonly AmbientHandlerEmitter _ambientHandlerEmitter;
 
         /// <summary>
@@ -85,7 +86,8 @@ namespace GProtobuf.Generator.V2
             _compilation = compilation;
             _options = options ?? GeneratorOptions.Default;
             _proxyRegistry = proxyRegistry;
-            _ambientHandlerEmitter = new AmbientHandlerEmitter(ambientHandlerRegistry, _registry, proxyRegistry);
+            _reachabilityChecker = new MarkerReachabilityChecker(_registry, proxyRegistry);
+            _ambientHandlerEmitter = new AmbientHandlerEmitter(ambientHandlerRegistry, _reachabilityChecker);
 
             // Register all enum types in the TypeRegistry
             if (enumTypes != null)
@@ -128,16 +130,16 @@ namespace GProtobuf.Generator.V2
 
         /// <summary>True if the marker is reachable from any registered ProtoContract root; call only after all <see cref="AddType"/> calls have completed.</summary>
         public bool IsMarkerReachableFromAnyRoot(string markerFullName)
-        {
-            if (string.IsNullOrEmpty(markerFullName)) return false;
+            => _reachabilityChecker.IsReachableFromAnyRoot(markerFullName);
 
-            foreach (var type in _registry.GetAllTypes())
-            {
-                if (AmbientHandlerReachabilityAnalyzer.ContainsMarker(_registry, _proxyRegistry, type.FullName, markerFullName))
-                    return true;
-            }
-            return false;
-        }
+        /// <summary>
+        /// Returns the full names of every registered ProtoContract root whose graph reaches the marker.
+        /// Empty if no root reaches it. Order matches <see cref="TypeRegistry.GetAllTypes"/>.
+        /// Call only after all <see cref="AddType"/> calls have completed. Used by GPROTO029 to
+        /// surface per-handler wrap counts.
+        /// </summary>
+        public System.Collections.Generic.IReadOnlyList<string> RootsReachingMarker(string markerFullName)
+            => _reachabilityChecker.RootsReaching(markerFullName);
 
         #endregion
 

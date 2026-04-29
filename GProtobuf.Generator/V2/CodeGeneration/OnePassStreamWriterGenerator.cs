@@ -934,8 +934,26 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 return;
             }
 
+            if (type.IsCustomCollection && !string.IsNullOrEmpty(type.CustomCollectionElementType))
+            {
+                GenerateCustomCollectionWriteContentOnePass(type);
+                return;
+            }
+
             WriteTypeFields(type, "instance");
         }
+
+        private void GenerateCustomCollectionWriteContentOnePass(TypeDefinition type)
+        {
+            var elementType = type.CustomCollectionElementType;
+            var elemInfo = _virtualMapRegistry?.AnalyzeType(elementType);
+
+            _sb.AppendIndentedLine("foreach (var item in instance)");
+            _sb.StartNewBlock();
+            GenerateRepeatedElementWrite(elementType, elemInfo, "item", 1);
+            _sb.EndBlock();
+        }
+
 
         private void WriteTypeFields(TypeDefinition type, string objectName)
         {

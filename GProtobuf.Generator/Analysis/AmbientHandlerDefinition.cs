@@ -1,12 +1,19 @@
 using System.Collections.Generic;
+using GProtobuf.Generator.Diagnostics;
 
 namespace GProtobuf.Generator.Analysis
 {
     /// <summary>One resolved <c>[assembly: AmbientSerializationHandler]</c> declaration.</summary>
     internal sealed class AmbientHandlerDefinition
     {
-        /// <summary>Validation diagnostics attached while resolving the attribute.</summary>
-        public List<(string Id, string Message)> Diagnostics { get; set; } = new List<(string, string)>();
+        /// <summary>
+        /// Validation diagnostics attached while resolving the attribute. Each entry carries
+        /// its <see cref="Microsoft.CodeAnalysis.DiagnosticDescriptor"/> reference, so callers
+        /// classify fatal vs non-fatal by descriptor identity (e.g.
+        /// <c>GProtobufDiagnostics.AmbientHandlerDuplicateDeclaration</c>) instead of string-
+        /// matching the GPROTO id.
+        /// </summary>
+        public List<DiagnosticReport> Diagnostics { get; set; } = new List<DiagnosticReport>();
 
         /// <summary>Fully qualified marker type.</summary>
         public string MarkerFullName { get; set; }

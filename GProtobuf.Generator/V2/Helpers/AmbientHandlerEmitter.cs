@@ -29,20 +29,19 @@ namespace GProtobuf.Generator.V2.Helpers
     internal sealed class AmbientHandlerEmitter
     {
         private readonly AmbientHandlerRegistry _registry;
-        private readonly TypeRegistry _typeRegistry;
-        private readonly ProxyRegistry _proxyRegistry;
+        private readonly MarkerReachabilityChecker _reachabilityChecker;
 
+        // (typeFullName, forSerialization) → resolved handler list. Cached because a single
+        // ProtoContract type's handlers are queried multiple times across spans/streams/buffers.
+        // The (type, marker) reachability check it depends on is itself cached inside the
+        // shared MarkerReachabilityChecker.
         private readonly Dictionary<(string TypeName, bool ForSer), List<AmbientHandlerDefinition>> _handlerCache
             = new Dictionary<(string, bool), List<AmbientHandlerDefinition>>();
 
-        private readonly Dictionary<(string TypeName, string MarkerName), bool> _reachabilityCache
-            = new Dictionary<(string, string), bool>();
-
-        public AmbientHandlerEmitter(AmbientHandlerRegistry registry, TypeRegistry typeRegistry, ProxyRegistry proxyRegistry)
+        public AmbientHandlerEmitter(AmbientHandlerRegistry registry, MarkerReachabilityChecker reachabilityChecker)
         {
             _registry = registry;
-            _typeRegistry = typeRegistry;
-            _proxyRegistry = proxyRegistry;
+            _reachabilityChecker = reachabilityChecker;
         }
 
         public bool HasHandlersFor(TypeDefinition type, bool forSerialization)
@@ -216,7 +215,9 @@ namespace GProtobuf.Generator.V2.Helpers
                 if (forSerialization && !handler.IncludeSerialization) continue;
                 if (!forSerialization && !handler.IncludeDeserialization) continue;
 
-                if (IsMarkerReachable(typeFullName, handler.MarkerFullName))
+                // Reachability cache is shared with ObjectTreeV2's diagnostic-time
+                // RootsReachingMarker, so any pair already computed there hits a warm cache here.
+                if (_reachabilityChecker.IsReachable(typeFullName, handler.MarkerFullName))
                 {
                     (result ??= new List<AmbientHandlerDefinition>()).Add(handler);
                 }
@@ -225,17 +226,6 @@ namespace GProtobuf.Generator.V2.Helpers
             var finalResult = result ?? EmptyHandlers;
             _handlerCache[cacheKey] = finalResult;
             return finalResult;
-        }
-
-        private bool IsMarkerReachable(string typeFullName, string markerFullName)
-        {
-            var key = (typeFullName, markerFullName);
-            if (_reachabilityCache.TryGetValue(key, out var cached)) return cached;
-
-            bool result = AmbientHandlerReachabilityAnalyzer.ContainsMarker(
-                _typeRegistry, _proxyRegistry, typeFullName, markerFullName);
-            _reachabilityCache[key] = result;
-            return result;
         }
     }
 }

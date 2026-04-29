@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using GProtobuf.Generator.Diagnostics;
 
 namespace GProtobuf.Generator.Analysis
 {
@@ -9,13 +10,17 @@ namespace GProtobuf.Generator.Analysis
     internal sealed class ProxyDefinition
     {
         /// <summary>
-        /// Validation diagnostics collected during proxy analysis.
-        /// Empty list means the proxy is valid.
+        /// Validation diagnostics collected during proxy analysis. Empty list means the proxy
+        /// passed every check. Each entry holds a descriptor reference (severity baked in)
+        /// plus the message-format args; the actual <see cref="Microsoft.CodeAnalysis.Diagnostic"/>
+        /// is materialised once at report time.
         /// </summary>
-        public List<(string Id, string Message)> Diagnostics { get; set; } = new List<(string, string)>();
+        public List<DiagnosticReport> Diagnostics { get; set; } = new List<DiagnosticReport>();
 
         /// <summary>
-        /// Returns true if proxy has no validation errors.
+        /// Returns true if proxy has no validation errors. A "valid" proxy here is defined as
+        /// one whose diagnostics list is empty — analysis layers that allow non-fatal warnings
+        /// must filter at the call site (see <see cref="ProxyDefinition.Diagnostics"/>).
         /// </summary>
         public bool IsValid => Diagnostics.Count == 0;
 

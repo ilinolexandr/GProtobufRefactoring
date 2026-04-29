@@ -382,15 +382,8 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                     ReportRepositoryDiagnostics(context, typeDefinitions);
 
                     // Report diagnostic that generator is starting
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        new DiagnosticDescriptor(
-                            "GPROTO001",
-                            "GProtobuf Generator Started",
-                            "GProtobuf generator started with {0} enum types, {1} type definitions, {2} standalone types. Options: SpanReader={3}, StreamReader={4}, StreamWriter={5}, BufferWriter={6}, OnePassStreamWriter={7}",
-                            "GProtobuf",
-                            DiagnosticSeverity.Info,
-                            true),
-                        Location.None,
+                    context.Report(
+                        GProtobufDiagnostics.GeneratorStarted,
                         enumTypes.Count,
                         typeDefinitions.Count(),
                         standaloneTypes.Length,
@@ -398,32 +391,18 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                         options.GenerateStreamReader,
                         options.GenerateStreamWriter,
                         options.GenerateBufferWriter,
-                        options.GenerateOnePassStreamWriter));
+                        options.GenerateOnePassStreamWriter);
 
-                    // Report proxy validation diagnostics and build registry from valid proxies
+                    // Report proxy validation diagnostics and build registry from valid proxies.
+                    // Severity is baked into each descriptor (GPROTO018 = Error, others = Warning),
+                    // so we only need to materialise the report — no per-id branching here.
                     ProxyRegistry proxyRegistry = null;
                     if (!proxyDefinitions.IsEmpty)
                     {
                         foreach (var proxy in proxyDefinitions)
                         {
-                            foreach (var (diagId, diagMsg) in proxy.Diagnostics)
-                            {
-                                // GPROTO018 (Acquire + matching constructor conflict) is an error
-                                // because the generator cannot honor [ProxyAcquire] when constructor-based
-                                // deserialization wins — the user must remove one or the other.
-                                var severity = diagId == "GPROTO018"
-                                    ? DiagnosticSeverity.Error
-                                    : DiagnosticSeverity.Warning;
-                                context.ReportDiagnostic(Diagnostic.Create(
-                                    new DiagnosticDescriptor(
-                                        diagId,
-                                        "GProtobuf Serialization Proxy",
-                                        diagMsg,
-                                        "GProtobuf",
-                                        severity,
-                                        true),
-                                    Location.None));
-                            }
+                            foreach (var report in proxy.Diagnostics)
+                                context.Report(report);
                         }
 
                         var validProxies = proxyDefinitions.Where(p => p.IsValid).ToList();
@@ -452,21 +431,25 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                             var key = $"{handler.MarkerFullName}|{handler.HandlerTypeFullName}|{handler.BeforeMethodName}";
                             if (!seenKeys.Add(key))
                             {
-                                handler.Diagnostics.Add(("GPROTO025",
-                                    $"Duplicate AmbientSerializationHandler declaration for marker '{handler.MarkerFullName}', handler '{handler.HandlerTypeFullName}', before-method '{handler.BeforeMethodName}'. Remove the redundant [assembly: AmbientSerializationHandler(...)] attribute."));
+                                handler.Diagnostics.Add(new DiagnosticReport(
+                                    GProtobufDiagnostics.AmbientHandlerDuplicateDeclaration,
+                                    handler.MarkerFullName,
+                                    handler.HandlerTypeFullName,
+                                    handler.BeforeMethodName));
                             }
                         }
 
-                        // Report 021-025, 027, 028 now. 026 is reported later once ObjectTreeV2 is built
+                        // Report 021-025, 027 now. 026 is reported later once ObjectTreeV2 is built
                         // (it needs the reachability walker, which needs a populated TypeRegistry).
                         ReportAmbientHandlerDiagnostics(context, ambientHandlers);
 
-                        // GPROTO025/027 are non-fatal — don't drop handlers that only have those.
-                        // Fatal diagnostics (021/022/023/024) drop the handler from the registry.
+                        // Drop handlers that have any fatal diagnostic (descriptor-reference identity:
+                        // anything *except* the two non-fatal warnings keeps the handler valid).
+                        // Severity is baked into the descriptor; we don't string-match GPROTO ids here.
                         var validHandlers = ambientHandlers.Where(h =>
                             h.Diagnostics.All(d =>
-                                d.Id == "GPROTO025" ||
-                                d.Id == "GPROTO027")).ToList();
+                                d.Descriptor == GProtobufDiagnostics.AmbientHandlerDuplicateDeclaration ||
+                                d.Descriptor == GProtobufDiagnostics.AmbientHandlerShapeWarning)).ToList();
                         if (validHandlers.Count > 0)
                         {
                             ambientHandlerRegistry = new AmbientHandlerRegistry();
@@ -481,26 +464,29 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                         objectTree.AddType(namespaceName, typeDefinition);
                     }
 
-                    // GPROTO026: now that every root is registered, ask the walker whether each
-                    // live handler's marker is actually reachable. Drops false positives from the
-                    // old substring check (e.g. marker 'Foo' matching 'FooBar') and catches cases
-                    // the substring heuristic missed (marker is an interface/base class reached
-                    // only via a derived field type).
+                    // Per-handler reachability report: GPROTO026 when the marker is unreachable
+                    // (handler is dead code), GPROTO029 otherwise (Info-level coverage spot-check).
+                    // Both descriptors live in GProtobufDiagnostics; severity is baked there.
                     if (ambientHandlerRegistry != null)
                     {
                         foreach (var handler in ambientHandlerRegistry.GetAllSorted())
                         {
-                            if (!objectTree.IsMarkerReachableFromAnyRoot(handler.MarkerFullName))
+                            var roots = objectTree.RootsReachingMarker(handler.MarkerFullName);
+
+                            if (roots.Count == 0)
                             {
-                                context.ReportDiagnostic(Diagnostic.Create(
-                                    new DiagnosticDescriptor(
-                                        "GPROTO026",
-                                        "GProtobuf Ambient Serialization Handler",
-                                        $"AmbientSerializationHandler marker '{handler.MarkerFullName}' is not reachable from any ProtoContract graph known to the generator — this handler will never run.",
-                                        "GProtobuf",
-                                        DiagnosticSeverity.Warning,
-                                        true),
-                                    Location.None));
+                                context.Report(
+                                    GProtobufDiagnostics.AmbientHandlerMarkerUnreachable,
+                                    handler.MarkerFullName);
+                            }
+                            else
+                            {
+                                context.Report(
+                                    GProtobufDiagnostics.AmbientHandlerCoverageInfo,
+                                    handler.HandlerTypeFullName,
+                                    handler.MarkerFullName,
+                                    roots.Count,
+                                    FormatRootPreview(roots));
                             }
                         }
                     }
@@ -526,36 +512,36 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                     }
 
                     // Report success
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        new DiagnosticDescriptor(
-                            "GPROTO002",
-                            "GProtobuf Generator Success",
-                            "GProtobuf generator completed successfully, generated {0} files",
-                            "GProtobuf",
-                            DiagnosticSeverity.Info,
-                            true),
-                        Location.None,
-                        filesGenerated));
+                    context.Report(GProtobufDiagnostics.GeneratorCompleted, filesGenerated);
                 }
                 catch (System.Exception ex)
                 {
-                    // Report ALL exceptions
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        new DiagnosticDescriptor(
-                            "GPROTO999",
-                            "GProtobuf Generator Error",
-                            "GProtobuf generator failed: {0}. Stack: {1}",
-                            "GProtobuf",
-                            DiagnosticSeverity.Error,
-                            true),
-                        Location.None,
-                        ex.Message,
-                        ex.StackTrace));
+                    context.Report(GProtobufDiagnostics.GeneratorFailure, ex.Message, ex.StackTrace);
                     throw;
                 }
             });
     }
-    
+
+    /// <summary>
+    /// Format a preview of the first few roots a marker reaches. Used by GPROTO029 to keep
+    /// the message bounded for handlers that wrap many entry-points.
+    /// </summary>
+    private static string FormatRootPreview(System.Collections.Generic.IReadOnlyList<string> roots)
+    {
+        const int previewCap = 5;
+        if (roots.Count <= previewCap)
+            return string.Join(", ", roots);
+
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < previewCap; i++)
+        {
+            if (i > 0) sb.Append(", ");
+            sb.Append(roots[i]);
+        }
+        sb.Append(", … (+").Append(roots.Count - previewCap).Append(" more)");
+        return sb.ToString();
+    }
+
     /// <summary>Walks every TypeDefinition and reports GPROTO003/004/005 where applicable.</summary>
     private static void ReportRepositoryDiagnostics(
         SourceProductionContext context,
@@ -1673,7 +1659,8 @@ public sealed class SerializerGenerator : IIncrementalGenerator
             .Any(a => a.AttributeClass?.Name == "ProtoContractAttribute");
         if (!hasProtoContract)
         {
-            proxy.Diagnostics.Add(("GPROTO010", $"Proxy type '{proxyName}' must have [ProtoContract] attribute"));
+            proxy.Diagnostics.Add(new DiagnosticReport(
+                GProtobufDiagnostics.ProxyMissingProtoContract, proxyName));
         }
 
         // Шукаємо [ProxyWrap], [ProxyAcquire], [ProxyConvert], [ProxyReturn] методи
@@ -1701,8 +1688,9 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                     else
                     {
                         // GPROTO012: [ProxyWrap] має бути static з параметром типу X
-                        proxy.Diagnostics.Add(("GPROTO012",
-                            $"[ProxyWrap] method '{method.Name}' in '{proxyName}' must be static, take one parameter of type '{originalName}', and return '{proxyName}'"));
+                        proxy.Diagnostics.Add(new DiagnosticReport(
+                            GProtobufDiagnostics.ProxyWrapInvalidShape,
+                            method.Name, proxyName, originalName));
                     }
                 }
                 else if (attrName == "ProxyAcquireAttribute")
@@ -1715,20 +1703,23 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                     if (!isStatic)
                     {
                         // GPROTO019: [ProxyAcquire] має бути static
-                        proxy.Diagnostics.Add(("GPROTO019",
-                            $"[ProxyAcquire] method '{method.Name}' in '{proxyName}' must be static, take no parameters, and return '{proxyName}'"));
+                        proxy.Diagnostics.Add(new DiagnosticReport(
+                            GProtobufDiagnostics.ProxyAcquireInvalidShape,
+                            method.Name, proxyName, $"static, take no parameters, and return '{proxyName}'"));
                     }
                     else if (!noParams)
                     {
                         // GPROTO019: [ProxyAcquire] має take no parameters
-                        proxy.Diagnostics.Add(("GPROTO019",
-                            $"[ProxyAcquire] method '{method.Name}' in '{proxyName}' must take no parameters and return '{proxyName}'"));
+                        proxy.Diagnostics.Add(new DiagnosticReport(
+                            GProtobufDiagnostics.ProxyAcquireInvalidShape,
+                            method.Name, proxyName, $"static, take no parameters, and return '{proxyName}'"));
                     }
                     else if (!returnsProxy)
                     {
                         // GPROTO019: [ProxyAcquire] має повертати proxy type
-                        proxy.Diagnostics.Add(("GPROTO019",
-                            $"[ProxyAcquire] method '{method.Name}' in '{proxyName}' must return '{proxyName}'"));
+                        proxy.Diagnostics.Add(new DiagnosticReport(
+                            GProtobufDiagnostics.ProxyAcquireInvalidShape,
+                            method.Name, proxyName, $"static, take no parameters, and return '{proxyName}'"));
                     }
                     else
                     {
@@ -1745,8 +1736,9 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                     else
                     {
                         // GPROTO014: [ProxyConvert] має бути instance method без параметрів
-                        proxy.Diagnostics.Add(("GPROTO014",
-                            $"[ProxyConvert] method '{method.Name}' in '{proxyName}' must be an instance method, take no parameters, and return '{originalName}'"));
+                        proxy.Diagnostics.Add(new DiagnosticReport(
+                            GProtobufDiagnostics.ProxyConvertInvalidShape,
+                            method.Name, proxyName, originalName));
                     }
                 }
                 else if (attrName == "ProxyReturnAttribute")
@@ -1762,15 +1754,15 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         // GPROTO011: Потрібен рівно один [ProxyWrap]
         if (!foundWrap)
         {
-            proxy.Diagnostics.Add(("GPROTO011",
-                $"Proxy type '{proxyName}' must have exactly one method with [ProxyWrap] attribute"));
+            proxy.Diagnostics.Add(new DiagnosticReport(
+                GProtobufDiagnostics.ProxyMissingWrap, proxyName));
         }
 
         // GPROTO013: Потрібен рівно один [ProxyConvert]
         if (!foundConvert)
         {
-            proxy.Diagnostics.Add(("GPROTO013",
-                $"Proxy type '{proxyName}' must have exactly one method with [ProxyConvert] attribute"));
+            proxy.Diagnostics.Add(new DiagnosticReport(
+                GProtobufDiagnostics.ProxyMissingConvert, proxyName));
         }
 
         // GPROTO020: at most one [ProxyAcquire]
@@ -1778,8 +1770,8 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         {
             // Drop AcquireMethodName so downstream emission falls back to new()
             proxy.AcquireMethodName = null;
-            proxy.Diagnostics.Add(("GPROTO020",
-                $"Proxy type '{proxyName}' must have at most one method with [ProxyAcquire] attribute"));
+            proxy.Diagnostics.Add(new DiagnosticReport(
+                GProtobufDiagnostics.ProxyAcquireMultiple, proxyName));
         }
 
         // GPROTO018: [ProxyAcquire] cannot coexist with constructor-based deserialization (matching ctor).
@@ -1807,8 +1799,8 @@ public sealed class SerializerGenerator : IIncrementalGenerator
             if (hasMatchingCtor)
             {
                 proxy.AcquireMethodName = null;
-                proxy.Diagnostics.Add(("GPROTO018",
-                    $"Proxy type '{proxyName}' has [ProxyAcquire] but also a matching constructor that would be used for deserialization. Remove [ProxyAcquire] or remove the matching constructor."));
+                proxy.Diagnostics.Add(new DiagnosticReport(
+                    GProtobufDiagnostics.ProxyAcquireConflictsWithMatchingConstructor, proxyName));
             }
         }
 
@@ -1825,23 +1817,12 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         SourceProductionContext context,
         ImmutableArray<AmbientHandlerDefinition> handlers)
     {
+        // Severity is baked into each descriptor (021/022/023/024 = Error, 025/027 = Warning).
+        // No per-id branching here — just materialise the deferred report.
         foreach (var handler in handlers)
         {
-            foreach (var (diagId, diagMsg) in handler.Diagnostics)
-            {
-                var severity = diagId == "GPROTO027"
-                    ? DiagnosticSeverity.Warning
-                    : DiagnosticSeverity.Error;
-                context.ReportDiagnostic(Diagnostic.Create(
-                    new DiagnosticDescriptor(
-                        diagId,
-                        "GProtobuf Ambient Serialization Handler",
-                        diagMsg,
-                        "GProtobuf",
-                        severity,
-                        true),
-                    Location.None));
-            }
+            foreach (var report in handler.Diagnostics)
+                context.Report(report);
         }
     }
 
@@ -1905,14 +1886,16 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         // GPROTO027: handler shape sanity check — static class is the intended shape.
         if (handlerType.IsRefLikeType)
         {
-            def.Diagnostics.Add(("GPROTO027",
-                $"AmbientSerializationHandler '{def.HandlerTypeFullName}' is a ref struct. Use a static class with public static Before/After methods instead."));
+            def.Diagnostics.Add(new DiagnosticReport(
+                GProtobufDiagnostics.AmbientHandlerShapeWarning,
+                def.HandlerTypeFullName, "a ref struct"));
         }
         else if (handlerType.IsValueType &&
                  handlerType.GetMembers("Dispose").Any(m => m is IMethodSymbol ms && ms.Parameters.Length == 0))
         {
-            def.Diagnostics.Add(("GPROTO027",
-                $"AmbientSerializationHandler '{def.HandlerTypeFullName}' is a struct with Dispose — looks like a scope type. Use a static class with public static Before/After methods instead."));
+            def.Diagnostics.Add(new DiagnosticReport(
+                GProtobufDiagnostics.AmbientHandlerShapeWarning,
+                def.HandlerTypeFullName, "a struct with Dispose — looks like a scope type"));
         }
 
         // Before-method validation (GPROTO021/022).
@@ -1923,13 +1906,15 @@ public sealed class SerializerGenerator : IIncrementalGenerator
 
         if (beforeMatches.Count == 0)
         {
-            def.Diagnostics.Add(("GPROTO021",
-                $"AmbientSerializationHandler '{def.HandlerTypeFullName}' has no method named '{def.BeforeMethodName}'."));
+            def.Diagnostics.Add(new DiagnosticReport(
+                GProtobufDiagnostics.AmbientHandlerBeforeMissing,
+                def.HandlerTypeFullName, def.BeforeMethodName));
         }
         else if (!beforeMatches.Any(IsValidHookMethod))
         {
-            def.Diagnostics.Add(("GPROTO022",
-                $"'{def.HandlerTypeFullName}.{def.BeforeMethodName}' must be 'public static void {def.BeforeMethodName}()' with no parameters."));
+            def.Diagnostics.Add(new DiagnosticReport(
+                GProtobufDiagnostics.AmbientHandlerBeforeInvalidShape,
+                def.HandlerTypeFullName, def.BeforeMethodName));
         }
 
         // After-method validation (GPROTO023/024) with soft opt-out for the default name.
@@ -1948,8 +1933,9 @@ public sealed class SerializerGenerator : IIncrementalGenerator
             {
                 if (afterWasExplicitlyNamed)
                 {
-                    def.Diagnostics.Add(("GPROTO023",
-                        $"AmbientSerializationHandler '{def.HandlerTypeFullName}' has no method named '{def.AfterMethodName}'. Set AfterMethod = null to opt out."));
+                    def.Diagnostics.Add(new DiagnosticReport(
+                        GProtobufDiagnostics.AmbientHandlerAfterMissing,
+                        def.HandlerTypeFullName, def.AfterMethodName));
                 }
                 else
                 {
@@ -1959,8 +1945,9 @@ public sealed class SerializerGenerator : IIncrementalGenerator
             }
             else if (!afterMatches.Any(IsValidHookMethod))
             {
-                def.Diagnostics.Add(("GPROTO024",
-                    $"'{def.HandlerTypeFullName}.{def.AfterMethodName}' must be 'public static void {def.AfterMethodName}()' with no parameters."));
+                def.Diagnostics.Add(new DiagnosticReport(
+                    GProtobufDiagnostics.AmbientHandlerAfterInvalidShape,
+                    def.HandlerTypeFullName, def.AfterMethodName));
             }
         }
 
