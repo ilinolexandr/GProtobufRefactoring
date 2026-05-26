@@ -1367,7 +1367,10 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         sourceVar,
                         member.CollectionElementType,
                         member.DataFormat,
-                        member.FieldId);
+                        member.FieldId,
+                        writerVar: "writer",
+                        collectionKind: member.CollectionKind,
+                        collectionTypeName: member.Type);
                 }
                 else
                 {

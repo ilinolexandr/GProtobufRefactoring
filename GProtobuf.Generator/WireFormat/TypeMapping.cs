@@ -5,6 +5,26 @@ using System.Text;
 namespace GProtobuf.Generator.WireFormat
 {
     /// <summary>
+    /// Specifies how the constant element size will be consumed.
+    /// </summary>
+    internal enum ElementSizeContext
+    {
+        /// <summary>
+        /// Wire size only — used to compute a length prefix as <c>count * size</c>.
+        /// Includes types whose wire form is fixed-size but where the C# struct is smaller
+        /// (e.g. <c>Int16</c> with <c>DataFormat.FixedSize</c> takes 4 wire bytes).
+        /// </summary>
+        WireSize,
+
+        /// <summary>
+        /// Bulk-copy safe — only types where the wire byte size equals the C# struct size.
+        /// Used for read fast-path via <c>MemoryMarshal.Cast&lt;byte, T&gt;</c>.
+        /// Excludes <c>Int16</c>/<c>UInt16</c>/<c>Boolean</c>.
+        /// </summary>
+        BulkCopy,
+    }
+
+    /// <summary>
     /// Maps C# types to protobuf wire format operations.
     /// </summary>
     internal static class TypeMapping
@@ -658,6 +678,46 @@ namespace GProtobuf.Generator.WireFormat
         {
             // Same as GetSizeExpression for elements
             return GetSizeExpression(elementTypeName, valueExpr, format, calculatorVar);
+        }
+
+        /// <summary>
+        /// Returns the constant element wire size (in bytes) for primitive types whose
+        /// per-item wire size does not depend on the value. Returns <c>null</c> when the
+        /// size is variable (varint) or the type is unknown.
+        ///
+        /// <paramref name="context"/> controls inclusion of types whose wire byte size
+        /// differs from the C# native struct size:
+        /// <list type="bullet">
+        ///   <item><c>WireSize</c> — used for packed-write length prefix (<c>count * size</c>);
+        ///         includes <c>Int16</c>/<c>UInt16</c>/<c>Boolean</c>.</item>
+        ///   <item><c>BulkCopy</c> — used for read fast-path via <c>MemoryMarshal.Cast</c>;
+        ///         only types with wire size == native size.</item>
+        /// </list>
+        /// </summary>
+        public static int? TryGetConstantElementSize(
+            string elementTypeName,
+            DataFormat format,
+            ElementSizeContext context)
+        {
+            var normalized = NormalizeTypeName(elementTypeName);
+            switch (normalized)
+            {
+                case "System.Double":  return 8;
+                case "System.Single":  return 4;
+                case "System.Int64":  return format == DataFormat.FixedSize ? 8 : (int?)null;
+                case "System.UInt64": return format == DataFormat.FixedSize ? 8 : (int?)null;
+                case "System.Int32":  return format == DataFormat.FixedSize ? 4 : (int?)null;
+                case "System.UInt32": return format == DataFormat.FixedSize ? 4 : (int?)null;
+
+                // Wire form is fixed-size but C# struct is smaller — only safe for WireSize ctx.
+                case "System.Int16":
+                case "System.UInt16":
+                    return (context == ElementSizeContext.WireSize && format == DataFormat.FixedSize) ? 4 : (int?)null;
+                case "System.Boolean":
+                    return context == ElementSizeContext.WireSize ? 1 : (int?)null;
+
+                default: return null;
+            }
         }
 
         /// <summary>

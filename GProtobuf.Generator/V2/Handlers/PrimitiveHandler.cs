@@ -1,5 +1,7 @@
 using System;
+using GProtobuf.Generator.Analysis;
 using GProtobuf.Generator.V2.Handlers.Core;
+using GProtobuf.Generator.WireFormat;
 
 namespace GProtobuf.Generator.V2.Handlers
 {
@@ -357,48 +359,73 @@ namespace GProtobuf.Generator.V2.Handlers
             // Generate wire type check for dual mode
             sb.AppendIndentedLine($"if ({wireTypeVar} == {packedWireType})");
             sb.StartNewBlock();
-            sb.AppendIndentedLine("// Packed encoding (Level200)");
 
-            // Initialize collection if needed (MERGE semantics)
-            GenerateCollectionInitialization(sb, targetVar, shortType, collectionKind, collectionTypeName);
-
-            sb.AppendIndentedLine($"int length = {readerVar}.ReadVarInt32();");
-
-            if (useStreamLimits)
+            // Fast path: T[] of fixed-size element where wire-size == native size.
+            // SpanReader only (useStreamLimits=false) — bulk-copy via MemoryMarshal.Cast.
+            // TryGetConstantElementSize(BulkCopy ctx) already returns null for enum types
+            // (the user-defined enum name never matches its switch), so no isEnum guard needed.
+            int? bulkCopySize = TypeMapping.TryGetConstantElementSize(elementTypeName, format, ElementSizeContext.BulkCopy);
+            bool emittedFastReadPath = false;
+            if (!useStreamLimits && collectionKind == CollectionKind.Array && bulkCopySize.HasValue)
             {
-                // StreamReader: Use PushLimit/PopLimit for proper limit handling
-                sb.AppendIndentedLine($"var packedOldLimit = {readerVar}.PushLimit(length);");
-                sb.AppendIndentedLine($"while (!{readerVar}.IsEnd)");
-            }
-            else
-            {
-                // SpanReader: Use Position + length for end detection
-                sb.AppendIndentedLine($"int endPos = {readerVar}.Position + length;");
-                sb.AppendIndentedLine($"while ({readerVar}.Position < endPos)");
-            }
-            sb.StartNewBlock();
-
-            if (isListLike)
-            {
-                sb.AppendIndentedLine($"{targetVar}.Add({elementReadExpr});");
-            }
-            else
-            {
-                // Use temp list for Array/HashSet
-                sb.AppendIndentedLine($"tempList.Add({elementReadExpr});");
+                sb.AppendIndentedLine("// Packed encoding (Level200) — fixed-size bulk-copy fast path");
+                sb.AppendIndentedLine($"int length = {readerVar}.ReadVarInt32();");
+                sb.AppendIndentedLine($"int newCount = length / {bulkCopySize.Value};");
+                sb.AppendIndentedLine($"var bulkExisting = {targetVar};");
+                sb.AppendIndentedLine($"int bulkOldCount = bulkExisting != null ? bulkExisting.Length : 0;");
+                sb.AppendIndentedLine($"var bulkArr = new {shortType}[bulkOldCount + newCount];");
+                sb.AppendIndentedLine($"if (bulkOldCount > 0) bulkExisting.AsSpan().CopyTo(bulkArr);");
+                sb.AppendIndentedLine($"var bulkSrc = {readerVar}.GetSlice(length);");
+                sb.AppendIndentedLine($"global::System.Runtime.InteropServices.MemoryMarshal.Cast<byte, {shortType}>(bulkSrc).CopyTo(bulkArr.AsSpan(bulkOldCount));");
+                sb.AppendIndentedLine($"{targetVar} = bulkArr;");
+                emittedFastReadPath = true;
             }
 
-            sb.EndBlock();
-
-            if (useStreamLimits)
+            if (!emittedFastReadPath)
             {
-                sb.AppendIndentedLine($"{readerVar}.PopLimit(packedOldLimit);");
-            }
+                sb.AppendIndentedLine("// Packed encoding (Level200)");
 
-            // Convert temp list to final collection type if needed (for Array/HashSet)
-            if (!isListLike)
-            {
-                GenerateCollectionMerge(sb, targetVar, shortType, collectionKind, collectionTypeName);
+                // Initialize collection if needed (MERGE semantics)
+                GenerateCollectionInitialization(sb, targetVar, shortType, collectionKind, collectionTypeName);
+
+                sb.AppendIndentedLine($"int length = {readerVar}.ReadVarInt32();");
+
+                if (useStreamLimits)
+                {
+                    // StreamReader: Use PushLimit/PopLimit for proper limit handling
+                    sb.AppendIndentedLine($"var packedOldLimit = {readerVar}.PushLimit(length);");
+                    sb.AppendIndentedLine($"while (!{readerVar}.IsEnd)");
+                }
+                else
+                {
+                    // SpanReader: Use Position + length for end detection
+                    sb.AppendIndentedLine($"int endPos = {readerVar}.Position + length;");
+                    sb.AppendIndentedLine($"while ({readerVar}.Position < endPos)");
+                }
+                sb.StartNewBlock();
+
+                if (isListLike)
+                {
+                    sb.AppendIndentedLine($"{targetVar}.Add({elementReadExpr});");
+                }
+                else
+                {
+                    // Use temp list for Array/HashSet
+                    sb.AppendIndentedLine($"tempList.Add({elementReadExpr});");
+                }
+
+                sb.EndBlock();
+
+                if (useStreamLimits)
+                {
+                    sb.AppendIndentedLine($"{readerVar}.PopLimit(packedOldLimit);");
+                }
+
+                // Convert temp list to final collection type if needed (for Array/HashSet)
+                if (!isListLike)
+                {
+                    GenerateCollectionMerge(sb, targetVar, shortType, collectionKind, collectionTypeName);
+                }
             }
 
             sb.EndBlock();
@@ -834,8 +861,11 @@ namespace GProtobuf.Generator.V2.Handlers
                 // Write tag
                 GenerateWriteTag(sb, fieldId, wireType, writerVar);
 
-                // For nullable bool, we need to write the actual value (could be true or false)
-                if (TypeMapping.IsBooleanType(typeName) && isNullable)
+                // GetWriteExpression returns WriteBoolTrue() for bool, which is only valid when
+                // wrapped in an `if (value)` skip-default check. That happens for plain non-nullable
+                // non-required bool fields. For nullable or required bools (e.g. map entry values)
+                // there is no such guard, so we must write the actual value.
+                if (TypeMapping.IsBooleanType(typeName) && (isNullable || isRequired))
                 {
                     sb.AppendIndentedLine($"{writerVar}.WriteBool({valueExpr});");
                 }
@@ -873,8 +903,12 @@ namespace GProtobuf.Generator.V2.Handlers
             string elementTypeName,
             DataFormat format,
             int fieldId,
-            string writerVar = "writer")
+            string writerVar,
+            CollectionKind collectionKind,
+            string collectionTypeName)
         {
+            bool isEnum = IsEnumType(elementTypeName);
+
             sb.StartNewBlock(); // Scope block to avoid name collisions
             sb.AppendIndentedLine($"var collection = {sourceVar};");
             sb.AppendIndentedLine("if (collection != null)");
@@ -883,27 +917,65 @@ namespace GProtobuf.Generator.V2.Handlers
             // Write Len tag
             GenerateWriteTag(sb, fieldId, WireType.Len, writerVar);
 
-            // Calculate packed size first
-            sb.AppendIndentedLine($"var calculator = new global::GProtobuf.Core.WriteSizeCalculator();");
-            var elementSizeExpr = TypeMapping.GetElementSizeExpression(elementTypeName, "item", format, "calculator");
-            sb.AppendIndentedLine("foreach (var item in collection)");
-            sb.StartNewBlock();
-            sb.AppendIndentedLine($"{elementSizeExpr};");
-            sb.EndBlock();
+            int? constSize = TypeMapping.TryGetConstantElementSize(elementTypeName, format, ElementSizeContext.WireSize);
+            string countExpr = constSize.HasValue
+                ? CollectionKindHelper.TryGetCheapCountExpression("collection", collectionKind, collectionTypeName)
+                : null;
 
-            // Write length
-            sb.AppendIndentedLine($"{writerVar}.WriteVarUInt32((uint)calculator.Length);");
+            if (constSize.HasValue && countExpr != null)
+            {
+                sb.AppendIndentedLine($"{writerVar}.WriteVarUInt32((uint)({countExpr} * {constSize.Value}));");
+                sb.AppendIndentedLine("foreach (var item in collection)");
+                sb.StartNewBlock();
+                EmitPackedElementWrite(sb, elementTypeName, format, writerVar, isEnum);
+                sb.EndBlock();
+            }
+            else
+            {
+                sb.AppendIndentedLine($"var calculator = new global::GProtobuf.Core.WriteSizeCalculator();");
+                sb.AppendIndentedLine("foreach (var item in collection)");
+                sb.StartNewBlock();
+                EmitPackedElementSize(sb, elementTypeName, format, "calculator", isEnum);
+                sb.EndBlock();
 
-            // Write elements
-            var elementWriteExpr = TypeMapping.GetElementWriteExpression(elementTypeName, "item", format, writerVar);
-            sb.AppendIndentedLine("foreach (var item in collection)");
-            sb.StartNewBlock();
-            sb.AppendIndentedLine($"{elementWriteExpr};");
-            sb.EndBlock();
+                sb.AppendIndentedLine($"{writerVar}.WriteVarUInt32((uint)calculator.Length);");
+
+                sb.AppendIndentedLine("foreach (var item in collection)");
+                sb.StartNewBlock();
+                EmitPackedElementWrite(sb, elementTypeName, format, writerVar, isEnum);
+                sb.EndBlock();
+            }
 
             sb.EndBlock(); // if
             sb.EndBlock(); // scope
         }
+
+        private static void EmitPackedElementSize(StringBuilderWithIndent sb, string elementTypeName, DataFormat format, string calculatorVar, bool isEnum)
+        {
+            if (isEnum)
+            {
+                sb.AppendIndentedLine($"{calculatorVar}.WriteVarInt32((int)item);");
+            }
+            else
+            {
+                var expr = TypeMapping.GetElementSizeExpression(elementTypeName, "item", format, calculatorVar);
+                sb.AppendIndentedLine($"{expr};");
+            }
+        }
+
+        private static void EmitPackedElementWrite(StringBuilderWithIndent sb, string elementTypeName, DataFormat format, string writerVar, bool isEnum)
+        {
+            if (isEnum)
+            {
+                sb.AppendIndentedLine($"{writerVar}.WriteVarInt32((int)item);");
+            }
+            else
+            {
+                var expr = TypeMapping.GetElementWriteExpression(elementTypeName, "item", format, writerVar);
+                sb.AppendIndentedLine($"{expr};");
+            }
+        }
+
 
         /// <summary>
         /// Generates write code for non-packed repeated primitive field.
@@ -1112,8 +1184,10 @@ namespace GProtobuf.Generator.V2.Handlers
                     sb.AppendIndentedLine($"{sizeExpr};");
                 }
             }
-            // For nullable bool, we need to calculate size for the actual value (could be true or false)
-            else if (TypeMapping.IsBooleanType(typeName) && isNullable)
+            // Bool size: GetSizeExpression returns WriteBoolTrue() which only matches the
+            // WriteBoolTrue() write path (used inside if(value) skip-default check). For nullable
+            // or required bools (no such guard), we must size for the actual value.
+            else if (TypeMapping.IsBooleanType(typeName) && (isNullable || isRequired))
             {
                 GenerateSizeTag(sb, fieldId, wireType, calculatorVar);
                 sb.AppendIndentedLine($"{calculatorVar}.WriteBool({valueExpr});");
@@ -1149,6 +1223,8 @@ namespace GProtobuf.Generator.V2.Handlers
 
         /// <summary>
         /// Generates size calculation for packed primitive array.
+        /// Optimized path: for fixed-size element types and collections with cheap Count/Length,
+        /// inner content size is computed as (count * elementSize) — no inner WriteSizeCalculator needed.
         /// </summary>
         public void GeneratePackedArraySize(
             StringBuilderWithIndent sb,
@@ -1156,8 +1232,12 @@ namespace GProtobuf.Generator.V2.Handlers
             string elementTypeName,
             DataFormat format,
             int fieldId,
-            string calculatorVar = "calculator")
+            string calculatorVar,
+            CollectionKind collectionKind,
+            string collectionTypeName)
         {
+            bool isEnum = IsEnumType(elementTypeName);
+
             sb.StartNewBlock(); // Scope block to avoid name collisions
             sb.AppendIndentedLine($"var collection = {sourceVar};");
             sb.AppendIndentedLine("if (collection != null)");
@@ -1166,17 +1246,30 @@ namespace GProtobuf.Generator.V2.Handlers
             // Add Len tag size
             GenerateSizeTag(sb, fieldId, WireType.Len, calculatorVar);
 
-            // Calculate packed content size
-            sb.AppendIndentedLine($"var tempCalculator = new global::GProtobuf.Core.WriteSizeCalculator();");
-            var elementSizeExpr = TypeMapping.GetElementSizeExpression(elementTypeName, "item", format, "tempCalculator");
-            sb.AppendIndentedLine("foreach (var item in collection)");
-            sb.StartNewBlock();
-            sb.AppendIndentedLine($"{elementSizeExpr};");
-            sb.EndBlock();
+            int? constSize = TypeMapping.TryGetConstantElementSize(elementTypeName, format, ElementSizeContext.WireSize);
+            string countExpr = constSize.HasValue
+                ? CollectionKindHelper.TryGetCheapCountExpression("collection", collectionKind, collectionTypeName)
+                : null;
 
-            // Add length varint + content size
-            sb.AppendIndentedLine($"{calculatorVar}.WriteVarUInt32((uint)tempCalculator.Length);");
-            sb.AppendIndentedLine($"{calculatorVar}.AddByteLength(tempCalculator.Length);");
+            if (constSize.HasValue && countExpr != null)
+            {
+                // Fast path: inline length-prefix + payload size.
+                sb.AppendIndentedLine($"var contentSize = {countExpr} * {constSize.Value};");
+                sb.AppendIndentedLine($"{calculatorVar}.WriteVarUInt32((uint)contentSize);");
+                sb.AppendIndentedLine($"{calculatorVar}.AddByteLength(contentSize);");
+            }
+            else
+            {
+                // Slow path: variable-size elements (varint, enum) or unknown-count collection.
+                sb.AppendIndentedLine($"var tempCalculator = new global::GProtobuf.Core.WriteSizeCalculator();");
+                sb.AppendIndentedLine("foreach (var item in collection)");
+                sb.StartNewBlock();
+                EmitPackedElementSize(sb, elementTypeName, format, "tempCalculator", isEnum);
+                sb.EndBlock();
+
+                sb.AppendIndentedLine($"{calculatorVar}.WriteVarUInt32((uint)tempCalculator.Length);");
+                sb.AppendIndentedLine($"{calculatorVar}.AddByteLength(tempCalculator.Length);");
+            }
 
             sb.EndBlock(); // if
             sb.EndBlock(); // scope
