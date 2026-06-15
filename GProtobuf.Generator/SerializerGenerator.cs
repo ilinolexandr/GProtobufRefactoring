@@ -56,7 +56,7 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         // Pipeline 1: Types with [ProtoContract]
         var protoContractPipeline = context.SyntaxProvider.ForAttributeWithMetadataName(
             fullyQualifiedMetadataName: "GProtobuf.ProtoContractAttribute",
-            predicate: static (node, _) => node is ClassDeclarationSyntax or StructDeclarationSyntax or EnumDeclarationSyntax,
+            predicate: static (node, _) => node is ClassDeclarationSyntax or StructDeclarationSyntax or RecordDeclarationSyntax or EnumDeclarationSyntax,
             transform: static (syntaxContext, _) =>
             {
                 var typeWithAttribute = (syntaxContext.TargetSymbol as INamedTypeSymbol)!;
@@ -74,14 +74,40 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                 // (if there are ProtoMembers, serialize as regular class with fields)
                 bool isCustomCollection = false;
                 string customCollectionElementType = null;
+                bool isCustomDictionary = false;
+                string customDictionaryKeyType = null;
+                string customDictionaryValueType = null;
+                bool customDictionaryKeyIsEnum = false;
+                string customDictionaryKeyEnumUnderlyingType = null;
+                bool customDictionaryValueIsEnum = false;
+                string customDictionaryValueEnumUnderlyingType = null;
                 if ((protoMembers == null || protoMembers.Count == 0) &&
                     (customBufferMembers == null || customBufferMembers.Count == 0))
                 {
-                    var collectionInfo = AnalyzeNonGenericCollection(typeWithAttribute);
-                    if (collectionInfo.IsCollection)
+                    // A [ProtoContract] type that itself IS a dictionary (derives from / implements
+                    // IDictionary<K,V>) must be serialized as a map, not as an empty message.
+                    // Check this BEFORE the non-generic collection probe: Dictionary<K,V> exposes
+                    // IEnumerable<KeyValuePair<K,V>> but its Add is Add(K,V), so AnalyzeNonGenericCollection
+                    // would not detect it and the type would silently serialize to nothing.
+                    var selfMapInfo = AnalyzeMapType(typeWithAttribute);
+                    if (selfMapInfo.isMap)
                     {
-                        isCustomCollection = true;
-                        customCollectionElementType = collectionInfo.ElementType;
+                        isCustomDictionary = true;
+                        customDictionaryKeyType = selfMapInfo.keyType;
+                        customDictionaryValueType = selfMapInfo.valueType;
+                        customDictionaryKeyIsEnum = selfMapInfo.keyIsEnum;
+                        customDictionaryKeyEnumUnderlyingType = selfMapInfo.keyEnumType;
+                        customDictionaryValueIsEnum = selfMapInfo.valueIsEnum;
+                        customDictionaryValueEnumUnderlyingType = selfMapInfo.valueEnumType;
+                    }
+                    else
+                    {
+                        var collectionInfo = AnalyzeNonGenericCollection(typeWithAttribute);
+                        if (collectionInfo.IsCollection)
+                        {
+                            isCustomCollection = true;
+                            customCollectionElementType = collectionInfo.ElementType;
+                        }
                     }
                 }
 
@@ -104,6 +130,13 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                     EnableRecursionGuard: enableRecursionGuard,
                     IsCustomCollection: isCustomCollection,
                     CustomCollectionElementType: customCollectionElementType,
+                    IsCustomDictionary: isCustomDictionary,
+                    CustomDictionaryKeyType: customDictionaryKeyType,
+                    CustomDictionaryValueType: customDictionaryValueType,
+                    CustomDictionaryKeyIsEnum: customDictionaryKeyIsEnum,
+                    CustomDictionaryKeyEnumUnderlyingType: customDictionaryKeyEnumUnderlyingType,
+                    CustomDictionaryValueIsEnum: customDictionaryValueIsEnum,
+                    CustomDictionaryValueEnumUnderlyingType: customDictionaryValueEnumUnderlyingType,
                     BeforeSerializationCallbacks: beforeCallbacks,
                     AfterSerializationCallbacks: afterCallbacks,
                     BeforeDeserializationCallbacks: beforeDeserCallbacks,
@@ -121,7 +154,7 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         // This matches protobuf-net behavior where base classes with ProtoInclude don't need ProtoContract
         var protoIncludePipeline = context.SyntaxProvider.ForAttributeWithMetadataName(
             fullyQualifiedMetadataName: "GProtobuf.ProtoIncludeAttribute",
-            predicate: static (node, _) => node is ClassDeclarationSyntax or StructDeclarationSyntax,
+            predicate: static (node, _) => node is ClassDeclarationSyntax or StructDeclarationSyntax or RecordDeclarationSyntax,
             transform: (syntaxContext, _) =>
             {
                 var typeWithAttribute = (syntaxContext.TargetSymbol as INamedTypeSymbol)!;
@@ -142,14 +175,35 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                 // Check if this is a custom collection type
                 bool isCustomCollection = false;
                 string customCollectionElementType = null;
+                bool isCustomDictionary = false;
+                string customDictionaryKeyType = null;
+                string customDictionaryValueType = null;
+                bool customDictionaryKeyIsEnum = false;
+                string customDictionaryKeyEnumUnderlyingType = null;
+                bool customDictionaryValueIsEnum = false;
+                string customDictionaryValueEnumUnderlyingType = null;
                 if ((protoMembers == null || protoMembers.Count == 0) &&
                     (customBufferMembers == null || customBufferMembers.Count == 0))
                 {
-                    var collectionInfo = AnalyzeNonGenericCollection(typeWithAttribute);
-                    if (collectionInfo.IsCollection)
+                    var selfMapInfo = AnalyzeMapType(typeWithAttribute);
+                    if (selfMapInfo.isMap)
                     {
-                        isCustomCollection = true;
-                        customCollectionElementType = collectionInfo.ElementType;
+                        isCustomDictionary = true;
+                        customDictionaryKeyType = selfMapInfo.keyType;
+                        customDictionaryValueType = selfMapInfo.valueType;
+                        customDictionaryKeyIsEnum = selfMapInfo.keyIsEnum;
+                        customDictionaryKeyEnumUnderlyingType = selfMapInfo.keyEnumType;
+                        customDictionaryValueIsEnum = selfMapInfo.valueIsEnum;
+                        customDictionaryValueEnumUnderlyingType = selfMapInfo.valueEnumType;
+                    }
+                    else
+                    {
+                        var collectionInfo = AnalyzeNonGenericCollection(typeWithAttribute);
+                        if (collectionInfo.IsCollection)
+                        {
+                            isCustomCollection = true;
+                            customCollectionElementType = collectionInfo.ElementType;
+                        }
                     }
                 }
 
@@ -172,6 +226,13 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                     EnableRecursionGuard: false,
                     IsCustomCollection: isCustomCollection,
                     CustomCollectionElementType: customCollectionElementType,
+                    IsCustomDictionary: isCustomDictionary,
+                    CustomDictionaryKeyType: customDictionaryKeyType,
+                    CustomDictionaryValueType: customDictionaryValueType,
+                    CustomDictionaryKeyIsEnum: customDictionaryKeyIsEnum,
+                    CustomDictionaryKeyEnumUnderlyingType: customDictionaryKeyEnumUnderlyingType,
+                    CustomDictionaryValueIsEnum: customDictionaryValueIsEnum,
+                    CustomDictionaryValueEnumUnderlyingType: customDictionaryValueEnumUnderlyingType,
                     BeforeSerializationCallbacks: beforeCallbacks,
                     AfterSerializationCallbacks: afterCallbacks,
                     BeforeDeserializationCallbacks: beforeDeserCallbacks,
@@ -759,6 +820,8 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                         }
                     }
 
+                    NormalizeQueueStackPacking(protoMember);
+
                     // Pridáme do výsledku
                     result.Add(protoMember);
                     break; // only one is allowed
@@ -872,6 +935,8 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                         }
                     }
 
+                    NormalizeQueueStackPacking(protoMember);
+
                     // Add to result
                     result.Add(protoMember);
                     break; // only one ProtoMember attribute allowed
@@ -880,6 +945,20 @@ public sealed class SerializerGenerator : IIncrementalGenerator
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Forces ImmutableQueue&lt;T&gt;/ImmutableStack&lt;T&gt; non-packed on the wire even when the member
+    /// declares <c>IsPacked = true</c> — the protobuf-net oracle writes these non-packed regardless.
+    /// </summary>
+    private static void NormalizeQueueStackPacking(ProtoMemberInfo protoMember)
+    {
+        if (protoMember.IsPacked &&
+            (protoMember.CollectionKind == CollectionKind.ImmutableQueue ||
+             protoMember.CollectionKind == CollectionKind.ImmutableStack))
+        {
+            protoMember.IsPacked = false;
+        }
     }
 
     /// <summary>
@@ -1255,6 +1334,40 @@ public sealed class SerializerGenerator : IIncrementalGenerator
                 {
                     return (false, null, CollectionKind.None);
                 }
+            }
+
+            // Immutable collections must be detected BEFORE the interface/concrete checks:
+            // they implement ICollection<T> (read-only) and would otherwise be misclassified
+            // as ConcreteCollection, generating `new ImmutableList<T>()` + `.Add(...)`.
+            var originalDef = namedType.OriginalDefinition.ToDisplayString();
+            if (originalDef == "System.Collections.Immutable.ImmutableList<T>")
+            {
+                return (true, elementType, CollectionKind.ImmutableList);
+            }
+            if (originalDef == "System.Collections.Immutable.ImmutableArray<T>")
+            {
+                return (true, elementType, CollectionKind.ImmutableArray);
+            }
+            if (originalDef == "System.Collections.Immutable.ImmutableHashSet<T>")
+            {
+                return (true, elementType, CollectionKind.ImmutableHashSet);
+            }
+            if (originalDef == "System.Collections.Immutable.ImmutableSortedSet<T>")
+            {
+                return (true, elementType, CollectionKind.ImmutableSortedSet);
+            }
+            // ImmutableQueue/Stack + their interface forms: NOT ICollection<T>, only IEnumerable<T>,
+            // so they'd otherwise fall through to message treatment and emit non-compiling code
+            // (`new ImmutableQueue<T>()` has no public parameterless ctor). pn 3.x supports them.
+            if (originalDef == "System.Collections.Immutable.ImmutableQueue<T>" ||
+                originalDef == "System.Collections.Immutable.IImmutableQueue<T>")
+            {
+                return (true, elementType, CollectionKind.ImmutableQueue);
+            }
+            if (originalDef == "System.Collections.Immutable.ImmutableStack<T>" ||
+                originalDef == "System.Collections.Immutable.IImmutableStack<T>")
+            {
+                return (true, elementType, CollectionKind.ImmutableStack);
             }
 
             // Check for specific collection types

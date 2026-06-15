@@ -366,18 +366,30 @@ namespace GProtobuf.Generator.V2.Handlers
             // (the user-defined enum name never matches its switch), so no isEnum guard needed.
             int? bulkCopySize = TypeMapping.TryGetConstantElementSize(elementTypeName, format, ElementSizeContext.BulkCopy);
             bool emittedFastReadPath = false;
-            if (!useStreamLimits && collectionKind == CollectionKind.Array && bulkCopySize.HasValue)
+            if (!useStreamLimits
+                && (collectionKind == CollectionKind.Array || collectionKind == CollectionKind.ImmutableArray)
+                && bulkCopySize.HasValue)
             {
+                bool isImmutableArray = collectionKind == CollectionKind.ImmutableArray;
                 sb.AppendIndentedLine("// Packed encoding (Level200) — fixed-size bulk-copy fast path");
                 sb.AppendIndentedLine($"int length = {readerVar}.ReadVarInt32();");
                 sb.AppendIndentedLine($"int newCount = length / {bulkCopySize.Value};");
                 sb.AppendIndentedLine($"var bulkExisting = {targetVar};");
-                sb.AppendIndentedLine($"int bulkOldCount = bulkExisting != null ? bulkExisting.Length : 0;");
+                sb.AppendIndentedLine(isImmutableArray
+                    ? $"int bulkOldCount = bulkExisting.IsDefault ? 0 : bulkExisting.Length;"
+                    : $"int bulkOldCount = bulkExisting != null ? bulkExisting.Length : 0;");
                 sb.AppendIndentedLine($"var bulkArr = new {shortType}[bulkOldCount + newCount];");
                 sb.AppendIndentedLine($"if (bulkOldCount > 0) bulkExisting.AsSpan().CopyTo(bulkArr);");
                 sb.AppendIndentedLine($"var bulkSrc = {readerVar}.GetSlice(length);");
                 sb.AppendIndentedLine($"global::System.Runtime.InteropServices.MemoryMarshal.Cast<byte, {shortType}>(bulkSrc).CopyTo(bulkArr.AsSpan(bulkOldCount));");
-                sb.AppendIndentedLine($"{targetVar} = bulkArr;");
+                if (isImmutableArray)
+                {
+                    sb.AppendIndentedLine($"{targetVar} = global::System.Runtime.InteropServices.ImmutableCollectionsMarshal.AsImmutableArray(bulkArr);");
+                }
+                else
+                {
+                    sb.AppendIndentedLine($"{targetVar} = bulkArr;");
+                }
                 emittedFastReadPath = true;
             }
 
@@ -547,6 +559,21 @@ namespace GProtobuf.Generator.V2.Handlers
                         sb.AppendIndentedLine($"{targetVar} ??= new global::System.Collections.Generic.List<{shortElementType}>();");
                     }
                     break;
+
+                case CollectionKind.ImmutableList:
+                case CollectionKind.ImmutableHashSet:
+                case CollectionKind.ImmutableSortedSet:
+                case CollectionKind.ImmutableQueue:
+                case CollectionKind.ImmutableStack:
+                    // Immutable collections cannot be mutated in place: accumulate into a temp
+                    // list pre-seeded from the existing value (pn 2.3.7 MERGE = append semantics).
+                    sb.AppendIndentedLine($"var tempList = {targetVar} != null ? new global::System.Collections.Generic.List<{shortElementType}>({targetVar}) : new global::System.Collections.Generic.List<{shortElementType}>();");
+                    break;
+
+                case CollectionKind.ImmutableArray:
+                    // ImmutableArray<T> is a struct: its null-state is IsDefault, never `!= null`.
+                    sb.AppendIndentedLine($"var tempList = !{targetVar}.IsDefault ? new global::System.Collections.Generic.List<{shortElementType}>({targetVar}) : new global::System.Collections.Generic.List<{shortElementType}>();");
+                    break;
             }
         }
 
@@ -618,6 +645,16 @@ namespace GProtobuf.Generator.V2.Handlers
                         sb.AppendIndentedLine($"foreach (var item in tempList) {targetVar}.Add(item);");
                     }
                     break;
+
+                case CollectionKind.ImmutableList:
+                case CollectionKind.ImmutableArray:
+                case CollectionKind.ImmutableHashSet:
+                case CollectionKind.ImmutableSortedSet:
+                case CollectionKind.ImmutableQueue:
+                case CollectionKind.ImmutableStack:
+                    // Freeze: CreateRange builds the immutable structure in one pass.
+                    sb.AppendIndentedLine($"{targetVar} = {CollectionKindHelper.GetFreezeExpression(collectionKind, "tempList")};");
+                    break;
             }
         }
 
@@ -637,6 +674,14 @@ namespace GProtobuf.Generator.V2.Handlers
             {
                 case CollectionKind.Array:
                     return $"{targetVar} = {arrayExpr};";
+
+                case CollectionKind.ImmutableList:
+                case CollectionKind.ImmutableArray:
+                case CollectionKind.ImmutableHashSet:
+                case CollectionKind.ImmutableSortedSet:
+                case CollectionKind.ImmutableQueue:
+                case CollectionKind.ImmutableStack:
+                    return $"{targetVar} = {CollectionKindHelper.GetFreezeExpression(collectionKind, arrayExpr)};";
 
                 case CollectionKind.CustomCollection:
                 case CollectionKind.CustomEnumerable:
@@ -911,7 +956,10 @@ namespace GProtobuf.Generator.V2.Handlers
 
             sb.StartNewBlock(); // Scope block to avoid name collisions
             sb.AppendIndentedLine($"var collection = {sourceVar};");
-            sb.AppendIndentedLine("if (collection != null)");
+            // ImmutableArray<T> is a struct: guard on IsDefault, never `!= null`.
+            sb.AppendIndentedLine(collectionKind == CollectionKind.ImmutableArray
+                ? "if (!collection.IsDefault)"
+                : "if (collection != null)");
             sb.StartNewBlock();
 
             // Write Len tag
@@ -986,7 +1034,8 @@ namespace GProtobuf.Generator.V2.Handlers
             string elementTypeName,
             DataFormat format,
             int fieldId,
-            string writerVar = "writer")
+            string writerVar = "writer",
+            CollectionKind collectionKind = CollectionKind.None)
         {
             var normalizedType = TypeMapping.NormalizeTypeName(elementTypeName);
             var shortType = TypeMapping.GetShortTypeName(elementTypeName);
@@ -999,7 +1048,10 @@ namespace GProtobuf.Generator.V2.Handlers
 
             sb.StartNewBlock(); // Scope block to avoid name collisions
             sb.AppendIndentedLine($"var collection = {sourceVar};");
-            sb.AppendIndentedLine("if (collection != null)");
+            // ImmutableArray<T> is a struct: guard on IsDefault, never `!= null`.
+            sb.AppendIndentedLine(collectionKind == CollectionKind.ImmutableArray
+                ? "if (!collection.IsDefault)"
+                : "if (collection != null)");
             sb.StartNewBlock();
             sb.AppendIndentedLine("foreach (var item in collection)");
             sb.StartNewBlock();
@@ -1240,7 +1292,10 @@ namespace GProtobuf.Generator.V2.Handlers
 
             sb.StartNewBlock(); // Scope block to avoid name collisions
             sb.AppendIndentedLine($"var collection = {sourceVar};");
-            sb.AppendIndentedLine("if (collection != null)");
+            // ImmutableArray<T> is a struct: guard on IsDefault, never `!= null`.
+            sb.AppendIndentedLine(collectionKind == CollectionKind.ImmutableArray
+                ? "if (!collection.IsDefault)"
+                : "if (collection != null)");
             sb.StartNewBlock();
 
             // Add Len tag size
@@ -1284,7 +1339,8 @@ namespace GProtobuf.Generator.V2.Handlers
             string elementTypeName,
             DataFormat format,
             int fieldId,
-            string calculatorVar = "calculator")
+            string calculatorVar = "calculator",
+            CollectionKind collectionKind = CollectionKind.None)
         {
             var normalizedType = TypeMapping.NormalizeTypeName(elementTypeName);
 
@@ -1296,7 +1352,10 @@ namespace GProtobuf.Generator.V2.Handlers
 
             sb.StartNewBlock(); // Scope block to avoid name collisions
             sb.AppendIndentedLine($"var collection = {sourceVar};");
-            sb.AppendIndentedLine("if (collection != null)");
+            // ImmutableArray<T> is a struct: guard on IsDefault, never `!= null`.
+            sb.AppendIndentedLine(collectionKind == CollectionKind.ImmutableArray
+                ? "if (!collection.IsDefault)"
+                : "if (collection != null)");
             sb.StartNewBlock();
             sb.AppendIndentedLine("foreach (var item in collection)");
             sb.StartNewBlock();

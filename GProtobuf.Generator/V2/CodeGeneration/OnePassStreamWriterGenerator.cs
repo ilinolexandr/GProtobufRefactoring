@@ -19,6 +19,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         private const string WriterType = "global::GProtobuf.Core.OnePassStreamWriter";
         private const string ClassName = "OnePassStreamWriters";
 
+        /// <summary>
+        /// Name of the writer parameter in every generated Write* method.
+        /// Callsites pass <c>WriterVarName</c> instead of a literal so the magic string
+        /// lives in exactly one place per generator class.
+        /// </summary>
+        private const string WriterVarName = "writer";
+
         // Phase 1 rollback flag: when false, the inline map-entry size optimisation
         // is skipped and the original BeginSubMessage/EndSubMessage path is emitted.
         internal static bool EnableInlineMapEntrySize = true;
@@ -940,6 +947,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 return;
             }
 
+            // Self-dictionary: the instance IS the map; write each entry as repeated field 1.
+            if (type.IsCustomDictionary && !string.IsNullOrEmpty(type.CustomDictionaryKeyType))
+            {
+                GenerateMapFieldWrite(GeneratorHelpers.BuildSelfMapMember(type), "instance");
+                return;
+            }
+
             WriteTypeFields(type, "instance");
         }
 
@@ -1368,7 +1382,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.CollectionElementType,
                         member.DataFormat,
                         member.FieldId,
-                        writerVar: "writer",
+                        writerVar: WriterVarName,
                         collectionKind: member.CollectionKind,
                         collectionTypeName: member.Type);
                 }
@@ -1379,7 +1393,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         sourceVar,
                         member.CollectionElementType,
                         member.DataFormat,
-                        member.FieldId);
+                        member.FieldId,
+                        writerVar: WriterVarName,
+                        collectionKind: member.CollectionKind);
                 }
             }
             else if (TupleHandler.IsTupleType(member.CollectionElementType))
@@ -1506,16 +1522,22 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             // Get namespace-qualified writers class for cross-namespace calls
             var writersClass = GetWritersClass(member.CollectionElementType);
 
-            _sb.AppendIndentedLine($"if ({sourceVar} != null)");
+            // ImmutableArray<T> is a struct: guard on IsDefault, never `!= null`.
+            _sb.AppendIndentedLine(member.CollectionKind == CollectionKind.ImmutableArray
+                ? $"if (!{sourceVar}.IsDefault)"
+                : $"if ({sourceVar} != null)");
             _sb.StartNewBlock();
             _sb.AppendIndentedLine($"foreach (var item in {sourceVar})");
             _sb.StartNewBlock();
 
-            // Only add null check for reference types
+            // Null element in a repeated message field is unrepresentable on the wire — throw
+            // (consistent with the 2-pass writers).
             if (!elementIsStruct)
             {
-                _sb.AppendIndentedLine("if (item != null)");
+                _sb.AppendIndentedLine("if (object.ReferenceEquals(item, null))");
                 _sb.StartNewBlock();
+                _sb.AppendIndentedLine($"throw new global::System.InvalidOperationException(\"An element of type {elementClassName} was null; this might be as contents in a list/array\");");
+                _sb.EndBlock();
             }
 
             TagCodeHelper.WriteTag(_sb, member.FieldId, WireType.Len);
@@ -1525,11 +1547,6 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 : $"Write{elementClassName}Content";
             _sb.AppendIndentedLine($"{writersClass}.{collWriteMethod}(ref writer, item);");
             _sb.AppendIndentedLine("writer.EndSubMessage();");
-
-            if (!elementIsStruct)
-            {
-                _sb.EndBlock();
-            }
 
             _sb.EndBlock();
             _sb.EndBlock();

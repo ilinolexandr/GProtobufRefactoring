@@ -51,6 +51,30 @@ namespace GProtobuf.Generator.V2.CodeGeneration.Core
     internal static class GeneratorHelpers
     {
         /// <summary>
+        /// Builds a synthetic <see cref="ProtoMemberInfo"/> representing the implicit map field
+        /// of a self-dictionary type (a [ProtoContract] type that derives from / implements
+        /// IDictionary&lt;K,V&gt; with no [ProtoMember]s). The instance itself is the dictionary,
+        /// serialized as repeated field 1 of key/value entries. Routing this synthetic member
+        /// through the existing map-field write/read/size helpers keeps the logic in one place
+        /// per generator instead of duplicating the map machinery.
+        /// </summary>
+        public static ProtoMemberInfo BuildSelfMapMember(TypeDefinition type)
+        {
+            return new ProtoMemberInfo(1)
+            {
+                Name = string.Empty,
+                Type = type.FullName,
+                IsMap = true,
+                MapKeyType = type.CustomDictionaryKeyType,
+                MapValueType = type.CustomDictionaryValueType,
+                MapKeyIsEnum = type.CustomDictionaryKeyIsEnum,
+                MapKeyEnumUnderlyingType = type.CustomDictionaryKeyEnumUnderlyingType,
+                MapValueIsEnum = type.CustomDictionaryValueIsEnum,
+                MapValueEnumUnderlyingType = type.CustomDictionaryValueEnumUnderlyingType,
+            };
+        }
+
+        /// <summary>
         /// Gets all derived types for a base type, sorted by inheritance depth (most derived first).
         /// This is used for polymorphic field handling where runtime type dispatch is needed.
         /// </summary>

@@ -16,6 +16,14 @@ namespace GProtobuf.Generator.V2.CodeGeneration
     /// </summary>
     internal class StreamWriterGenerator : GeneratorBase
     {
+        /// <summary>
+        /// Name of the writer parameter in every generated Write* method (shared across
+        /// Stream/Buffer/StackBuffer variants since they all derive from this base).
+        /// Single source of truth for the magic string — callsites pass <c>WriterVarName</c>
+        /// instead of a literal so a future rename is one edit.
+        /// </summary>
+        protected const string WriterVarName = "writer";
+
         private readonly string _writerType;
         private readonly string _className;
         private readonly string _writerKind;
@@ -317,6 +325,15 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                 return;
             }
 
+            // Self-dictionary: the instance IS the map; write each entry as repeated field 1.
+            if (type.IsCustomDictionary && !string.IsNullOrEmpty(type.CustomDictionaryKeyType))
+            {
+                GenerateMapFieldWrite(GeneratorHelpers.BuildSelfMapMember(type), "instance");
+                _sb.EndBlock();
+                _sb.AppendNewLine();
+                return;
+            }
+
             // Check if type has ProtoInclude hierarchy
             bool isDerived = _registry.IsDerivedType(type.FullName);
             bool hasProtoIncludes = type.ProtoIncludes != null && type.ProtoIncludes.Count > 0;
@@ -358,6 +375,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (type.IsCustomCollection && !string.IsNullOrEmpty(type.CustomCollectionElementType))
             {
                 GenerateCustomCollectionWriteContent(type, className);
+                return;
+            }
+
+            // Self-dictionary: the instance IS the map; write each entry as repeated field 1.
+            if (type.IsCustomDictionary && !string.IsNullOrEmpty(type.CustomDictionaryKeyType))
+            {
+                GenerateMapFieldWrite(GeneratorHelpers.BuildSelfMapMember(type), "instance");
                 return;
             }
 
@@ -1235,7 +1259,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.CollectionElementType,
                         member.DataFormat,
                         member.FieldId,
-                        writerVar: "writer",
+                        writerVar: WriterVarName,
                         collectionKind: member.CollectionKind,
                         collectionTypeName: member.Type);
                 }
@@ -1246,7 +1270,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         sourceVar,
                         member.CollectionElementType,
                         member.DataFormat,
-                        member.FieldId);
+                        member.FieldId,
+                        writerVar: WriterVarName,
+                        collectionKind: member.CollectionKind);
                 }
             }
             else if (TupleHandler.IsTupleType(member.CollectionElementType))
@@ -1267,7 +1293,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     sourceVar,
                     member.CollectionElementType,
                     elementClassName,
-                    _className);
+                    _className,
+                    collectionKind: member.CollectionKind);
             }
         }
 
@@ -1693,7 +1720,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.CollectionElementType,
                         member.DataFormat,
                         member.FieldId,
-                        calculatorVar);
+                        calculatorVar,
+                        collectionKind: member.CollectionKind);
                 }
             }
             else if (TupleHandler.IsTupleType(member.CollectionElementType))
@@ -1714,7 +1742,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     sourceVar,
                     member.CollectionElementType,
                     elementClassName,
-                    calculatorVar);
+                    calculatorVar,
+                    collectionKind: member.CollectionKind);
             }
         }
 

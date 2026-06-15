@@ -426,14 +426,16 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
                         // Check if element type is a derived type (has ProtoInclude parent) - use Read{typeName} to handle wrapper
                         bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
-                        // Check if element type is a readonly struct - use ReadContent instead of Populate
-                        bool isReadonlyStruct = _typeRegistry?.IsReadonlyStruct(elementType) ?? false;
+                        // ReadContent instead of new+Populate when Populate is a no-op:
+                        // readonly structs AND types with init-only members (deferred/ctor construction).
+                        bool mustUseReadContent = (_typeRegistry?.IsReadonlyStruct(elementType) ?? false)
+                            || (_typeRegistry?.ChainHasInit(elementType) ?? false);
                         if (isDerivedType)
                         {
                             // Derived type - use Read{typeName} which handles ProtoInclude wrapper format
                             _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader);");
                         }
-                        else if (isReadonlyStruct)
+                        else if (mustUseReadContent)
                         {
                             _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {fieldPrefix}ScopedReader);");
                         }
@@ -503,18 +505,19 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
                 // Check if type is a derived type (has ProtoInclude parent) - use Read{typeName} to handle wrapper
                 bool isDerivedType = _typeRegistry?.IsDerivedType(typeName) ?? false;
-                // Check if this is a readonly struct - use ReadContent instead of Populate
-                // For readonly structs, Populate is a no-op because fields cannot be modified after construction
-                bool isReadonlyStruct = _typeRegistry?.IsReadonlyStruct(typeName) ?? false;
+                // ReadContent instead of new+Populate when Populate is a no-op:
+                // readonly structs AND types with init-only members (deferred/ctor construction).
+                bool mustUseReadContent = (_typeRegistry?.IsReadonlyStruct(typeName) ?? false)
+                    || (_typeRegistry?.ChainHasInit(typeName) ?? false);
 
                 if (isDerivedType)
                 {
                     // Derived type - use Read{typeName} which handles ProtoInclude wrapper format
                     _sb.AppendIndentedLine($"{targetVar} = {spanReadersClass}.Read{sanitizedName}(ref {fieldPrefix}ScopedReader);");
                 }
-                else if (isReadonlyStruct)
+                else if (mustUseReadContent)
                 {
-                    // Readonly struct - must use ReadContent which returns a new instance
+                    // Must use ReadContent which returns a fully constructed instance
                     _sb.AppendIndentedLine($"{targetVar} = {spanReadersClass}.Read{sanitizedName}Content(ref {fieldPrefix}ScopedReader);");
                 }
                 // Handle nullable types - create temp variable for Populate
@@ -884,14 +887,16 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
 
                     // Check if element type is a derived type (has ProtoInclude parent) - use Read{typeName} to handle wrapper
                     bool isDerivedType = _typeRegistry?.IsDerivedType(elementType) ?? false;
-                    // Check if element type is a readonly struct - use ReadContent instead of Populate
-                    bool isReadonlyStruct = _typeRegistry?.IsReadonlyStruct(elementType) ?? false;
+                    // ReadContent instead of new+Populate when Populate is a no-op:
+                    // readonly structs AND types with init-only members (deferred/ctor construction).
+                    bool mustUseReadContent = (_typeRegistry?.IsReadonlyStruct(elementType) ?? false)
+                        || (_typeRegistry?.ChainHasInit(elementType) ?? false);
                     if (isDerivedType)
                     {
                         // Derived type - use Read{typeName} which handles ProtoInclude wrapper format
                         _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}(ref {fieldPrefix}ScopedReader);");
                     }
-                    else if (isReadonlyStruct)
+                    else if (mustUseReadContent)
                     {
                         _sb.AppendIndentedLine($"var {fieldPrefix}Item = {spanReadersClass}.Read{elemInfo.ShortTypeName}Content(ref {fieldPrefix}ScopedReader);");
                     }
@@ -1159,7 +1164,7 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
             else if (TypeHelper.IsCustomDictionaryType(fullTypeName))
             {
                 // Custom dictionary types like ListDictionary - use the full type name
-                _sb.AppendIndentedLine($"{targetVar} ??= new global::{fullTypeName}();");
+                _sb.AppendIndentedLine($"{targetVar} ??= new {TypeMapping.GetGlobalGenericTypeName(fullTypeName)}();");
             }
             else
             {
@@ -1285,7 +1290,7 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
                 if (TypeHelper.IsCustomHashSetType(fullTypeName))
                 {
                     // Custom HashSet types like ValueLogTypeHashSet - use the full type name
-                    _sb.AppendIndentedLine($"{targetVar} ??= new global::{fullTypeName}();");
+                    _sb.AppendIndentedLine($"{targetVar} ??= new {TypeMapping.GetGlobalGenericTypeName(fullTypeName)}();");
                 }
                 else
                 {
@@ -1295,7 +1300,7 @@ namespace GProtobuf.Generator.V2.Handlers.VirtualTypes
             else if (TypeHelper.IsCustomListType(fullTypeName))
             {
                 // Custom List types - use the full type name
-                _sb.AppendIndentedLine($"{targetVar} ??= new global::{fullTypeName}();");
+                _sb.AppendIndentedLine($"{targetVar} ??= new {TypeMapping.GetGlobalGenericTypeName(fullTypeName)}();");
             }
             else
             {

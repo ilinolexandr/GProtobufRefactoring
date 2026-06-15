@@ -85,5 +85,12 @@ namespace GProtobuf.Generator.Analysis
         string? ProtoVarintValueMember = null,
         bool SkipEntryPoints = false,
         // Get-only [ProtoMember] property names skipped during analysis; reported as GPROTO005.
-        List<string>? IgnoredGetOnlyProperties = null);
+        List<string>? IgnoredGetOnlyProperties = null,
+        bool IsCustomDictionary = false,
+        string? CustomDictionaryKeyType = null,
+        string? CustomDictionaryValueType = null,
+        bool CustomDictionaryKeyIsEnum = false,
+        string? CustomDictionaryKeyEnumUnderlyingType = null,
+        bool CustomDictionaryValueIsEnum = false,
+        string? CustomDictionaryValueEnumUnderlyingType = null);
 }

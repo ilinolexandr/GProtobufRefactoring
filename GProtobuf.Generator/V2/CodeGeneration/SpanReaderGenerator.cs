@@ -987,7 +987,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     member.CollectionKind,
                     member.Type,
                     readerVar,
-                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry));
+                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry),
+                    memberName: member.Name);
             }
         }
 
@@ -1069,6 +1070,15 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (type.IsCustomCollection && !string.IsNullOrEmpty(type.CustomCollectionElementType))
             {
                 GenerateCustomCollectionReadContent(type, className);
+                _sb.EndBlock();
+                _sb.AppendNewLine();
+                return;
+            }
+
+            // Self-dictionary: the instance IS the map; read entries from repeated field 1.
+            if (type.IsCustomDictionary && !string.IsNullOrEmpty(type.CustomDictionaryKeyType))
+            {
+                GenerateCustomDictionaryReadContent(type);
                 _sb.EndBlock();
                 _sb.AppendNewLine();
                 return;
@@ -1187,6 +1197,28 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             _sb.AppendNewLine();
 
+            var deferredFieldsNeedingTempList = members
+                .Where(m => ObjectArrayBuilderHelper.IsFieldNeedingTempListOrBuilder(m, _registry))
+                .ToList();
+            var deferredFieldsUsingObjectBuilder = deferredFieldsNeedingTempList.Where(m => ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList();
+            var deferredFieldsUsingTempList = deferredFieldsNeedingTempList.Where(m => ObjectArrayBuilderHelper.NeedsTempListDeclaration(m, _registry)).ToList();
+
+            ObjectArrayBuilderHelper.GenerateDeclarations(_sb, deferredFieldsUsingObjectBuilder,
+                m => TypeMapping.GetGlobalTypeName(m.CollectionElementType));
+            foreach (var member in deferredFieldsUsingTempList)
+            {
+                var elementType = TypeMapping.GetGlobalTypeName(member.CollectionElementType);
+                _sb.AppendIndentedLine($"global::System.Collections.Generic.List<{elementType}> _tempList_{member.Name} = null;");
+            }
+            if (deferredFieldsNeedingTempList.Count > 0)
+                _sb.AppendNewLine();
+
+            if (deferredFieldsUsingObjectBuilder.Count > 0)
+            {
+                _sb.AppendIndentedLine("try");
+                _sb.StartNewBlock();
+            }
+
             // Switch resolver so the field-read body helpers write to tmp_{Name} instead of result.{Name}.
             var previousResolver = _memberTargetResolver;
             _memberTargetResolver = name => $"tmp_{name}";
@@ -1225,6 +1257,19 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             finally
             {
                 _memberTargetResolver = previousResolver;
+            }
+
+            // Convert builder/temp-list contents into the tmp_ locals before the object initializer.
+            ObjectArrayBuilderHelper.GenerateConversion(_sb, deferredFieldsUsingObjectBuilder, m => $"tmp_{m.Name}");
+            ObjectArrayBuilderHelper.GenerateTempListFinalization(_sb, deferredFieldsUsingTempList, m => $"tmp_{m.Name}");
+
+            if (deferredFieldsUsingObjectBuilder.Count > 0)
+            {
+                _sb.EndBlock();
+                _sb.AppendIndentedLine("finally");
+                _sb.StartNewBlock();
+                ObjectArrayBuilderHelper.GenerateDispose(_sb, deferredFieldsUsingObjectBuilder);
+                _sb.EndBlock();
             }
 
             _sb.AppendNewLine();
@@ -1318,6 +1363,61 @@ namespace GProtobuf.Generator.V2.CodeGeneration
         }
 
         /// <summary>
+        /// Generates read content for self-dictionary types (a [ProtoContract] type that derives from /
+        /// implements IDictionary&lt;K,V&gt; with no [ProtoMember]s). The instance itself is the map;
+        /// entries are read from repeated field 1 and added to it, reusing the map-field read machinery.
+        /// </summary>
+        private void GenerateCustomDictionaryReadContent(TypeDefinition type)
+        {
+            var selfMap = GeneratorHelpers.BuildSelfMapMember(type);
+
+            _sb.AppendIndentedLine($"var result = new global::{type.FullName}();");
+            _sb.AppendIndentedLine("while (!reader.IsEnd)");
+            _sb.StartNewBlock();
+            _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var fieldId);");
+            _sb.AppendNewLine();
+
+            _sb.AppendIndentedLine("if (fieldId == 1)");
+            _sb.StartNewBlock();
+            var mapHandler = new MapHandler(_sb, _virtualMapRegistry, "SpanReaders", _registry, _virtualTypesNamespace);
+            mapHandler.GenerateRead(selfMap, "result", "reader");
+            _sb.EndBlock(); // if fieldId == 1
+            _sb.AppendIndentedLine("else");
+            _sb.StartNewBlock();
+            _sb.AppendIndentedLine("reader.SkipField(wireType);");
+            _sb.EndBlock(); // else
+
+            _sb.EndBlock(); // while
+            _sb.AppendIndentedLine("return result;");
+        }
+
+        /// <summary>
+        /// Generates the Populate body for self-dictionary types: reads entries from repeated field 1
+        /// into the already-constructed <c>instance</c>.
+        /// </summary>
+        private void GenerateCustomDictionaryPopulate(TypeDefinition type)
+        {
+            var selfMap = GeneratorHelpers.BuildSelfMapMember(type);
+
+            _sb.AppendIndentedLine("while (!reader.IsEnd)");
+            _sb.StartNewBlock();
+            _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var fieldId);");
+            _sb.AppendNewLine();
+
+            _sb.AppendIndentedLine("if (fieldId == 1)");
+            _sb.StartNewBlock();
+            var mapHandler = new MapHandler(_sb, _virtualMapRegistry, "SpanReaders", _registry, _virtualTypesNamespace);
+            mapHandler.GenerateRead(selfMap, "instance", "reader");
+            _sb.EndBlock(); // if fieldId == 1
+            _sb.AppendIndentedLine("else");
+            _sb.StartNewBlock();
+            _sb.AppendIndentedLine("reader.SkipField(wireType);");
+            _sb.EndBlock(); // else
+
+            _sb.EndBlock(); // while
+        }
+
+        /// <summary>
         /// Generates read content for types that use constructor with parameters (readonly struct support).
         /// Creates local variables for constructor parameters and calls constructor at the end.
         /// </summary>
@@ -1339,46 +1439,100 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             }
             _sb.AppendNewLine();
 
-            // Read loop
-            _sb.AppendIndentedLine("while (!reader.IsEnd)");
-            _sb.StartNewBlock();
-            _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var fieldId);");
-            _sb.AppendNewLine();
-
-            // Generate switch for fields (sorted by field ID for optimal branch prediction)
-            if (type.ProtoMembers != null && type.ProtoMembers.Count > 0)
+            // Resolves the assignment target for a member: the param_ local of its ctor parameter.
+            string GetParamTarget(string memberName)
             {
-                _sb.AppendIndentedLine("switch (fieldId)");
+                var m = mappings.FirstOrDefault(x => x.FieldName == memberName);
+                return m != null ? $"param_{m.ParameterName}" : $"param_{memberName}";
+            }
+
+            // Collection members need the same temp-list/ObjectArrayBuilder scaffolding as the
+            // Populate path; conversion targets the param_ locals instead of instance properties.
+            var ctorMembers = type.ProtoMembers?.ToList() ?? new List<ProtoMemberInfo>();
+            var fieldsNeedingTempList = ctorMembers
+                .Where(m => ObjectArrayBuilderHelper.IsFieldNeedingTempListOrBuilder(m, _registry))
+                .ToList();
+            var fieldsUsingObjectBuilder = fieldsNeedingTempList.Where(m => ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(m, _registry)).ToList();
+            var fieldsUsingTempList = fieldsNeedingTempList.Where(m => ObjectArrayBuilderHelper.NeedsTempListDeclaration(m, _registry)).ToList();
+
+            ObjectArrayBuilderHelper.GenerateDeclarations(_sb, fieldsUsingObjectBuilder,
+                m => TypeMapping.GetGlobalTypeName(m.CollectionElementType));
+            foreach (var member in fieldsUsingTempList)
+            {
+                var elementType = TypeMapping.GetGlobalTypeName(member.CollectionElementType);
+                _sb.AppendIndentedLine($"global::System.Collections.Generic.List<{elementType}> _tempList_{member.Name} = null;");
+            }
+            if (fieldsNeedingTempList.Count > 0)
+                _sb.AppendNewLine();
+
+            // Wrap in try/finally for exception safety (ObjectArrayBuilder must be disposed)
+            if (fieldsUsingObjectBuilder.Count > 0)
+            {
+                _sb.AppendIndentedLine("try");
                 _sb.StartNewBlock();
+            }
 
-                foreach (var member in GeneratorHelpers.GetSortedFieldsForDispatch(type.ProtoMembers))
+            // Route field reads through the standard member-read machinery (same helpers as the
+            // Populate/deferred-init paths), redirecting assignment targets to the param_ locals.
+            var previousResolver = _memberTargetResolver;
+            _memberTargetResolver = GetParamTarget;
+            try
+            {
+                // Read loop
+                _sb.AppendIndentedLine("while (!reader.IsEnd)");
+                _sb.StartNewBlock();
+                _sb.AppendIndentedLine("reader.ReadWireTypeAndFieldId(out var wireType, out var fieldId);");
+                _sb.AppendNewLine();
+
+                // Generate switch for fields (sorted by field ID for optimal branch prediction)
+                if (type.ProtoMembers != null && type.ProtoMembers.Count > 0)
                 {
-                    // Find mapping for this field
-                    var mapping = mappings.FirstOrDefault(m => m.FieldName == member.Name);
+                    _sb.AppendIndentedLine("switch (fieldId)");
+                    _sb.StartNewBlock();
 
-                    if (mapping != null)
+                    foreach (var member in GeneratorHelpers.GetSortedFieldsForDispatch(type.ProtoMembers))
                     {
-                        // This field corresponds to a constructor parameter
-                        GenerateFieldReadCaseForParameter(member, $"param_{mapping.ParameterName}");
+                        // Only fields that map to a constructor parameter have a read target.
+                        if (mappings.Any(m => m.FieldName == member.Name))
+                        {
+                            GenerateFieldReadCase(member);
+                        }
                     }
-                }
 
-                // Default - skip unknown fields
-                _sb.AppendIndentedLine("default:");
-                _sb.IncreaseIndent();
-                _sb.AppendIndentedLine("reader.SkipField(wireType);");
-                _sb.AppendIndentedLine("break;");
-                _sb.DecreaseIndent();
+                    // Default - skip unknown fields
+                    _sb.AppendIndentedLine("default:");
+                    _sb.IncreaseIndent();
+                    _sb.AppendIndentedLine("reader.SkipField(wireType);");
+                    _sb.AppendIndentedLine("break;");
+                    _sb.DecreaseIndent();
+
+                    _sb.EndBlock();
+                }
+                else
+                {
+                    // No fields - just skip
+                    _sb.AppendIndentedLine("reader.SkipField(wireType);");
+                }
 
                 _sb.EndBlock();
             }
-            else
+            finally
             {
-                // No fields - just skip
-                _sb.AppendIndentedLine("reader.SkipField(wireType);");
+                _memberTargetResolver = previousResolver;
             }
 
-            _sb.EndBlock();
+            // Convert builder/temp-list contents into the param_ locals before the ctor call.
+            ObjectArrayBuilderHelper.GenerateConversion(_sb, fieldsUsingObjectBuilder, m => GetParamTarget(m.Name));
+            ObjectArrayBuilderHelper.GenerateTempListFinalization(_sb, fieldsUsingTempList, m => GetParamTarget(m.Name));
+
+            if (fieldsUsingObjectBuilder.Count > 0)
+            {
+                _sb.EndBlock();
+                _sb.AppendIndentedLine("finally");
+                _sb.StartNewBlock();
+                ObjectArrayBuilderHelper.GenerateDispose(_sb, fieldsUsingObjectBuilder);
+                _sb.EndBlock();
+            }
 
             // Call constructor with parameters
             _sb.AppendNewLine();
@@ -1413,82 +1567,6 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             _sb.AppendNewLine();
             GenerateAfterDeserializationCallbacks(type, "result");
             _sb.AppendIndentedLine("return result;");
-        }
-
-        /// <summary>
-        /// Generates field read case that assigns to a local variable instead of object field.
-        /// Used for constructor-based deserialization.
-        /// </summary>
-        private void GenerateFieldReadCaseForParameter(ProtoMemberInfo member, string targetVariable)
-        {
-            _sb.AppendIndentedLine($"case {member.FieldId}:");
-            _sb.IncreaseIndent();
-
-            var wireType = TypeMapping.GetWireType(member.Type, member.DataFormat);
-
-            // Generate read statement based on type
-            if (member.Type == "int" || member.Type == "System.Int32")
-            {
-                if (member.DataFormat == DataFormat.ZigZag)
-                {
-                    _sb.AppendIndentedLine($"{targetVariable} = reader.ReadZigZagInt32();");
-                }
-                else if (member.DataFormat == DataFormat.FixedSize)
-                {
-                    _sb.AppendIndentedLine($"{targetVariable} = reader.ReadFixed32AsInt();");
-                }
-                else
-                {
-                    _sb.AppendIndentedLine($"{targetVariable} = reader.ReadVarInt32();");
-                }
-            }
-            else if (member.Type == "uint" || member.Type == "System.UInt32")
-            {
-                if (member.DataFormat == DataFormat.FixedSize)
-                {
-                    _sb.AppendIndentedLine($"{targetVariable} = reader.ReadFixed32();");
-                }
-                else
-                {
-                    _sb.AppendIndentedLine($"{targetVariable} = reader.ReadVarUInt32();");
-                }
-            }
-            else if (member.Type.Contains("Enum") || IsEnumType(member.Type))
-            {
-                // Enum type
-                _sb.AppendIndentedLine($"{targetVariable} = ({member.Type})reader.ReadVarInt32();");
-            }
-            else if (member.IsProtoVarint)
-            {
-                // ProtoVarint type - read varint and construct using the constructor
-                ProtoVarintTypeSupport.GenerateRead(_sb, member, targetVariable);
-            }
-            else
-            {
-                // Complex type
-                _sb.AppendIndentedLine("var length = reader.ReadVarInt32();");
-                _sb.AppendIndentedLine("var nestedReader = new SpanReader(reader.GetSlice(length));");
-
-                var simpleName = GProtobuf.Generator.Utilities.TypeNameHelper.GetClassName(member.Type);
-
-                if (member.Namespace == _currentNamespace || string.IsNullOrEmpty(member.Namespace))
-                {
-                    _sb.AppendIndentedLine($"{targetVariable} = SpanReaders.Read{simpleName}Content(ref nestedReader);");
-                }
-                else
-                {
-                    _sb.AppendIndentedLine($"{targetVariable} = global::{member.Namespace}.Serialization.SpanReaders.Read{simpleName}Content(ref nestedReader);");
-                }
-            }
-
-            _sb.AppendIndentedLine("break;");
-            _sb.DecreaseIndent();
-        }
-
-        private bool IsEnumType(string typeName)
-        {
-            // Simple heuristic - can be improved
-            return typeName.Contains("Type") || typeName.Contains("Kind") || typeName.Contains("Status");
         }
 
         private void GenerateReadContentWithInheritance(TypeDefinition type, string className)
@@ -1831,6 +1909,15 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (type.IsCustomCollection && !string.IsNullOrEmpty(type.CustomCollectionElementType))
             {
                 GenerateCustomCollectionPopulate(type, className);
+                _sb.EndBlock();
+                _sb.AppendNewLine();
+                return;
+            }
+
+            // Self-dictionary: the instance IS the map; populate entries from repeated field 1.
+            if (type.IsCustomDictionary && !string.IsNullOrEmpty(type.CustomDictionaryKeyType))
+            {
+                GenerateCustomDictionaryPopulate(type);
                 _sb.EndBlock();
                 _sb.AppendNewLine();
                 return;
@@ -2290,7 +2377,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     member.CollectionKind,
                     member.Type,
                     readerVar,
-                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry));
+                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry),
+                    memberName: member.Name);
             }
         }
 
@@ -2652,7 +2740,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     elementClassName,
                     member.CollectionKind,
                     member.Type,
-                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry));
+                    useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry),
+                    memberName: member.Name);
             }
         }
 
@@ -3002,7 +3091,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     member.CollectionKind,
                     member.Type,
                     useObjectArrayBuilder: ObjectArrayBuilderHelper.ShouldUseObjectArrayBuilder(member, _registry),
-                    fieldId: member.FieldId);
+                    fieldId: member.FieldId,
+                    memberName: member.Name);
             }
         }
 

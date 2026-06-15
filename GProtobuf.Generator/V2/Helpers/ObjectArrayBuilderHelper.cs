@@ -79,12 +79,24 @@ namespace GProtobuf.Generator.V2.Helpers
         /// _builder_X / _tempList_X variable regardless of element type, because Array and
         /// IEnumerable&lt;T&gt; cannot be incrementally appended.
         /// </summary>
+        /// <summary>
+        /// True for collection kinds that cannot be mutated in place and are finalized via a
+        /// freeze expression (ImmutableList.CreateRange / ImmutableCollectionsMarshal wrap).
+        /// </summary>
+        internal static bool IsImmutableKind(ProtoMemberInfo member)
+            => member != null && CollectionKindHelper.IsImmutable(member.CollectionKind);
+
         internal static bool IsArrayOrIEnumerable(ProtoMemberInfo member)
         {
             if (member == null || !member.IsCollection)
                 return false;
 
             if (member.CollectionKind == CollectionKind.Array)
+                return true;
+
+            // Immutable collections can never be appended in place — like Array, they always
+            // accumulate into method-level temp storage and are frozen at the end.
+            if (IsImmutableKind(member))
                 return true;
 
             if (member.CollectionKind == CollectionKind.InterfaceCollection && member.Type != null)
@@ -242,11 +254,16 @@ namespace GProtobuf.Generator.V2.Helpers
                 var elementType = getElementType(member);
                 sb.AppendIndentedLine($"var _builder_{member.Name} = new global::GProtobuf.Core.ObjectArrayBuilder<{elementType}>({InitialCapacity});");
 
-                // Pre-seed only for appendable kinds (List/IList/ICollection) where the caller may
-                // have passed a pre-populated instance whose existing items must be preserved.
-                if (!string.IsNullOrEmpty(targetVarForPreSeed) && IsAppendableBuilderCandidate(member))
+                // Pre-seed for appendable kinds (List/IList/ICollection) where the caller may
+                // have passed a pre-populated instance whose existing items must be preserved,
+                // and for immutable kinds (pn 2.3.7 MERGE = builder seeded from existing value).
+                if (!string.IsNullOrEmpty(targetVarForPreSeed) &&
+                    (IsAppendableBuilderCandidate(member) || IsImmutableKind(member)))
                 {
-                    sb.AppendIndentedLine($"if ({targetVarForPreSeed}.{member.Name} != null)");
+                    // ImmutableArray<T> is a struct: null-state is IsDefault, `!= null` is always true.
+                    sb.AppendIndentedLine(member.CollectionKind == CollectionKind.ImmutableArray
+                        ? $"if (!{targetVarForPreSeed}.{member.Name}.IsDefault)"
+                        : $"if ({targetVarForPreSeed}.{member.Name} != null)");
                     sb.StartNewBlock();
                     sb.AppendIndentedLine($"foreach (var __preSeedItem in {targetVarForPreSeed}.{member.Name})");
                     sb.StartNewBlock();
@@ -271,6 +288,17 @@ namespace GProtobuf.Generator.V2.Helpers
             IReadOnlyList<ProtoMemberInfo> members,
             string targetVar,
             Func<ProtoMemberInfo, bool> isArrayType = null)
+            => GenerateTempListFinalization(sb, members, m => $"{targetVar}.{m.Name}", isArrayType);
+
+        /// <summary>
+        /// Target-resolver overload: assigns finalized collections to an arbitrary expression per
+        /// member (e.g. a `param_X` local in the constructor-injection read path).
+        /// </summary>
+        internal static void GenerateTempListFinalization(
+            StringBuilderWithIndent sb,
+            IReadOnlyList<ProtoMemberInfo> members,
+            Func<ProtoMemberInfo, string> getTargetExpression,
+            Func<ProtoMemberInfo, bool> isArrayType = null)
         {
             if (members == null || members.Count == 0)
                 return;
@@ -281,17 +309,29 @@ namespace GProtobuf.Generator.V2.Helpers
                 sb.AppendIndentedLine($"if (_tempList_{member.Name} != null)");
                 sb.StartNewBlock();
 
-                bool useToArray = isArrayType != null
-                    ? isArrayType(member)
-                    : member.CollectionKind == CollectionKind.Array;
-
-                if (useToArray)
+                if (member.CollectionKind == CollectionKind.ImmutableArray)
                 {
-                    sb.AppendIndentedLine($"{targetVar}.{member.Name} = _tempList_{member.Name}.ToArray();");
+                    // Exact-size array available → zero-copy wrap instead of generic CreateRange.
+                    sb.AppendIndentedLine($"{getTargetExpression(member)} = global::System.Runtime.InteropServices.ImmutableCollectionsMarshal.AsImmutableArray(_tempList_{member.Name}.ToArray());");
+                }
+                else if (CollectionKindHelper.IsImmutable(member.CollectionKind))
+                {
+                    sb.AppendIndentedLine($"{getTargetExpression(member)} = {CollectionKindHelper.GetFreezeExpression(member.CollectionKind, $"_tempList_{member.Name}")};");
                 }
                 else
                 {
-                    sb.AppendIndentedLine($"{targetVar}.{member.Name} = _tempList_{member.Name};");
+                    bool useToArray = isArrayType != null
+                        ? isArrayType(member)
+                        : member.CollectionKind == CollectionKind.Array;
+
+                    if (useToArray)
+                    {
+                        sb.AppendIndentedLine($"{getTargetExpression(member)} = _tempList_{member.Name}.ToArray();");
+                    }
+                    else
+                    {
+                        sb.AppendIndentedLine($"{getTargetExpression(member)} = _tempList_{member.Name};");
+                    }
                 }
 
                 sb.EndBlock();
@@ -312,6 +352,17 @@ namespace GProtobuf.Generator.V2.Helpers
             IReadOnlyList<ProtoMemberInfo> members,
             string targetVar,
             Func<ProtoMemberInfo, bool> isArrayType = null)
+            => GenerateConversion(sb, members, m => $"{targetVar}.{m.Name}", isArrayType);
+
+        /// <summary>
+        /// Target-resolver overload: assigns converted collections to an arbitrary expression per
+        /// member (e.g. a `param_X` local in the constructor-injection read path).
+        /// </summary>
+        internal static void GenerateConversion(
+            StringBuilderWithIndent sb,
+            IReadOnlyList<ProtoMemberInfo> members,
+            Func<ProtoMemberInfo, string> getTargetExpression,
+            Func<ProtoMemberInfo, bool> isArrayType = null)
         {
             if (members == null || members.Count == 0)
                 return;
@@ -322,17 +373,29 @@ namespace GProtobuf.Generator.V2.Helpers
                 sb.AppendIndentedLine($"if (_builder_{member.Name}.Count > 0)");
                 sb.StartNewBlock();
 
-                bool useToArray = isArrayType != null
-                    ? isArrayType(member)
-                    : member.CollectionKind == CollectionKind.Array;
-
-                if (useToArray)
+                if (member.CollectionKind == CollectionKind.ImmutableArray)
                 {
-                    sb.AppendIndentedLine($"{targetVar}.{member.Name} = _builder_{member.Name}.ToArray();");
+                    // Exact-size array available → zero-copy wrap instead of generic CreateRange.
+                    sb.AppendIndentedLine($"{getTargetExpression(member)} = global::System.Runtime.InteropServices.ImmutableCollectionsMarshal.AsImmutableArray(_builder_{member.Name}.ToArray());");
+                }
+                else if (CollectionKindHelper.IsImmutable(member.CollectionKind))
+                {
+                    sb.AppendIndentedLine($"{getTargetExpression(member)} = {CollectionKindHelper.GetFreezeExpression(member.CollectionKind, $"_builder_{member.Name}.ToArray()")};");
                 }
                 else
                 {
-                    sb.AppendIndentedLine($"{targetVar}.{member.Name} = _builder_{member.Name}.ToList();");
+                    bool useToArray = isArrayType != null
+                        ? isArrayType(member)
+                        : member.CollectionKind == CollectionKind.Array;
+
+                    if (useToArray)
+                    {
+                        sb.AppendIndentedLine($"{getTargetExpression(member)} = _builder_{member.Name}.ToArray();");
+                    }
+                    else
+                    {
+                        sb.AppendIndentedLine($"{getTargetExpression(member)} = _builder_{member.Name}.ToList();");
+                    }
                 }
 
                 sb.EndBlock();

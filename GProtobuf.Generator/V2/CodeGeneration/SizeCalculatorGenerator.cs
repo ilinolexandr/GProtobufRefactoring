@@ -192,6 +192,13 @@ namespace GProtobuf.Generator.V2.CodeGeneration
 
         private const string CalculatorType = "global::GProtobuf.Core.WriteSizeCalculator";
 
+        /// <summary>
+        /// Name of the WriteSizeCalculator parameter in every generated Calculate*ContentSize method.
+        /// All callsites that pass <c>calculatorVar</c> to helpers should use this constant rather
+        /// than a string literal, so the parameter name lives in exactly one place.
+        /// </summary>
+        private const string CalculatorVarName = "calculator";
+
         #region CalculateContentSize Method
 
         /// <summary>
@@ -227,6 +234,15 @@ namespace GProtobuf.Generator.V2.CodeGeneration
             if (type.IsCustomCollection && !string.IsNullOrEmpty(type.CustomCollectionElementType))
             {
                 GenerateCustomCollectionContentSize(type, className);
+                _sb.EndBlock();
+                _sb.AppendNewLine();
+                return;
+            }
+
+            // Self-dictionary: the instance IS the map; size each entry as repeated field 1.
+            if (type.IsCustomDictionary && !string.IsNullOrEmpty(type.CustomDictionaryKeyType))
+            {
+                GenerateMapFieldSize(GeneratorHelpers.BuildSelfMapMember(type), "obj");
                 _sb.EndBlock();
                 _sb.AppendNewLine();
                 return;
@@ -829,7 +845,7 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         member.CollectionElementType,
                         member.DataFormat,
                         member.FieldId,
-                        calculatorVar: "calculator",
+                        calculatorVar: CalculatorVarName,
                         collectionKind: member.CollectionKind,
                         collectionTypeName: member.Type);
                 }
@@ -840,7 +856,9 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                         sourceVar,
                         member.CollectionElementType,
                         member.DataFormat,
-                        member.FieldId);
+                        member.FieldId,
+                        calculatorVar: CalculatorVarName,
+                        collectionKind: member.CollectionKind);
                 }
             }
             else if (TupleHandler.IsTupleType(member.CollectionElementType))
@@ -859,7 +877,8 @@ namespace GProtobuf.Generator.V2.CodeGeneration
                     member.FieldId,
                     sourceVar,
                     member.CollectionElementType,
-                    elementClassName);
+                    elementClassName,
+                    collectionKind: member.CollectionKind);
             }
         }
 

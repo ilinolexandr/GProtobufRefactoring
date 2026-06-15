@@ -291,6 +291,32 @@ namespace GProtobuf.Generator.V2.Handlers.Core
         }
 
         /// <summary>
+        /// Detects System.Collections.Immutable dictionary member types. Out parameter is the
+        /// non-generic companion class name used in emitted code (e.g. "ImmutableDictionary"
+        /// for <c>ImmutableDictionary&lt;K,V&gt;.Empty</c> / <c>ImmutableDictionary.CreateRange</c>).
+        /// Immutable dictionaries cannot be mutated in place — readers must use
+        /// <c>target = (target ?? Empty).SetItem(key, value)</c> instead of indexer assignment.
+        /// </summary>
+        public static bool TryGetImmutableDictionaryCompanion(string mapType, out string companionName)
+        {
+            var normalized = TypeMapping.NormalizeTypeName(mapType);
+            if (normalized.StartsWith("System.Collections.Immutable.ImmutableSortedDictionary<") ||
+                normalized.StartsWith("System.Collections.Immutable.ImmutableSortedDictionary"))
+            {
+                companionName = "ImmutableSortedDictionary";
+                return true;
+            }
+            if (normalized.StartsWith("System.Collections.Immutable.ImmutableDictionary<") ||
+                normalized.StartsWith("System.Collections.Immutable.ImmutableDictionary"))
+            {
+                companionName = "ImmutableDictionary";
+                return true;
+            }
+            companionName = null;
+            return false;
+        }
+
+        /// <summary>
         /// Checks if the type is a custom List type (not standard List).
         /// Examples: CustomList&lt;T&gt;, MyList&lt;T&gt;, but not List&lt;T&gt; or System.Collections.Generic.List&lt;T&gt;
         /// </summary>

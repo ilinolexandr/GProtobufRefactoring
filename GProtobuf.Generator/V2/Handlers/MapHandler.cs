@@ -205,16 +205,26 @@ namespace GProtobuf.Generator.V2.Handlers
             _sb.AppendIndentedLine($"if (entry.success)");
             _sb.StartNewBlock();
 
-            // Initialize dictionary AFTER reading data, only if we have valid entry
-            _sb.AppendIndentedLine($"{targetVar} ??= new {dictCreationType}();");
-
-            if (TypeHelper.IsKeyValuePairCollection(member.Type))
+            if (TypeHelper.TryGetImmutableDictionaryCompanion(member.Type, out var immutableCompanion))
             {
-                _sb.AppendIndentedLine($"{targetVar}.Add(new global::System.Collections.Generic.KeyValuePair<{member.MapKeyType}, {member.MapValueType}>(entry.key, entry.value));");
+                // Immutable dictionary: SetItem returns a new instance (add-or-overwrite,
+                // same semantics as the indexer assignment below).
+                var emptyExpr = $"global::System.Collections.Immutable.{immutableCompanion}<{member.MapKeyType}, {member.MapValueType}>.Empty";
+                _sb.AppendIndentedLine($"{targetVar} = ({targetVar} ?? {emptyExpr}).SetItem(entry.key, entry.value);");
             }
             else
             {
-                _sb.AppendIndentedLine($"{targetVar}[entry.key] = entry.value;");
+                // Initialize dictionary AFTER reading data, only if we have valid entry
+                _sb.AppendIndentedLine($"{targetVar} ??= new {dictCreationType}();");
+
+                if (TypeHelper.IsKeyValuePairCollection(member.Type))
+                {
+                    _sb.AppendIndentedLine($"{targetVar}.Add(new global::System.Collections.Generic.KeyValuePair<{member.MapKeyType}, {member.MapValueType}>(entry.key, entry.value));");
+                }
+                else
+                {
+                    _sb.AppendIndentedLine($"{targetVar}[entry.key] = entry.value;");
+                }
             }
 
             _sb.EndBlock();
@@ -270,17 +280,26 @@ namespace GProtobuf.Generator.V2.Handlers
             _sb.EndBlock(); // switch
             _sb.EndBlock(); // while
 
-            // Initialize dictionary AFTER reading entry data successfully
-            _sb.AppendIndentedLine($"{targetVar} ??= new {dictCreationType}();");
-
-            // Add to dictionary/collection
-            if (TypeHelper.IsKeyValuePairCollection(member.Type))
+            if (TypeHelper.TryGetImmutableDictionaryCompanion(member.Type, out var immutableCompanion))
             {
-                _sb.AppendIndentedLine($"{targetVar}.Add(new global::System.Collections.Generic.KeyValuePair<{keyType}, {valueType}>(key, value));");
+                // Immutable dictionary: SetItem returns a new instance (add-or-overwrite).
+                var emptyExpr = $"global::System.Collections.Immutable.{immutableCompanion}<{keyType}, {valueType}>.Empty";
+                _sb.AppendIndentedLine($"{targetVar} = ({targetVar} ?? {emptyExpr}).SetItem(key, value);");
             }
             else
             {
-                _sb.AppendIndentedLine($"{targetVar}[key] = value;");
+                // Initialize dictionary AFTER reading entry data successfully
+                _sb.AppendIndentedLine($"{targetVar} ??= new {dictCreationType}();");
+
+                // Add to dictionary/collection
+                if (TypeHelper.IsKeyValuePairCollection(member.Type))
+                {
+                    _sb.AppendIndentedLine($"{targetVar}.Add(new global::System.Collections.Generic.KeyValuePair<{keyType}, {valueType}>(key, value));");
+                }
+                else
+                {
+                    _sb.AppendIndentedLine($"{targetVar}[key] = value;");
+                }
             }
         }
 

@@ -47,11 +47,15 @@ namespace GProtobuf.Generator.V2.Handlers
             string sourceVar,
             string elementTypeName,
             string elementClassName,
-            string writerClassName = "StreamWriters")
+            string writerClassName = "StreamWriters",
+            CollectionKind collectionKind = CollectionKind.None)
         {
             _sb.StartNewBlock(); // Scope block to avoid name collisions
             _sb.AppendIndentedLine($"var collection = {sourceVar};");
-            _sb.AppendIndentedLine("if (collection != null)");
+            // ImmutableArray<T> is a struct: guard on IsDefault, never `!= null`.
+            _sb.AppendIndentedLine(collectionKind == CollectionKind.ImmutableArray
+                ? "if (!collection.IsDefault)"
+                : "if (collection != null)");
             _sb.StartNewBlock();
             _sb.AppendIndentedLine("foreach (var item in collection)");
             _sb.StartNewBlock();
@@ -175,7 +179,8 @@ namespace GProtobuf.Generator.V2.Handlers
             string collectionTypeName,
             string readerVar = "reader",
             bool useObjectArrayBuilder = false,
-            int fieldId = 0)
+            int fieldId = 0,
+            string memberName = null)
         {
             var shortElementType = TypeMapping.GetGlobalTypeName(elementTypeName);
 
@@ -184,25 +189,35 @@ namespace GProtobuf.Generator.V2.Handlers
             string actualTargetVar = targetVar;
             bool needsTempList = false;
             string prefix = null;
-            string fieldName = null;
+            string fieldName = memberName;
 
-            // Determine if this is from Populate (instance.) or ReadContent (result.)
-            if (targetVar.StartsWith("instance."))
+            // Fallback when memberName not provided: derive from Populate (instance.) or
+            // ReadContent (result.) target prefixes. NB: deferred-init (tmp_X) and ctor-injection
+            // (param_x) targets are NOT derivable from the target var (param names may differ in
+            // case from member names) — those callers must pass memberName explicitly, otherwise
+            // temp-storage routing is skipped and immutable/array kinds would emit invalid code.
+            if (fieldName == null)
             {
-                prefix = "instance.";
-                fieldName = targetVar.Substring(prefix.Length);
-            }
-            else if (targetVar.StartsWith("result."))
-            {
-                prefix = "result.";
-                fieldName = targetVar.Substring(prefix.Length);
+                if (targetVar.StartsWith("instance."))
+                {
+                    prefix = "instance.";
+                    fieldName = targetVar.Substring(prefix.Length);
+                }
+                else if (targetVar.StartsWith("result."))
+                {
+                    prefix = "result.";
+                    fieldName = targetVar.Substring(prefix.Length);
+                }
             }
 
             if (fieldName != null)
             {
-                if (collectionKind == CollectionKind.Array)
+                if (collectionKind == CollectionKind.Array ||
+                    CollectionKindHelper.IsImmutable(collectionKind))
                 {
-                    // Arrays need temp storage - either _tempList_ or _builder_
+                    // Arrays and immutable collections can't be appended in place — accumulate in
+                    // temp storage (_tempList_ or _builder_); the parent generator emits the
+                    // final conversion/freeze (ToArray / ImmutableList.CreateRange / marshal wrap).
                     actualTargetVar = useObjectArrayBuilder ? $"_builder_{fieldName}" : $"_tempList_{fieldName}";
                     needsTempList = !useObjectArrayBuilder; // Only need temp list pattern for List<T>
                 }
@@ -407,11 +422,15 @@ namespace GProtobuf.Generator.V2.Handlers
             string sourceVar,
             string elementTypeName,
             string elementClassName,
-            string calculatorVar = "calculator")
+            string calculatorVar = "calculator",
+            CollectionKind collectionKind = CollectionKind.None)
         {
             _sb.StartNewBlock(); // Scope block to avoid name collisions
             _sb.AppendIndentedLine($"var collection = {sourceVar};");
-            _sb.AppendIndentedLine("if (collection != null)");
+            // ImmutableArray<T> is a struct: guard on IsDefault, never `!= null`.
+            _sb.AppendIndentedLine(collectionKind == CollectionKind.ImmutableArray
+                ? "if (!collection.IsDefault)"
+                : "if (collection != null)");
             _sb.StartNewBlock();
             _sb.AppendIndentedLine("foreach (var item in collection)");
             _sb.StartNewBlock();
